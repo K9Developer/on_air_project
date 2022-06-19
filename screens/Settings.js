@@ -29,6 +29,7 @@ let BT05_DEVICE = null;
 let DEVICE_SERVICE_UUID = null;
 let DEVICE_CHARACTERISTICS_UUID = null;
 let MANAGER = null;
+let scanTimer = null;
 
 const getData = async key => {
   try {
@@ -308,6 +309,9 @@ const Settings = ({navigation, route}) => {
     setStatusText('Connected to device!');
     setBluetoothImageId(2);
 
+    console.log('CLearing timer:', scanTimer);
+    clearTimeout(scanTimer);
+
     let deviceConnected = MANAGER.connectToDevice(device.id)
       .then(device => {
         console.log('connect success:', device.name, device.id);
@@ -344,7 +348,6 @@ const Settings = ({navigation, route}) => {
                   'Device CHARACTERISTICS:',
                   DEVICE_CHARACTERISTICS_UUID,
                 );
-                reconnect = true;
                 return DEVICE_CHARACTERISTICS_UUID;
               })
               .catch(error => {
@@ -401,6 +404,20 @@ const Settings = ({navigation, route}) => {
 
   const scanForDevice = async manager => {
     setStatusText('Scanning for devices...');
+
+    scanTimer =
+      setTimeout(() => {
+        setModalError(false);
+        setModalText(
+          "We have been scanning for 10 seconds and didn't find the device! please try the following:\n\n- Restart OnAir device\n- Restart App",
+        );
+        setModalVisible(true);
+        setStatusText('Please try again');
+        if (MANAGER) {
+          MANAGER.stopDeviceScan();
+        }
+      }, 10000),
+
     await manager.startDeviceScan(
       null,
       null,
@@ -411,6 +428,7 @@ const Settings = ({navigation, route}) => {
           setModalVisible(true);
           setStatusText('An Error occurred');
         }
+
         if (device !== null) {
           console.log('Found Device Name: ' + device.name);
           if (device.name === 'BT05') {
@@ -501,11 +519,6 @@ const Settings = ({navigation, route}) => {
   }
 
   const exitApp = () => {
-    // AsyncStorage.setItem('@btImage', JSON.stringify(bluetoothImageId));
-    // AsyncStorage.setItem('@factor', JSON.stringify(factor));
-    // AsyncStorage.setItem('@roadPreset', JSON.stringify(roadPreset));
-    // AsyncStorage.setItem('@trailPreset', JSON.stringify(trailPreset));
-    // console.log('Trail Preset: ' + trailPreset, ', Road Preset: ' + roadPreset);
     if (BT05_DEVICE != null && BT05_DEVICE != undefined) {
       MANAGER.isDeviceConnected(BT05_DEVICE.id).then(isConnected => {
         if (!isConnected) {
@@ -522,6 +535,7 @@ const Settings = ({navigation, route}) => {
         MANAGER = null;
       }
     }
+    clearTimeout(scanTimer);
     console.log('Exit app');
   };
 

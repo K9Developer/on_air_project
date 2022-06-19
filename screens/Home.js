@@ -326,6 +326,11 @@ const Home = ({navigation, route}) => {
   const [readMonitor, setReadMonitor] = useState(null);
   const [tirePressure, setTirePressure] = useState(0);
   const [isDone, setIsDone] = useState(false);
+  const [dropMessageText, setDropMessageText] = useState(
+    'You have disconnected from the device.',
+  );
+  const [dropMessageButtonText, setDropMessageButtonText] =
+    useState('Reconnect');
   const [allMessagesSentByDevice, setAllMessagesSentByDevice] = useState([]);
 
   const dropAnim = useRef(new Animated.Value(0)).current;
@@ -613,6 +618,8 @@ const Home = ({navigation, route}) => {
         setReadMonitor(null);
       }
       removeSubscriptions();
+      setDropMessageText('You have disconnected from the device.');
+      setDropMessageButtonText('Reconnect');
       dropIn();
     }
   };
@@ -622,7 +629,7 @@ const Home = ({navigation, route}) => {
     if (Platform.OS === 'android') {
       Vibration.vibrate([200, 1000, 1450, 1000, 1450, 1000, 1450, 1000]);
     } else {
-      Vibration.vibrate([200,1450,1450,1450]);
+      Vibration.vibrate([200, 1450, 1450, 1450]);
     }
     playDoneSound();
   };
@@ -846,7 +853,7 @@ const Home = ({navigation, route}) => {
               color: 'white',
               // marginLeft: 10,
             }}>
-            You have disconnected from the device.
+            {dropMessageText}
           </Text>
           <Text
             style={{
@@ -868,7 +875,7 @@ const Home = ({navigation, route}) => {
                 startConnect: true,
               });
             }}>
-            Reconnect
+            {dropMessageButtonText}
           </Text>
         </View>
       </Animated.View>
@@ -906,24 +913,28 @@ const Home = ({navigation, route}) => {
           <ImageRectButton
             handlePressDown={() => {}}
             handlePressUp={() => {
-              console.log('...CLICK...');
               if (BT05_DEVICE != null) {
                 if (connected) {
                   console.log('Sending all data to the device');
                   sendAllData(wantedPsi, factor);
                 } else {
-                  setModalError(true);
-                  setModalText(
-                    'You are not connected tp the device the device! to connect, please go to the settings page and click on the bluetooth icon. (device is not connected)',
-                  );
-                  setModalVisible(true);
+                  // setModalError(true);
+                  // setModalText(
+                  //   'You are not connected to the device! to connect, please go to the settings page and click on the bluetooth icon. (device is not connected)',
+                  // );
+                  // setModalVisible(true);
+                  setDropMessageText('You are not connected to the device.');
+                  setDropMessageButtonText('Connect');
                 }
               } else {
-                setModalError(true);
-                setModalText(
-                  'You have not connected tp the device the device! to connect, please go to the settings page and click on the bluetooth icon. (device is null)',
-                );
-                setModalVisible(true);
+                // setModalError(true);
+                // setModalText(
+                //   'You have not connected tp the device the device! to connect, please go to the settings page and click on the bluetooth icon. (device is null)',
+                // );
+                // setModalVisible(true);
+                setDropMessageText('You are not connected to the device.');
+                setDropMessageButtonText('Connect');
+                dropIn();
               }
             }}
             img={require('../assets/icons/logo.png')}
@@ -1028,8 +1039,6 @@ const Home = ({navigation, route}) => {
                 downPressPlus(wantedPsi, setWantedPsi);
               }}
               handlePressUp={() => {
-                doneStatus();
-
                 upPressPlus(wantedPsi, setWantedPsi);
                 // setData('@wantedPsi', wantedPsi.toString());
               }}
