@@ -8,12 +8,16 @@ import {
   Pressable,
   Image,
   Animated,
+  Vibration,
+  Platform,
   AppState,
 } from 'react-native';
 import React, {useState, useRef, useEffect} from 'react';
 import {FocusedStatusBar, CircleButton} from '../components';
 import {COLORS, SHADOWS} from '../constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Sound from 'react-native-sound';
+
 import {BleManager} from 'react-native-ble-plx';
 const Buffer = require('buffer').Buffer;
 
@@ -120,6 +124,34 @@ const sendDeviceSignal = async signal => {
     .catch(e => {
       return e;
     });
+};
+
+const playConnectedSound = () => {
+  let beep = new Sound('beep_short.mp3', Sound.MAIN_BUNDLE, error => {
+    if (error) {
+      console.log('failed to load the sound', error);
+      return;
+    }
+    // loaded successfully
+    beep.setVolume(0.02);
+    beep.play(success => {
+      if (success) {
+        console.log('successfully finished playing');
+        setTimeout(() => {
+          beep.play(success => {
+            if (success) {
+              console.log('successfully finished playing');
+            } else {
+              console.log('playback failed due to audio decoding errors');
+            }
+          });
+        }, 200);
+      } else {
+        console.log('playback failed due to audio decoding errors');
+      }
+    });
+  });
+  return beep;
 };
 
 const Settings = ({navigation, route}) => {
@@ -336,6 +368,12 @@ const Settings = ({navigation, route}) => {
           .then(d => {
             console.log('SERVICE DATA:', d);
             sendDeviceSignal('Connected');
+            if (Platform.OS === 'android') {
+              Vibration.vibrate([350, 200, 250, 300]);
+            } else {
+              Vibration.vibrate([350, 250]);
+            }
+            playConnectedSound();
             BT05_DEVICE.onDisconnected(onDeviceDisconnect);
             return d;
           })
@@ -468,10 +506,22 @@ const Settings = ({navigation, route}) => {
     // AsyncStorage.setItem('@roadPreset', JSON.stringify(roadPreset));
     // AsyncStorage.setItem('@trailPreset', JSON.stringify(trailPreset));
     // console.log('Trail Preset: ' + trailPreset, ', Road Preset: ' + roadPreset);
-    // if (MANAGER != null && MANAGER != undefined) {
-    //   MANAGER.destroy();
-    //   MANAGER = null;
-    // }
+    if (BT05_DEVICE != null && BT05_DEVICE != undefined) {
+      MANAGER.isDeviceConnected(BT05_DEVICE.id).then(isConnected => {
+        if (!isConnected) {
+          if (MANAGER != null && MANAGER != undefined) {
+            console.log('Destroyed MANAGER');
+            MANAGER.destroy();
+            MANAGER = null;
+          }
+        }
+      });
+    } else {
+      if (MANAGER != null && MANAGER != undefined) {
+        MANAGER.destroy();
+        MANAGER = null;
+      }
+    }
     console.log('Exit app');
   };
 

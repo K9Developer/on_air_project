@@ -23,6 +23,8 @@ target 'on_air_project' do
 
   pod 'react-native-ble-plx', :path => '../node_modules/react-native-ble-plx'
 
+  pod 'RNSound', :path => '../node_modules/react-native-sound'
+
   target 'on_air_projectTests' do
     inherit! :complete
     # Pods for testing

@@ -10,6 +10,7 @@ import {
   Animated,
   PermissionsAndroid,
   AppState,
+  Vibration,
 } from 'react-native';
 import {useState, useEffect, useRef} from 'react';
 import {
@@ -21,6 +22,7 @@ import {
 import {COLORS, SHADOWS} from '../constants';
 import React from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Sound from 'react-native-sound';
 import {LogBox} from 'react-native';
 
 LogBox.ignoreLogs(['new NativeEventEmitter']);
@@ -48,6 +50,54 @@ const StatusIdMap = {
 };
 const timerList = [];
 const Buffer = require('buffer').Buffer;
+Sound.setCategory('Playback');
+
+const playDoneSound = () => {
+  let beep = new Sound('beep_long.mp3', Sound.MAIN_BUNDLE, error => {
+    if (error) {
+      console.log('failed to load the sound', error);
+      return;
+    }
+    // loaded successfully
+    beep.play(success => {
+      if (success) {
+        console.log('successfully finished playing');
+        setTimeout(() => {
+          beep.play(success => {
+            if (success) {
+              console.log('successfully finished playing');
+              setTimeout(() => {
+                beep.play(success => {
+                  if (success) {
+                    console.log('successfully finished playing');
+                    setTimeout(() => {
+                      beep.play(success => {
+                        if (success) {
+                          console.log('successfully finished playing');
+                        } else {
+                          console.log(
+                            'playback failed due to audio decoding errors',
+                          );
+                        }
+                      });
+                    }, 1000);
+                  } else {
+                    console.log('playback failed due to audio decoding errors');
+                  }
+                });
+              }, 1000);
+            } else {
+              console.log('playback failed due to audio decoding errors');
+            }
+          });
+        }, 1000);
+      } else {
+        console.log('playback failed due to audio decoding errors');
+      }
+    });
+  });
+  return beep;
+};
 
 const downPressPlus = (currentCounter, setCounter) => {
   if (currentCounter < MAX_PSI) {
@@ -266,7 +316,6 @@ const Home = ({navigation, route}) => {
   // }
 
   const [wantedPsi, setWantedPsi] = useState(MIN_PSI);
-  const [test, setTest] = useState(MIN_PSI);
   const [factor, setFactor] = useState(MIN_FACTOR);
   const [modalVisible, setModalVisible] = useState(false);
   const [modalError, setModalError] = useState(false);
@@ -276,6 +325,7 @@ const Home = ({navigation, route}) => {
   const [disconnectMonitor, setDisconnectMonitor] = useState(null);
   const [readMonitor, setReadMonitor] = useState(null);
   const [tirePressure, setTirePressure] = useState(0);
+  const [isDone, setIsDone] = useState(false);
   const [allMessagesSentByDevice, setAllMessagesSentByDevice] = useState([]);
 
   const dropAnim = useRef(new Animated.Value(0)).current;
@@ -567,13 +617,26 @@ const Home = ({navigation, route}) => {
     }
   };
 
-  const startTimer = async (startTime, text) => {
+  const doneStatus = async () => {
+    setIsDone(true);
+    if (Platform.OS === 'android') {
+      Vibration.vibrate([200, 1000, 1450, 1000, 1450, 1000, 1450, 1000]);
+    } else {
+      Vibration.vibrate([200,1450,1450,1450]);
+    }
+    playDoneSound();
+  };
+
+  const handleStatusId = async (startTime, statusId) => {
     startTime -= 2;
     for (timer of timerList) {
       clearInterval(timer);
     }
     if (startTime == -3) {
-      setStatusText(StatusIdMap[text]);
+      setStatusText(StatusIdMap[statusId]);
+      if (statusId == 3) {
+        doneStatus();
+      }
       return;
     }
     let x = 0;
@@ -581,7 +644,9 @@ const Home = ({navigation, route}) => {
     timerList.push(
       setInterval(() => {
         setStatusText(
-          `${StatusIdMap[text]} - ${startTime - x >= 0 ? startTime - x : 0}s`,
+          `${StatusIdMap[statusId]} - ${
+            startTime - x >= 0 ? startTime - x : 0
+          }s`,
         );
 
         if (++x === startTime) {
@@ -621,7 +686,7 @@ const Home = ({navigation, route}) => {
       isValidData(data)
     ) {
       let dataArray = eval(data);
-      startTimer(dataArray[1], dataArray[0]);
+      handleStatusId(dataArray[1], dataArray[0]);
       setTirePressure(dataArray[2]);
     }
   };
@@ -963,6 +1028,8 @@ const Home = ({navigation, route}) => {
                 downPressPlus(wantedPsi, setWantedPsi);
               }}
               handlePressUp={() => {
+                doneStatus();
+
                 upPressPlus(wantedPsi, setWantedPsi);
                 // setData('@wantedPsi', wantedPsi.toString());
               }}
@@ -1088,16 +1155,16 @@ const Home = ({navigation, route}) => {
             width: '75%',
             height: '15%',
             borderRadius: 30,
-            borderColor: '#2D9626',
+            borderColor: isDone ? '#2D9626' : '#545454',
             borderWidth: 10,
-            marginTop: 30,
+            marginTop: 50,
             alignItems: 'center',
             justifyContent: 'center',
           }}>
           <Text
             style={{
               fontSize: 50,
-              color: '#2D9626',
+              color: isDone ? '#2D9626' : '#545454',
               fontWeight: 'bold',
             }}>
             DONE
