@@ -8,10 +8,10 @@ import {
   Pressable,
   Image,
   Animated,
+  AppState,
 } from 'react-native';
 import React, {useState, useRef, useEffect} from 'react';
 import {FocusedStatusBar, CircleButton} from '../components';
-import {useNavigation} from '@react-navigation/native';
 import {COLORS, SHADOWS} from '../constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {BleManager} from 'react-native-ble-plx';
@@ -123,6 +123,15 @@ const sendDeviceSignal = async signal => {
 };
 
 const Settings = ({navigation, route}) => {
+  const [factor, setFactor] = useState(MIN_FACTOR);
+  const [roadPreset, setRoadPreset] = useState(MIN_PRESET);
+  const [trailPreset, setTrailPreset] = useState(MIN_PRESET);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalError, setModalError] = useState(false);
+  const [modalText, setModalText] = useState('N/A');
+  const [statusText, setStatusText] = useState('Idle');
+  const [startScan, setStartScan] = useState(false);
+
   useEffect(() => {
     navigation.addListener('focus', () => {
       if (
@@ -140,46 +149,58 @@ const Settings = ({navigation, route}) => {
         console.log('Start connection with device: ' + startScan);
       }
 
+      // getData('@factor')
+      //   .then(value => {
+      //     console.log('getData factor value: ' + value);
+      //     if (value != null && value != undefined) {
+      //       setFactor(parseFloat(value.replace('"', '')));
+      //     }
+      //   })
+      //   .catch(err => console.log('getData factor error:', err));
+
       getData('@factor')
         .then(value => {
+          console.log('getData factor value: ' + value);
           if (value != null && value != undefined) {
             setFactor(parseFloat(value.replace('"', '')));
           }
         })
-        .catch(err => console.log('getData factor error:', err));
+        .catch(err => console.log('getData factor error', err));
 
       getData('@roadPreset')
         .then(value => {
+          console.log('getData roadPreset value: ' + value);
           if (value != null && value != undefined) {
-            setFactor(parseFloat(value.replace('"', '')));
-          }
-        })
-        .catch(err => console.log('getData roadPreset error', err));
-
-      getData('@trailPreset')
-        .then(value => {
-          if (value != null && value != undefined) {
-            setFactor(parseFloat(value.replace('"', '')));
+            setRoadPreset(parseFloat(value.replace('"', '')));
           }
         })
         .catch(err => console.log('getData trailPreset error', err));
 
-      getData('@device')
+      getData('@trailPreset')
         .then(value => {
+          console.log('getData trailPreset value: ' + value);
           if (value != null && value != undefined) {
-            if (BT05_DEVICE == null && BT05_DEVICE == undefined) {
-              console.log('Source of device: AsyncStorage');
-              BT05_DEVICE = JSON.parse(value);
-            }
+            setTrailPreset(parseFloat(value.replace('"', '')));
           }
         })
-        .catch(err => console.log('getData device error', err));
+        .catch(err => console.log('getData trailPreset error', err));
+
+      // getData('@device')
+      //   .then(value => {
+      //     if (value != null && value != undefined) {
+      //       if (BT05_DEVICE == null && BT05_DEVICE == undefined) {
+      //         console.log('Source of device: AsyncStorage');
+      //         BT05_DEVICE = JSON.parse(value);
+      //       }
+      //     }
+      //   })
+      //   .catch(err => console.log('getData device error', err));
 
       getData('@btImage')
         .then(value => {
           if (value != null && value != undefined) {
             console.log('LOADED BT Image: ' + typeof BT05_DEVICE);
-            if (JSON.parse(value) == 2) {
+            if (parseInt(value) == 2) {
               if (BT05_DEVICE != null && BT05_DEVICE != undefined) {
                 try {
                   console.log('BT05_DEVICE: ' + JSON.stringify(BT05_DEVICE));
@@ -201,10 +222,10 @@ const Settings = ({navigation, route}) => {
                   setBluetoothImageId(1);
                 }
               }
-            } else if (JSON.parse(value) == 4) {
+            } else if (parseInt(value) == 4) {
               setBluetoothImageId(1);
             } else {
-              setBluetoothImageId(JSON.parse(value));
+              setBluetoothImageId(parseInt(value));
             }
             console.log('\n-----------------------------------------\n');
           } else {
@@ -222,14 +243,6 @@ const Settings = ({navigation, route}) => {
   //   navigation = useNavigation();
   // }
 
-  const [factor, setFactor] = useState(3.2);
-  const [roadPreset, setRoadPreset] = useState(36);
-  const [trailPreset, setTrailPreset] = useState(16);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [modalError, setModalError] = useState(false);
-  const [modalText, setModalText] = useState('N/A');
-  const [statusText, setStatusText] = useState('Idle');
-  const [startScan, setStartScan] = useState(false);
   // 1: ../assets/icons/bluetooth.png
   // 2: ../assets/icons/bluetooth_connected.png
   // 3: ../assets/icons/bluetooth_disconnected.png
@@ -238,12 +251,16 @@ const Settings = ({navigation, route}) => {
   const dropAnim = useRef(new Animated.Value(0)).current;
 
   navigation.addListener('blur', e => {
-    AsyncStorage.setItem('@device', JSON.stringify(BT05_DEVICE));
-    AsyncStorage.setItem('@btImage', JSON.stringify(bluetoothImageId));
-    AsyncStorage.setItem('@factor', JSON.stringify(factor));
-    AsyncStorage.setItem('@roadPreset', JSON.stringify(roadPreset));
-    AsyncStorage.setItem('@trailPreset', JSON.stringify(trailPreset));
+    exitApp();
   });
+
+  useEffect(() => {
+    AppState.addEventListener('change', currentState => {
+      if (currentState === 'background') {
+        exitApp();
+      }
+    });
+  }, []);
 
   const onDeviceDisconnect = (error, device) => {
     if (error) {
@@ -342,13 +359,6 @@ const Settings = ({navigation, route}) => {
     console.log('Source of device: Connect function end');
     BT05_DEVICE = {...deviceConnected};
     return deviceConnected;
-  };
-
-  console.log();
-
-  const saveStates = () => {
-    AsyncStorage.setItem('@device', JSON.stringify(BT05_DEVICE));
-    AsyncStorage.setItem('@btImage', JSON.stringify(bluetoothImageId));
   };
 
   const scanForDevice = async manager => {
@@ -451,6 +461,43 @@ const Settings = ({navigation, route}) => {
     startConnection();
     setStartScan(false);
   }
+
+  const exitApp = () => {
+    // AsyncStorage.setItem('@btImage', JSON.stringify(bluetoothImageId));
+    // AsyncStorage.setItem('@factor', JSON.stringify(factor));
+    // AsyncStorage.setItem('@roadPreset', JSON.stringify(roadPreset));
+    // AsyncStorage.setItem('@trailPreset', JSON.stringify(trailPreset));
+    // console.log('Trail Preset: ' + trailPreset, ', Road Preset: ' + roadPreset);
+    // if (MANAGER != null && MANAGER != undefined) {
+    //   MANAGER.destroy();
+    //   MANAGER = null;
+    // }
+    console.log('Exit app');
+  };
+
+  useEffect(() => {
+    if (bluetoothImageId != 1) {
+      AsyncStorage.setItem('@btImage', JSON.stringify(bluetoothImageId));
+    }
+  }, [bluetoothImageId]);
+
+  useEffect(() => {
+    if (factor != MIN_FACTOR) {
+      AsyncStorage.setItem('@factor', JSON.stringify(factor));
+    }
+  }, [factor]);
+
+  useEffect(() => {
+    if (roadPreset != MIN_PRESET) {
+      AsyncStorage.setItem('@roadPreset', JSON.stringify(roadPreset));
+    }
+  }, [roadPreset]);
+
+  useEffect(() => {
+    if (trailPreset != MIN_PRESET) {
+      AsyncStorage.setItem('@trailPreset', JSON.stringify(trailPreset));
+    }
+  }, [trailPreset]);
 
   return (
     <SafeAreaView style={{flex: 1}}>
@@ -581,10 +628,6 @@ const Settings = ({navigation, route}) => {
           imgUrl={require('../assets/icons/back.png')}
           handlePressDown={() => {}}
           handlePressUp={() => {
-            // AsyncStorage.setItem('@factor', JSON.stringify(factor));
-            // AsyncStorage.setItem('@roadPreset', JSON.stringify(roadPreset));
-            // AsyncStorage.setItem('@trailPreset', JSON.stringify(trailPreset));
-            // saveStates();
             console.log(
               `\n-----------------------------------\n
               Type of MANAGER: ${typeof MANAGER}
@@ -601,7 +644,7 @@ const Settings = ({navigation, route}) => {
             if (MANAGER) {
               MANAGER.stopDeviceScan();
             }
-
+            console.log('MANAGER: ' + typeof MANAGER);
             navigation.navigate('Home', {
               manager: MANAGER,
               device: BT05_DEVICE,
@@ -670,7 +713,6 @@ const Settings = ({navigation, route}) => {
           allowFontScaling={true}
           maxLength={3}
           onChangeText={text => {
-            console.log(text);
             setFactor(text);
           }}
           onPressOut={() => {

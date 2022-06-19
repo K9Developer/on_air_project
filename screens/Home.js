@@ -11,7 +11,6 @@ import {
   PermissionsAndroid,
   AppState,
 } from 'react-native';
-import {useNavigation} from '@react-navigation/native';
 import {useState, useEffect, useRef} from 'react';
 import {
   FocusedStatusBar,
@@ -110,7 +109,7 @@ const getData = async key => {
 
 const setData = async (key, value) => {
   try {
-    await AsyncStorage.setItem(key, value);
+    let t = await AsyncStorage.setItem(key, value);
   } catch (error) {
     console.log(error);
   }
@@ -267,6 +266,7 @@ const Home = ({navigation, route}) => {
   // }
 
   const [wantedPsi, setWantedPsi] = useState(MIN_PSI);
+  const [test, setTest] = useState(MIN_PSI);
   const [factor, setFactor] = useState(MIN_FACTOR);
   const [modalVisible, setModalVisible] = useState(false);
   const [modalError, setModalError] = useState(false);
@@ -277,11 +277,27 @@ const Home = ({navigation, route}) => {
   const [readMonitor, setReadMonitor] = useState(null);
   const [tirePressure, setTirePressure] = useState(0);
   const [allMessagesSentByDevice, setAllMessagesSentByDevice] = useState([]);
+
   const dropAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     return navigation.addListener('focus', () => {
       console.log('navigation focus');
+
+      if (Platform.OS === 'android' && Platform.Version <= 19) {
+        setModalError(true);
+        setModalText(
+          "You have to update your Android version to use this app. It's not supported on Android versions below 19.",
+        );
+        setModalVisible(true);
+      } else if (Platform.OS === 'ios' && Platform.Version <= 9) {
+        setModalError(true);
+        setModalText(
+          "You have to update your iOS version to use this app. It's not supported on iOS versions below 9.",
+        );
+      }
+      console.log('ASKING PERMS');
+      requestPermissions();
 
       getData('@factor')
         .then(value => {
@@ -291,8 +307,10 @@ const Home = ({navigation, route}) => {
         })
         .catch(err => console.log(err));
 
-      getData('@wantedPSI')
+      console.log(1);
+      getData('@wantedPsi')
         .then(value => {
+          console.log('value: ' + value);
           if (value != null && value != undefined) {
             setWantedPsi(parseInt(value.replace('"', '')));
           }
@@ -332,6 +350,7 @@ const Home = ({navigation, route}) => {
           console.log('Passed params checks');
           MANAGER = route.params.manager;
           BT05_DEVICE = route.params.device;
+          console.log('MANAGER: ' + typeof MANAGER);
           MANAGER.isDeviceConnected(BT05_DEVICE.id)
             .then(isConnected => {
               console.log('IS CONNECTED: ' + isConnected);
@@ -360,8 +379,13 @@ const Home = ({navigation, route}) => {
     });
   }, [route]);
 
-  navigation.addListener('blur', e => {
-    setData('@wantedPsi', wantedPsi.toString());
+  // setInterval(() => {
+  //   console.log('PSI: ' + wantedPsi);
+  // }, 100);
+
+  const exitApp = () => {
+    // console.log('Wanted PSI: ' + wantedPsi);
+    // setData('@wantedPsi', wantedPsi.toString());
 
     if (disconnectMonitor) {
       disconnectMonitor.remove();
@@ -372,7 +396,19 @@ const Home = ({navigation, route}) => {
       readMonitor.remove();
       setReadMonitor(null);
     }
+  };
+
+  navigation.addListener('blur', e => {
+    exitApp();
   });
+
+  useEffect(() => {
+    AppState.addEventListener('change', currentState => {
+      if (currentState === 'background') {
+        exitApp();
+      }
+    });
+  }, []);
 
   const sendDeviceSignal = async signal => {
     let base64Signal = Buffer.from(startChar + signal + endChar).toString(
@@ -590,23 +626,6 @@ const Home = ({navigation, route}) => {
     }
   };
 
-  useEffect(() => {
-    if (Platform.OS === 'android' && Platform.Version <= 19) {
-      setModalError(true);
-      setModalText(
-        "You have to update your Android version to use this app. It's not supported on Android versions below 19.",
-      );
-      setModalVisible(true);
-    } else if (Platform.OS === 'ios' && Platform.Version <= 9) {
-      setModalError(true);
-      setModalText(
-        "You have to update your iOS version to use this app. It's not supported on iOS versions below 9.",
-      );
-    }
-    console.log('ASKING PERMS');
-    requestPermissions();
-  }, []);
-
   const dropIn = () => {
     // Will change fadeAnim value to 1 in 5 seconds
     Animated.timing(dropAnim, {
@@ -616,6 +635,12 @@ const Home = ({navigation, route}) => {
       // useNativeDriver: true,
     }).start();
   };
+
+  useEffect(() => {
+    if (wantedPsi != 3) {
+      setData('@wantedPsi', JSON.stringify(wantedPsi));
+    }
+  }, [wantedPsi]);
 
   return (
     <SafeAreaView style={{flex: 1}}>
@@ -939,7 +964,7 @@ const Home = ({navigation, route}) => {
               }}
               handlePressUp={() => {
                 upPressPlus(wantedPsi, setWantedPsi);
-                setData('@wantedPsi', wantedPsi.toString());
+                // setData('@wantedPsi', wantedPsi.toString());
               }}
               text={'+'}
               {...{
@@ -960,7 +985,7 @@ const Home = ({navigation, route}) => {
               }}
               handlePressUp={() => {
                 upPressMinus(wantedPsi, setWantedPsi);
-                setData('@wantedPsi', wantedPsi.toString());
+                // setData('@wantedPsi', wantedPsi.toString());
               }}
               text={'-'}
               {...{
@@ -981,7 +1006,7 @@ const Home = ({navigation, route}) => {
                   .then(data => data)
                   .then(value => {
                     setWantedPsi(parseInt(value.replace('"', '')));
-                    setData('@wantedPsi', wantedPsi.toString());
+                    // setData('@wantedPsi', wantedPsi.toString());
                   })
                   .catch(err => console.log(err));
               }}
@@ -1005,7 +1030,7 @@ const Home = ({navigation, route}) => {
                   .then(data => data)
                   .then(value => {
                     setWantedPsi(parseInt(value));
-                    setData('@wantedPsi', wantedPsi.toString());
+                    // setData('@wantedPsi', wantedPsi.toString());
                   })
                   .catch(err => console.log(err));
               }}
