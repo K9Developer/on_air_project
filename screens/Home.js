@@ -163,12 +163,16 @@ const setData = async (key, value) => {
 };
 
 const getErrorText = error => {
+  if (error.reason == null) {
+    return null;
+  }
+
   let errorMap = {
     0:
       'Unknown error occurred . (Please try again) info: ' +
       JSON.stringify(error),
     1: 'BleManager was destroyed',
-    2: 'Operation was cancelled. info: ' + JSON.stringify(error),
+    2: null,
     3: 'Operation timed out',
     4: 'Operation was rejected',
     5: 'Invalid UUIDs or IDs were passed',
@@ -297,6 +301,51 @@ const isValidData = data => {
   return true;
 };
 
+const storeData = async () => {
+  if (!JSON.parse(await AsyncStorage.getItem('@factor'))) {
+    try {
+      await AsyncStorage.setItem('@factor', JSON.stringify(3.2));
+    } catch (error) {
+      console.log('ERROR SAVING FACTOR', error);
+    }
+  }
+
+  if (!JSON.parse(await AsyncStorage.getItem('@wantedPsi'))) {
+    try {
+      await AsyncStorage.setItem('@wantedPsi', JSON.stringify(3));
+    } catch (error) {
+      console.log('ERROR SAVING WANTED PSI', error);
+    }
+  }
+
+  console.log('road:', JSON.parse(await AsyncStorage.getItem('@roadPreset')));
+
+  if (!JSON.parse(await AsyncStorage.getItem('@roadPreset'))) {
+    try {
+      await AsyncStorage.setItem('@roadPreset', JSON.stringify(32));
+    } catch (error) {
+      console.log('ERROR SAVING ROAD PRESET', error);
+    }
+  }
+  console.log(!(await AsyncStorage.getItem('@trailPreset')));
+  if (!JSON.parse(await AsyncStorage.getItem('@trailPreset'))) {
+    try {
+      console.log('Storing data - trailPreset');
+      await AsyncStorage.setItem('@trailPreset', JSON.stringify(16));
+    } catch (error) {
+      console.log('ERROR SAVING TRAIL PRESET', error);
+    }
+  }
+
+  if (!JSON.parse(await AsyncStorage.getItem('@btImage'))) {
+    try {
+      await AsyncStorage.setItem('@BtImage', JSON.stringify(null));
+    } catch (error) {
+      console.log('ERROR SAVING BtImage', error);
+    }
+  }
+};
+
 const Home = ({navigation, route}) => {
   const [wantedPsi, setWantedPsi] = useState(MIN_PSI);
   const [factor, setFactor] = useState(MIN_FACTOR);
@@ -315,13 +364,11 @@ const Home = ({navigation, route}) => {
   const [dropMessageButtonText, setDropMessageButtonText] =
     useState('Reconnect');
   const [allMessagesSentByDevice, setAllMessagesSentByDevice] = useState([]);
-
   const dropAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     return navigation.addListener('focus', () => {
       console.log('navigation focus');
-
       if (Platform.OS === 'android' && Platform.Version <= 19) {
         setModalError(true);
         setModalText(
@@ -335,10 +382,11 @@ const Home = ({navigation, route}) => {
         );
       }
 
+      storeData();
       getData('@factor')
         .then(value => {
           if (value != null && value != undefined) {
-            setFactor(parseFloat(value.replace('"', '')));
+            setFactor(parseFloat(JSON.parse(value)));
           }
         })
         .catch(err => console.log(err));
@@ -348,7 +396,7 @@ const Home = ({navigation, route}) => {
         .then(value => {
           console.log('value: ' + value);
           if (value != null && value != undefined) {
-            setWantedPsi(parseInt(value.replace('"', '')));
+            setWantedPsi(parseInt(JSON.parse(value)));
           }
         })
         .catch(err => console.log(err));
@@ -363,11 +411,6 @@ const Home = ({navigation, route}) => {
         setReadMonitor(null);
       }
 
-      console.log(
-        `route: ${JSON.stringify(route)}, params: ${JSON.stringify(
-          route.params,
-        )}`,
-      );
       if (
         route != null &&
         route != undefined &&
@@ -542,89 +585,6 @@ const Home = ({navigation, route}) => {
     );
   };
 
-  // const requestPermissions = async () => {
-  //   try {
-  //     const permList = [
-  //       PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
-  //       PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
-  //       PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-  //     ];
-
-  //     for (perm of permList) {
-  //       const granted = await PermissionsAndroid.check(perm);
-  //       if (granted) {
-  //         permList.splice(permList.indexOf(perm), 1);
-  //       }
-  //     }
-  //     const granted = await PermissionsAndroid.requestMultiple(permList);
-  //     console.log();
-  //     for ([key, val] of Object.entries(granted)) {
-  //       if (val != PermissionsAndroid.RESULTS.GRANTED) {
-  //         PermissionsAndroid.check(key).then(allow => {
-  //           if (!allow) {
-  //             let permName = key.includes('BLUETOOTH')
-  //               ? 'bluetooth'
-  //               : 'location';
-  //             setModalError(true);
-  //             setModalText(
-  //               `You have to grant access to the ${permName} permission to use this app, so we can find the OnAir device. please go to this app's android settings page and allow it! ${JSON.stringify(
-  //                 granted,
-  //               )}`,
-  //             );
-  //             setModalVisible(true);
-  //             requestPermissions();
-  //           }
-  //         });
-  //       } else if (val == PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
-  //         setModalError(true);
-  //         setModalText(
-  //           "You have to allow all requested permissions to this app, please go to this app's android settings page and allow it!",
-  //         );
-  //         setModalVisible(true);
-  //       }
-  //     }
-
-  //     // console.log('PERMISSION 1:', granted);
-  //   } catch (err) {
-  //     setModalError(true);
-  //     setModalText(
-  //       "We couldn't ask you for permissions! please try to allow them in settings or contact the developer. info: " +
-  //         err,
-  //     );
-  //     setModalVisible(true);
-  //   }
-  // };
-
-  // const requestLocationPermission = async () => {
-  //   try {
-  //     const granted = await PermissionsAndroid.request(
-  //       PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-  //       // {
-  //       //   title: 'OnAir location permission',
-  //       //   message: 'OnAir needs access to location to access bluetooth',
-  //       //   buttonNeutral: 'Ask Me Later',
-  //       //   buttonNegative: 'Cancel',
-  //       //   buttonPositive: 'OK',
-  //       // },
-  //     );
-  //     if (!granted === PermissionsAndroid.RESULTS.GRANTED) {
-  //       setModalError(true);
-  //       setModalText(
-  //         'You have to grant access to the bluetooth permission to use this app',
-  //       );
-  //       setModalVisible(true);
-  //       requestLocationPermission();
-  //     }
-  //     console.log('PERMISSION 1:', granted);
-  //   } catch (err) {
-  //     setModalError(true);
-  //     setModalText(
-  //       "We couldn't ask you for permissions! please try to allow them in settings or contact the developer",
-  //     );
-  //     setModalVisible(true);
-  //   }
-  // };
-
   const removeSubscriptions = () => {
     if (MANAGER != null) {
       for (const [_key, val] of Object.entries(MANAGER._activeSubscriptions)) {
@@ -750,6 +710,14 @@ const Home = ({navigation, route}) => {
       useNativeDriver: false,
       // useNativeDriver: true,
     }).start();
+    setTimeout(()=>{
+      Animated.timing(dropAnim, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: false,
+        // useNativeDriver: true,
+      }).start();
+    }, 10000)
   };
 
   useEffect(() => {
@@ -765,7 +733,7 @@ const Home = ({navigation, route}) => {
       <Modal
         animationType="slide"
         transparent={true}
-        visible={modalVisible}
+        visible={modalText == null ? false : modalVisible}
         onRequestClose={() => {
           Alert.alert('Modal has been closed.');
           setModalVisible(!modalVisible);
@@ -869,8 +837,8 @@ const Home = ({navigation, route}) => {
               backgroundColor: '#2e2d2d',
               justifyContent: 'center',
               alignItems: 'center',
-              paddingBottom: 10,
-              paddingTop: 10,
+              paddingBottom: 0,
+              paddingTop: 0,
               transformOrigin: 'right top',
               shadowColor: '#000',
               shadowOffset: {
@@ -925,7 +893,10 @@ const Home = ({navigation, route}) => {
       </Animated.View>
 
       {/* Settings Button */}
-
+      <View style={{
+        flexDirection: 'row',
+        justifyContent: "space-between"
+      }}>
       <CircleButton
         imgUrl={require('../assets/icons/cog.png')}
         handlePressDown={() => {}}
@@ -941,6 +912,16 @@ const Home = ({navigation, route}) => {
         size={[50, 50]}
         {...{marginLeft: 10, marginTop: 10, backgroundColor: 'transparent'}}
       />
+      <CircleButton
+        imgUrl={require('../assets/icons/aboutme.png')}
+        handlePressDown={() => {}}
+        handlePressUp={() => {
+          removeSubscriptions();
+          navigation.navigate('AboutMe');
+        }}
+        size={[50, 50]}
+        {...{marginRight: 10, marginTop: 10, backgroundColor: 'transparent'}}
+      /></View>
       <View
         style={{
           flex: 1,
@@ -967,6 +948,7 @@ const Home = ({navigation, route}) => {
                   //   'You are not connected to the device! to connect, please go to the settings page and click on the bluetooth icon. (device is not connected)',
                   // );
                   // setModalVisible(true);
+                  dropIn();
                   setDropMessageText('You are not connected to the device.');
                   setDropMessageButtonText('Connect');
                 }
@@ -1084,7 +1066,6 @@ const Home = ({navigation, route}) => {
               }}
               handlePressUp={() => {
                 upPressPlus(wantedPsi, setWantedPsi);
-                // setData('@wantedPsi', wantedPsi.toString());
               }}
               text={'+'}
               {...{
@@ -1125,7 +1106,7 @@ const Home = ({navigation, route}) => {
                 getData('@roadPreset')
                   .then(data => data)
                   .then(value => {
-                    setWantedPsi(parseInt(value.replace('"', '')));
+                    setWantedPsi(parseInt(JSON.parse(value)));
                     // setData('@wantedPsi', wantedPsi.toString());
                   })
                   .catch(err => console.log(err));

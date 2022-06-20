@@ -210,9 +210,10 @@ const Permissions = ({navigation, route}) => {
               }}
               onPress={() => {
                 setModalVisible(!modalVisible);
+                if (!modalError) {
                 openSettings().catch(() =>
                   console.warn('cannot open settings'),
-                );
+                );}
               }}>
               <Text
                 style={{
@@ -283,10 +284,13 @@ const Permissions = ({navigation, route}) => {
               backgroundColor:
                 locationPermission != 'granted' ? 'white' : 'gray',
               borderRadius: 50,
-              borderColor:
-                locationPermission == 'granted' ? 'darkgrey' : 'black',
-              borderWidth: 2,
-              ...SHADOWS.extraDark,
+              borderColor: 'black',
+              borderWidth: locationPermission == 'granted' ? 0 : 2,
+              shadowColor: '#000',
+              shadowOffset: {width: -4, height: 4},
+              shadowOpacity: 1,
+              shadowRadius: 1,
+              elevation: locationPermission == 'granted' ? 0 : 2,
             }}>
             <Text
               style={{
@@ -344,13 +348,21 @@ const Permissions = ({navigation, route}) => {
                   ? 'white'
                   : 'gray',
               borderRadius: 50,
-              borderColor:
+              borderColor: 'black',
+              borderWidth:
                 bluetoothScanPermission == 'granted' &&
                 bluetoothConnectPermission == 'granted'
-                  ? 'darkgrey'
-                  : 'black',
-              borderWidth: 2,
-              ...SHADOWS.extraDark,
+                  ? 0
+                  : 2,
+              shadowColor: '#000',
+              shadowOffset: {width: -4, height: 4},
+              shadowOpacity: 1,
+              shadowRadius: 1,
+              elevation:
+                bluetoothScanPermission == 'granted' &&
+                bluetoothConnectPermission == 'granted'
+                  ? 0
+                  : 2,
             }}>
             <Text
               style={{
@@ -370,17 +382,29 @@ const Permissions = ({navigation, route}) => {
         <Pressable
           onPress={() => {
             if (bluetoothStatus != 'granted') {
+              if (bluetoothConnectPermission == 'granted' && bluetoothScanPermission == "granted") {
               BluetoothStateManager.requestToEnable().catch(e => {
                 console.log('error turning on bluetooth:', e);
               });
+              } else {
+                setModalError(true);
+                  setModalText(
+                    "You have to allow bluetooth permission before trying to turn on bluetooth!",
+                  );
+                  setModalVisible(true);
+              }
             }
           }}
           style={{
             backgroundColor: bluetoothStatus == 'PoweredOn' ? 'grey' : 'white',
             borderRadius: 50,
-            borderColor: bluetoothStatus == 'PoweredOn' ? 'darkgrey' : 'black',
-            borderWidth: 2,
-            ...SHADOWS.extraDark,
+            borderColor: 'black',
+            borderWidth: bluetoothStatus == 'PoweredOn' ? 0 : 2,
+            shadowColor: '#000',
+            shadowOffset: {width: -4, height: 4},
+            shadowOpacity: 1,
+            shadowRadius: 1,
+            elevation: bluetoothStatus == 'PoweredOn' ? 0 : 2,
           }}>
           <Text
             style={{

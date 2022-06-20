@@ -30,6 +30,7 @@ let DEVICE_SERVICE_UUID = null;
 let DEVICE_CHARACTERISTICS_UUID = null;
 let MANAGER = null;
 let scanTimer = null;
+let onDisconnectEvent = null;
 
 const getData = async key => {
   try {
@@ -60,7 +61,7 @@ const getErrorText = error => {
       'Unknown error occurred . (Please try again) info: ' +
       JSON.stringify(error),
     1: 'BleManager was destroyed',
-    2: 'Operation was cancelled. info: ' + JSON.stringify(error),
+    2: null,
     3: 'Operation timed out',
     4: 'Operation was rejected',
     5: 'Invalid UUIDs or IDs were passed',
@@ -155,6 +156,50 @@ const playConnectedSound = () => {
   return beep;
 };
 
+const storeData = async () => {
+  if (!JSON.parse(await AsyncStorage.getItem('@factor'))) {
+    try {
+      await AsyncStorage.setItem('@factor', JSON.stringify(3.2));
+    } catch (error) {
+      console.log('ERROR SAVING FACTOR', error);
+    }
+  }
+
+  if (!JSON.parse(await AsyncStorage.getItem('@wantedPsi'))) {
+    try {
+      await AsyncStorage.setItem('@wantedPsi', JSON.stringify(3));
+    } catch (error) {
+      console.log('ERROR SAVING WANTED PSI', error);
+    }
+  }
+
+  console.log('road:', await AsyncStorage.getItem('@roadPreset'));
+  if (!JSON.parse(await AsyncStorage.getItem('@roadPreset'))) {
+    try {
+      await AsyncStorage.setItem('@roadPreset', JSON.stringify(32));
+    } catch (error) {
+      console.log('ERROR SAVING ROAD PRESET', error);
+    }
+  }
+  console.log(await AsyncStorage.getItem('@trailPreset'));
+  if (!JSON.parse(await AsyncStorage.getItem('@trailPreset'))) {
+    try {
+      console.log('Storing data - trailPreset');
+      await AsyncStorage.setItem('@trailPreset', JSON.stringify(16));
+    } catch (error) {
+      console.log('ERROR SAVING TRAIL PRESET', error);
+    }
+  }
+
+  if (!JSON.parse(await AsyncStorage.getItem('@btImage'))) {
+    try {
+      await AsyncStorage.setItem('@BtImage', JSON.stringify(null));
+    } catch (error) {
+      console.log('ERROR SAVING BtImage', error);
+    }
+  }
+};
+
 const Settings = ({navigation, route}) => {
   const [factor, setFactor] = useState(MIN_FACTOR);
   const [roadPreset, setRoadPreset] = useState(MIN_PRESET);
@@ -164,14 +209,14 @@ const Settings = ({navigation, route}) => {
   const [modalText, setModalText] = useState('N/A');
   const [statusText, setStatusText] = useState('Idle');
   const [startScan, setStartScan] = useState(false);
-  const isMountedRef = useRef(null);
+  // const isMountedRef = useRef(null);
 
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  });
+  // useEffect(() => {
+  //   isMountedRef.current = true;
+  //   return () => {
+  //     isMountedRef.current = false;
+  //   };
+  // });
 
   useEffect(() => {
     navigation.addListener('focus', () => {
@@ -183,27 +228,21 @@ const Settings = ({navigation, route}) => {
       ) {
         if (route.params.device != null && route.params.device != undefined) {
           BT05_DEVICE = route.params.device;
-          BT05_DEVICE.onDisconnected(onDeviceDisconnect);
+          onDisconnectEvent = BT05_DEVICE.onDisconnected(onDeviceDisconnect);
           DEVICE_SERVICE_UUID = route.params.serviceUUID;
           DEVICE_CHARACTERISTICS_UUID = route.params.characteristicsUUID;
         }
         setStartScan(route.params.startConnect);
         console.log('Start connection with device: ' + startScan);
       }
-      // getData('@factor')
-      //   .then(value => {
-      //     console.log('getData factor value: ' + value);
-      //     if (value != null && value != undefined) {
-      //       setFactor(parseFloat(value.replace('"', '')));
-      //     }
-      //   })
-      //   .catch(err => console.log('getData factor error:', err));
+
+      storeData();
 
       getData('@factor')
         .then(value => {
           console.log('getData factor value: ' + value);
           if (value != null && value != undefined) {
-            setFactor(parseFloat(value.replace('"', '')));
+            setFactor(parseFloat(JSON.parse(value)));
           }
         })
         .catch(err => console.log('getData factor error', err));
@@ -212,7 +251,7 @@ const Settings = ({navigation, route}) => {
         .then(value => {
           console.log('getData roadPreset value: ' + value);
           if (value != null && value != undefined) {
-            setRoadPreset(parseFloat(value.replace('"', '')));
+            setRoadPreset(parseFloat(JSON.parse(value)));
           }
         })
         .catch(err => console.log('getData trailPreset error', err));
@@ -221,7 +260,7 @@ const Settings = ({navigation, route}) => {
         .then(value => {
           console.log('getData trailPreset value: ' + value);
           if (value != null && value != undefined) {
-            setTrailPreset(parseFloat(value.replace('"', '')));
+            setTrailPreset(parseFloat(JSON.parse(value)));
           }
         })
         .catch(err => console.log('getData trailPreset error', err));
@@ -305,10 +344,9 @@ const Settings = ({navigation, route}) => {
 
   const dropIn = () => {
     // Will change fadeAnim value to 1 in 5 seconds
-    console.log('DROPPED IN');
     Animated.timing(dropAnim, {
       toValue: 50,
-      duration: 500,
+      duration: 200,
       useNativeDriver: false,
       // useNativeDriver: true,
     }).start();
@@ -318,26 +356,24 @@ const Settings = ({navigation, route}) => {
     if (error) {
       console.log(console.log('On device disconnect error: ', err));
     } else {
-      if (isMountedRef.current === true) {
-        console.log('Start dropIn();');
-        dropIn();
-        console.log('End dropIn();');
-        console.log('Device disconnected: ' + device.id);
-        console.log('Start SetStatus');
-        console.log('SetStatus - ' + JSON.stringify(setStatusText));
-        setStatusText('Device has been disconnected');
-        console.log('End SetStatus');
-        console.log('Start Icon change');
-        setBluetoothImageId(3);
-        console.log('End Icon change');
-      }
+      // if (isMountedRef.current === true) {
+      console.log('Start dropIn();');
+      dropIn();
+      console.log('End dropIn();');
+      console.log('Device disconnected: ' + device.id);
+      console.log('Start SetStatus');
+      console.log('SetStatus - ' + JSON.stringify(setStatusText));
+      setStatusText('Device has been disconnected');
+      console.log('End SetStatus');
+      console.log('Start Icon change');
+      setBluetoothImageId(3);
+      console.log('End Icon change');
+      BT05_DEVICE = null;
+      // }
     }
   };
 
   const connectToDevice = device => {
-    setStatusText('Connected to device!');
-    setBluetoothImageId(2);
-
     console.log('CLearing timer:', scanTimer);
     clearTimeout(scanTimer);
 
@@ -409,6 +445,10 @@ const Settings = ({navigation, route}) => {
             BT05_DEVICE.onDisconnected(onDeviceDisconnect);
             return d;
           })
+          .then(() => {
+            setStatusText('Connected to device!');
+            setBluetoothImageId(2);
+          })
           .catch(e => {
             setModalError(true);
             setModalText(
@@ -463,7 +503,7 @@ const Settings = ({navigation, route}) => {
               setStatusText('Found On Air bluetooth device!');
               manager.stopDeviceScan();
               console.log('Stopped Scan');
-              setStatusText('Connecting to device...');
+              setStatusText('Pairing...');
               connectToDevice(device);
             }
           }
@@ -473,6 +513,7 @@ const Settings = ({navigation, route}) => {
   };
 
   const removeSubscriptions = () => {
+    if (onDisconnectEvent) onDisconnectEvent.remove();
     for (const [_key, val] of Object.entries(MANAGER._activeSubscriptions)) {
       try {
         MANAGER._activeSubscriptions[val].remove();
@@ -542,6 +583,9 @@ const Settings = ({navigation, route}) => {
         MANAGER = null;
       }
     }
+    try {
+      onDisconnectEvent.remove();
+    } catch {}
     clearTimeout(scanTimer);
     console.log('Exit app');
   };
@@ -676,8 +720,8 @@ const Settings = ({navigation, route}) => {
               backgroundColor: '#2e2d2d',
               justifyContent: 'center',
               alignItems: 'center',
-              paddingBottom: 10,
-              paddingTop: 10,
+              paddingBottom: 0,
+              paddingTop: 0,
               transformOrigin: 'right top',
               ...SHADOWS.extraDark,
             },
@@ -951,7 +995,7 @@ const Settings = ({navigation, route}) => {
             App By:
           </Text>
           <Text
-            onPress={() => Linking.openURL('https://github.com/KingOfTNT10')}
+            onPress={() => Linking.openURL('https://github.com/KingOfTNT10/on_air_project')}
             style={{
               color: '#2269B2',
               fontSize: 20,

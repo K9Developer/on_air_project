@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Home from './screens/Home';
 import Details from './screens/Settings';
 import Permissions from './screens/Permissions';
+import AboutMe from './screens/AboutMe';
 
 const theme = {
   ...DefaultTheme,
@@ -67,6 +68,7 @@ const App = () => {
         <Stack.Screen name="Permissions" component={Permissions} />
         <Stack.Screen name="Home" component={Home} />
         <Stack.Screen name="Settings" component={Details} />
+        <Stack.Screen name="AboutMe" component={AboutMe} />
       </Stack.Navigator>
     </NavigationContainer>
   );
