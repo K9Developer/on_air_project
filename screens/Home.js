@@ -8,11 +8,14 @@ import {
   Image,
   Platform,
   Animated,
-  PermissionsAndroid,
   AppState,
   Vibration,
 } from 'react-native';
 import {useState, useEffect, useRef} from 'react';
+
+import {check, PERMISSIONS} from 'react-native-permissions';
+import BluetoothStateManager from 'react-native-bluetooth-state-manager';
+
 import {
   FocusedStatusBar,
   CircleButton,
@@ -23,12 +26,7 @@ import {COLORS, SHADOWS} from '../constants';
 import React from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Sound from 'react-native-sound';
-import {LogBox} from 'react-native';
 
-LogBox.ignoreLogs(['new NativeEventEmitter']);
-LogBox.ignoreLogs([
-  'Non-serializable values were found in the navigation state',
-]);
 
 let timer = null;
 let waitTimer = null;
@@ -301,20 +299,6 @@ const isValidData = data => {
 };
 
 const Home = ({navigation, route}) => {
-  // if (nav) {
-  //   navigation = nav;
-  // } else {
-  //   navigation = useNavigation();
-  // }
-
-  let savedRoute = {...route};
-
-  // if (nav) {
-  //   navigation = nav;
-  // } else {
-  //   navigation = useNavigation();
-  // }
-
   const [wantedPsi, setWantedPsi] = useState(MIN_PSI);
   const [factor, setFactor] = useState(MIN_FACTOR);
   const [modalVisible, setModalVisible] = useState(false);
@@ -351,8 +335,6 @@ const Home = ({navigation, route}) => {
           "You have to update your iOS version to use this app. It's not supported on iOS versions below 9.",
         );
       }
-      console.log('ASKING PERMS');
-      requestPermissions();
 
       getData('@factor')
         .then(value => {
@@ -438,6 +420,66 @@ const Home = ({navigation, route}) => {
   //   console.log('PSI: ' + wantedPsi);
   // }, 100);
 
+  const checkPermission = () => {
+    if (Platform.OS === 'android') {
+      check(PERMISSIONS.ANDROID.BLUETOOTH_CONNECT)
+        .then(data => {
+          if (data != 'granted') {
+            navigation.navigate('Permissions');
+          }
+        })
+        .catch(err => console.log('error checking perm1:', err));
+
+      check(PERMISSIONS.ANDROID.BLUETOOTH_SCAN)
+        .then(data => {
+          if (data != 'granted') {
+            navigation.navigate('Permissions');
+          }
+        })
+        .catch(err => console.log('error checking perm1:', err));
+
+      check(PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION)
+        .then(data => {
+          if (data != 'granted') {
+            navigation.navigate('Permissions');
+          }
+        })
+        .catch(err => console.log('error checking perm1:', err));
+
+      BluetoothStateManager.getState()
+        .then(data => {
+          if (data != 'PoweredOn') {
+            navigation.navigate('Permissions');
+          }
+        })
+        .catch(err => console.log('error checking perm1:', err));
+    } else {
+      check(PERMISSIONS.IOS.BLUETOOTH_PERIPHERAL)
+        .then(data => {
+          if (data != 'granted') {
+            navigation.navigate('Permissions');
+          }
+        })
+        .catch(err => console.log('error checking perm1:', err));
+
+      check(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE)
+        .then(data => {
+          if (data != 'granted') {
+            navigation.navigate('Permissions');
+          }
+        })
+        .catch(err => console.log('error checking perm1:', err));
+
+      BluetoothStateManager.getState()
+        .then(data => {
+          if (data != 'PoweredOn') {
+            navigation.navigate('Permissions');
+          }
+        })
+        .catch(err => console.log('error checking perm1:', err));
+    }
+  };
+
   const exitApp = () => {
     // console.log('Wanted PSI: ' + wantedPsi);
     // setData('@wantedPsi', wantedPsi.toString());
@@ -463,6 +505,9 @@ const Home = ({navigation, route}) => {
         exitApp();
       }
     });
+    setInterval(() => {
+      checkPermission();
+    }, 500);
   }, []);
 
   const sendDeviceSignal = async signal => {
@@ -498,58 +543,58 @@ const Home = ({navigation, route}) => {
     );
   };
 
-  const requestPermissions = async () => {
-    try {
-      const permList = [
-        PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
-        PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-      ];
+  // const requestPermissions = async () => {
+  //   try {
+  //     const permList = [
+  //       PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+  //       PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+  //       PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+  //     ];
 
-      for (perm of permList) {
-        const granted = await PermissionsAndroid.check(perm);
-        if (granted) {
-          permList.splice(permList.indexOf(perm), 1);
-        }
-      }
-      const granted = await PermissionsAndroid.requestMultiple(permList);
-      console.log();
-      for ([key, val] of Object.entries(granted)) {
-        if (val != PermissionsAndroid.RESULTS.GRANTED) {
-          PermissionsAndroid.check(key).then(allow => {
-            if (!allow) {
-              let permName = key.includes('BLUETOOTH')
-                ? 'bluetooth'
-                : 'location';
-              setModalError(true);
-              setModalText(
-                `You have to grant access to the ${permName} permission to use this app, so we can find the OnAir device. please go to this app's android settings page and allow it! ${JSON.stringify(
-                  granted,
-                )}`,
-              );
-              setModalVisible(true);
-              requestPermissions();
-            }
-          });
-        } else if (val == PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
-          setModalError(true);
-          setModalText(
-            "You have to allow all requested permissions to this app, please go to this app's android settings page and allow it!",
-          );
-          setModalVisible(true);
-        }
-      }
+  //     for (perm of permList) {
+  //       const granted = await PermissionsAndroid.check(perm);
+  //       if (granted) {
+  //         permList.splice(permList.indexOf(perm), 1);
+  //       }
+  //     }
+  //     const granted = await PermissionsAndroid.requestMultiple(permList);
+  //     console.log();
+  //     for ([key, val] of Object.entries(granted)) {
+  //       if (val != PermissionsAndroid.RESULTS.GRANTED) {
+  //         PermissionsAndroid.check(key).then(allow => {
+  //           if (!allow) {
+  //             let permName = key.includes('BLUETOOTH')
+  //               ? 'bluetooth'
+  //               : 'location';
+  //             setModalError(true);
+  //             setModalText(
+  //               `You have to grant access to the ${permName} permission to use this app, so we can find the OnAir device. please go to this app's android settings page and allow it! ${JSON.stringify(
+  //                 granted,
+  //               )}`,
+  //             );
+  //             setModalVisible(true);
+  //             requestPermissions();
+  //           }
+  //         });
+  //       } else if (val == PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
+  //         setModalError(true);
+  //         setModalText(
+  //           "You have to allow all requested permissions to this app, please go to this app's android settings page and allow it!",
+  //         );
+  //         setModalVisible(true);
+  //       }
+  //     }
 
-      // console.log('PERMISSION 1:', granted);
-    } catch (err) {
-      setModalError(true);
-      setModalText(
-        "We couldn't ask you for permissions! please try to allow them in settings or contact the developer. info: " +
-          err,
-      );
-      setModalVisible(true);
-    }
-  };
+  //     // console.log('PERMISSION 1:', granted);
+  //   } catch (err) {
+  //     setModalError(true);
+  //     setModalText(
+  //       "We couldn't ask you for permissions! please try to allow them in settings or contact the developer. info: " +
+  //         err,
+  //     );
+  //     setModalVisible(true);
+  //   }
+  // };
 
   // const requestLocationPermission = async () => {
   //   try {

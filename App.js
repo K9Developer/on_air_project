@@ -4,6 +4,7 @@ import {NavigationContainer, DefaultTheme} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Home from './screens/Home';
 import Details from './screens/Settings';
+import Permissions from './screens/Permissions';
 
 const theme = {
   ...DefaultTheme,
@@ -62,12 +63,9 @@ const App = () => {
     <NavigationContainer theme={theme}>
       <Stack.Navigator
         screenOptions={{headerShown: false}}
-        initialRouteName="Home">
-        <Stack.Screen
-          name="Home"
-          component={Home}
-          options={{title: 'Awesome app'}}
-        />
+        initialRouteName="Permissions">
+        <Stack.Screen name="Permissions" component={Permissions} />
+        <Stack.Screen name="Home" component={Home} />
         <Stack.Screen name="Settings" component={Details} />
       </Stack.Navigator>
     </NavigationContainer>

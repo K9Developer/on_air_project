@@ -1,6 +1,5 @@
 import React from 'react';
 import {TouchableOpacity, Text, Image} from 'react-native';
-import {Grayscale} from 'react-native-color-matrix-image-filters';
 
 import {COLORS, SIZES, FONTS, SHADOWS} from '../constants';
 
