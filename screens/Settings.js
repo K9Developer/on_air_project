@@ -164,6 +164,14 @@ const Settings = ({navigation, route}) => {
   const [modalText, setModalText] = useState('N/A');
   const [statusText, setStatusText] = useState('Idle');
   const [startScan, setStartScan] = useState(false);
+  const isMountedRef = useRef(null);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  });
 
   useEffect(() => {
     navigation.addListener('focus', () => {
@@ -175,13 +183,13 @@ const Settings = ({navigation, route}) => {
       ) {
         if (route.params.device != null && route.params.device != undefined) {
           BT05_DEVICE = route.params.device;
+          BT05_DEVICE.onDisconnected(onDeviceDisconnect);
           DEVICE_SERVICE_UUID = route.params.serviceUUID;
           DEVICE_CHARACTERISTICS_UUID = route.params.characteristicsUUID;
         }
         setStartScan(route.params.startConnect);
         console.log('Start connection with device: ' + startScan);
       }
-
       // getData('@factor')
       //   .then(value => {
       //     console.log('getData factor value: ' + value);
@@ -295,13 +303,34 @@ const Settings = ({navigation, route}) => {
     });
   }, []);
 
+  const dropIn = () => {
+    // Will change fadeAnim value to 1 in 5 seconds
+    console.log('DROPPED IN');
+    Animated.timing(dropAnim, {
+      toValue: 50,
+      duration: 500,
+      useNativeDriver: false,
+      // useNativeDriver: true,
+    }).start();
+  };
+
   const onDeviceDisconnect = (error, device) => {
     if (error) {
       console.log(console.log('On device disconnect error: ', err));
     } else {
-      console.log('Device disconnected: ' + device.id);
-      setStatusText('Device has been disconnected');
-      setBluetoothImageId(3);
+      if (isMountedRef.current === true) {
+        console.log('Start dropIn();');
+        dropIn();
+        console.log('End dropIn();');
+        console.log('Device disconnected: ' + device.id);
+        console.log('Start SetStatus');
+        console.log('SetStatus - ' + JSON.stringify(setStatusText));
+        setStatusText('Device has been disconnected');
+        console.log('End SetStatus');
+        console.log('Start Icon change');
+        setBluetoothImageId(3);
+        console.log('End Icon change');
+      }
     }
   };
 
@@ -405,54 +434,42 @@ const Settings = ({navigation, route}) => {
   const scanForDevice = async manager => {
     setStatusText('Scanning for devices...');
 
-    scanTimer =
-      setTimeout(() => {
-        setModalError(false);
-        setModalText(
-          "We have been scanning for 10 seconds and didn't find the device! please try the following:\n\n- Restart OnAir device\n- Restart App",
-        );
-        setModalVisible(true);
-        setStatusText('Please try again');
-        if (MANAGER) {
-          MANAGER.stopDeviceScan();
-        }
-      }, 10000),
-
-    await manager.startDeviceScan(
-      null,
-      null,
-      (error, device) => {
-        if (error) {
-          setModalError(true);
-          setModalText(getErrorText(error));
-          setModalVisible(true);
-          setStatusText('An Error occurred');
-        }
-
-        if (device !== null) {
-          console.log('Found Device Name: ' + device.name);
-          if (device.name === 'BT05') {
-            console.log('Found BT05');
-            setStatusText('Found On Air bluetooth device!');
-            manager.stopDeviceScan();
-            console.log('Stopped Scan');
-            setStatusText('Connecting to device...');
-            connectToDevice(device);
+    (scanTimer = setTimeout(() => {
+      setModalError(false);
+      setModalText(
+        "We have been scanning for 10 seconds and didn't find the device! please try the following:\n\n- Restart OnAir device\n- Restart App",
+      );
+      setModalVisible(true);
+      setStatusText('Please try again');
+      if (MANAGER) {
+        MANAGER.stopDeviceScan();
+      }
+    }, 100000)),
+      await manager.startDeviceScan(
+        null,
+        null,
+        (error, device) => {
+          if (error) {
+            setModalError(true);
+            setModalText(getErrorText(error));
+            setModalVisible(true);
+            setStatusText('An Error occurred');
           }
-        }
-      },
-      setBluetoothImageId(4),
-    );
-  };
 
-  const dropIn = () => {
-    // Will change fadeAnim value to 1 in 5 seconds
-    Animated.timing(dropAnim, {
-      toValue: 50,
-      duration: 500,
-      useNativeDriver: false,
-      // useNativeDriver: true,
-    }).start();
+          if (device !== 'null') {
+            console.log('Found Device Name: ' + device.name);
+            if (device.name === 'BT05') {
+              console.log('Found BT05');
+              setStatusText('Found On Air bluetooth device!');
+              manager.stopDeviceScan();
+              console.log('Stopped Scan');
+              setStatusText('Connecting to device...');
+              connectToDevice(device);
+            }
+          }
+        },
+        setBluetoothImageId(4),
+      );
   };
 
   const removeSubscriptions = () => {
@@ -519,17 +536,7 @@ const Settings = ({navigation, route}) => {
   }
 
   const exitApp = () => {
-    if (BT05_DEVICE != null && BT05_DEVICE != undefined) {
-      MANAGER.isDeviceConnected(BT05_DEVICE.id).then(isConnected => {
-        if (!isConnected) {
-          if (MANAGER != null && MANAGER != undefined) {
-            console.log('Destroyed MANAGER');
-            MANAGER.destroy();
-            MANAGER = null;
-          }
-        }
-      });
-    } else {
+    if (BT05_DEVICE == null && BT05_DEVICE == undefined) {
       if (MANAGER != null && MANAGER != undefined) {
         MANAGER.destroy();
         MANAGER = null;

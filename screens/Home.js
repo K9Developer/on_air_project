@@ -27,7 +27,6 @@ import React from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Sound from 'react-native-sound';
 
-
 let timer = null;
 let waitTimer = null;
 let BT05_DEVICE = null;
@@ -407,7 +406,7 @@ const Home = ({navigation, route}) => {
               }
             })
             .catch(error => {
-              console.log('ERROR: ' + error);
+              console.log('ERROR: ' + JSON.stringify(error));
             });
           DEVICE_SERVICE_UUID = route.params.serviceUUID;
           DEVICE_CHARACTERISTICS_UUID = route.params.characteristicsUUID;
