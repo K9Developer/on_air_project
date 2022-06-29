@@ -7,7 +7,6 @@ import {
   TouchableWithoutFeedback,
   Image,
 } from 'react-native';
-import {SHADOWS} from '../constants';
 import React, {useEffect, useState} from 'react';
 import {
   check,
@@ -17,6 +16,7 @@ import {
 } from 'react-native-permissions';
 import BluetoothStateManager from 'react-native-bluetooth-state-manager';
 import {LogBox} from 'react-native';
+import {StackActions} from '@react-navigation/native';
 
 LogBox.ignoreLogs(['new NativeEventEmitter']);
 LogBox.ignoreLogs([
@@ -105,7 +105,7 @@ const Permissions = ({navigation, route}) => {
       bluetoothScanPermission == 'granted'
     ) {
       clearInterval(permissionTimer);
-      navigation.navigate('Home');
+      navigation.dispatch(StackActions.replace('Home'));
     }
     permissionTimer = setInterval(() => {
       checkAllPermissions();
@@ -116,7 +116,7 @@ const Permissions = ({navigation, route}) => {
         bluetoothScanPermission == 'granted'
       ) {
         clearInterval(permissionTimer);
-        navigation.navigate('Home');
+        navigation.dispatch(StackActions.replace('Home'));
       }
     }, 500);
   });
@@ -211,9 +211,10 @@ const Permissions = ({navigation, route}) => {
               onPress={() => {
                 setModalVisible(!modalVisible);
                 if (!modalError) {
-                openSettings().catch(() =>
-                  console.warn('cannot open settings'),
-                );}
+                  openSettings().catch(() =>
+                    console.warn('cannot open settings'),
+                  );
+                }
               }}>
               <Text
                 style={{
@@ -382,16 +383,19 @@ const Permissions = ({navigation, route}) => {
         <Pressable
           onPress={() => {
             if (bluetoothStatus != 'granted') {
-              if (bluetoothConnectPermission == 'granted' && bluetoothScanPermission == "granted") {
-              BluetoothStateManager.requestToEnable().catch(e => {
-                console.log('error turning on bluetooth:', e);
-              });
+              if (
+                bluetoothConnectPermission == 'granted' &&
+                bluetoothScanPermission == 'granted'
+              ) {
+                BluetoothStateManager.requestToEnable().catch(e => {
+                  console.log('error turning on bluetooth:', e);
+                });
               } else {
                 setModalError(true);
-                  setModalText(
-                    "You have to allow bluetooth permission before trying to turn on bluetooth!",
-                  );
-                  setModalVisible(true);
+                setModalText(
+                  'You have to allow bluetooth permission before trying to turn on bluetooth!',
+                );
+                setModalVisible(true);
               }
             }
           }}

@@ -477,14 +477,14 @@ const Settings = ({navigation, route}) => {
     (scanTimer = setTimeout(() => {
       setModalError(false);
       setModalText(
-        "We have been scanning for 10 seconds and didn't find the device! please try the following:\n\n- Restart OnAir device\n- Restart App",
+        "We have been scanning for 10 seconds and didn't find the device! please try the following:\n\n- Restart OnAir device\n- Restart App\n- Get closer to device\n- Make sure the device is on",
       );
       setModalVisible(true);
       setStatusText('Please try again');
       if (MANAGER) {
         MANAGER.stopDeviceScan();
       }
-    }, 100000)),
+    }, 10000)),
       await manager.startDeviceScan(
         null,
         null,
@@ -513,7 +513,6 @@ const Settings = ({navigation, route}) => {
   };
 
   const removeSubscriptions = () => {
-    if (onDisconnectEvent) onDisconnectEvent.remove();
     for (const [_key, val] of Object.entries(MANAGER._activeSubscriptions)) {
       try {
         MANAGER._activeSubscriptions[val].remove();
@@ -995,7 +994,9 @@ const Settings = ({navigation, route}) => {
             App By:
           </Text>
           <Text
-            onPress={() => Linking.openURL('https://github.com/KingOfTNT10/on_air_project')}
+            onPress={() =>
+              Linking.openURL('https://github.com/KingOfTNT10/on_air_project')
+            }
             style={{
               color: '#2269B2',
               fontSize: 20,
