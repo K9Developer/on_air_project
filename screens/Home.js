@@ -167,6 +167,10 @@ const getErrorText = error => {
     return null;
   }
 
+  if (error.errorCode == 201) {
+    return null;
+  }
+
   let errorMap = {
     0:
       'Unknown error occurred . (Please try again) info: ' +
@@ -610,8 +614,6 @@ const Home = ({navigation, route}) => {
       setModalText(getErrorText(error));
       setModalVisible(true);
     } else {
-      console.log('Device disconnected: ' + device.id);
-      setConnected(false);
       if (disconnectMonitor) {
         disconnectMonitor.remove();
         setDisconnectMonitor(null);
@@ -621,6 +623,9 @@ const Home = ({navigation, route}) => {
         readMonitor.remove();
         setReadMonitor(null);
       }
+      console.log('Device disconnected: ' + device.id);
+      setConnected(false);
+
       removeSubscriptions();
       setDropMessageText('You have disconnected from the device.');
       setDropMessageButtonText('Reconnect');
@@ -710,14 +715,14 @@ const Home = ({navigation, route}) => {
       useNativeDriver: false,
       // useNativeDriver: true,
     }).start();
-    setTimeout(()=>{
+    setTimeout(() => {
       Animated.timing(dropAnim, {
         toValue: 0,
         duration: 500,
         useNativeDriver: false,
         // useNativeDriver: true,
       }).start();
-    }, 10000)
+    }, 10000);
   };
 
   useEffect(() => {
@@ -893,35 +898,37 @@ const Home = ({navigation, route}) => {
       </Animated.View>
 
       {/* Settings Button */}
-      <View style={{
-        flexDirection: 'row',
-        justifyContent: "space-between"
-      }}>
-      <CircleButton
-        imgUrl={require('../assets/icons/cog.png')}
-        handlePressDown={() => {}}
-        handlePressUp={() => {
-          removeSubscriptions();
-          navigation.navigate('Settings', {
-            device: BT05_DEVICE,
-            serviceUUID: DEVICE_SERVICE_UUID,
-            characteristicsUUID: DEVICE_CHARACTERISTICS_UUID,
-            startConnect: false,
-          });
-        }}
-        size={[50, 50]}
-        {...{marginLeft: 10, marginTop: 10, backgroundColor: 'transparent'}}
-      />
-      <CircleButton
-        imgUrl={require('../assets/icons/aboutme.png')}
-        handlePressDown={() => {}}
-        handlePressUp={() => {
-          removeSubscriptions();
-          navigation.navigate('AboutMe');
-        }}
-        size={[50, 50]}
-        {...{marginRight: 10, marginTop: 10, backgroundColor: 'transparent'}}
-      /></View>
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+        }}>
+        <CircleButton
+          imgUrl={require('../assets/icons/cog.png')}
+          handlePressDown={() => {}}
+          handlePressUp={() => {
+            removeSubscriptions();
+            navigation.navigate('Settings', {
+              device: BT05_DEVICE,
+              serviceUUID: DEVICE_SERVICE_UUID,
+              characteristicsUUID: DEVICE_CHARACTERISTICS_UUID,
+              startConnect: false,
+            });
+          }}
+          size={[50, 50]}
+          {...{marginLeft: 10, marginTop: 10, backgroundColor: 'transparent'}}
+        />
+        <CircleButton
+          imgUrl={require('../assets/icons/aboutme.png')}
+          handlePressDown={() => {}}
+          handlePressUp={() => {
+            removeSubscriptions();
+            navigation.navigate('AboutMe');
+          }}
+          size={[50, 50]}
+          {...{marginRight: 10, marginTop: 10, backgroundColor: 'transparent'}}
+        />
+      </View>
       <View
         style={{
           flex: 1,

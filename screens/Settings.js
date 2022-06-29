@@ -13,18 +13,37 @@ import {
   AppState,
 } from 'react-native';
 import React, {useState, useRef, useEffect} from 'react';
-import {FocusedStatusBar, CircleButton} from '../components';
+import {FocusedStatusBar, CircleButton, RectButton} from '../components';
 import {COLORS, SHADOWS} from '../constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Sound from 'react-native-sound';
-
 import {BleManager} from 'react-native-ble-plx';
+import SmoothPicker from 'react-native-smooth-picker';
+
 const Buffer = require('buffer').Buffer;
 
 const MIN_FACTOR = 3;
 const MAX_FACTOR = 10;
 const MIN_PRESET = 3;
 const MAX_PRESET = 50;
+const PRESET_OPTIONS = Array(48)
+  .fill(3)
+  .map((x, y) => x + y);
+const FACTOR_OPTIONS = [
+  3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10,
+];
+const opacities = {
+  0: 1,
+  1: 1,
+  2: 0.6,
+  3: 0.3,
+  4: 0.1,
+};
+const sizeText = {
+  0: 15,
+  1: 10,
+  2: 7,
+};
 let BT05_DEVICE = null;
 let DEVICE_SERVICE_UUID = null;
 let DEVICE_CHARACTERISTICS_UUID = null;
@@ -200,6 +219,54 @@ const storeData = async () => {
   }
 };
 
+const Item = React.memo(({opacity, selected, vertical, fontSize, name}) => {
+  return (
+    <View
+      style={{
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 10,
+        marginBottom: 10,
+        paddingTop: 10,
+        paddingBottom: 10,
+        paddingLeft: 30,
+        paddingRight: 30,
+        height: 50,
+        borderWidth: 3,
+        borderRadius: 10,
+        opacity,
+        borderColor: selected ? '#ABC9AF' : 'transparent',
+        width: 'auto',
+      }}>
+      <Text style={{fontSize: fontSize, color: 'black'}}>{name}</Text>
+    </View>
+  );
+});
+
+const ItemToRender = ({item, index}, indexSelected, vertical) => {
+  const selected = index === indexSelected;
+  const gap = Math.abs(index - indexSelected);
+
+  let opacity = opacities[gap];
+  if (gap > 3) {
+    opacity = opacities[4];
+  }
+  let fontSize = sizeText[gap];
+  if (gap > 1) {
+    fontSize = sizeText[2];
+  }
+
+  return (
+    <Item
+      opacity={opacity}
+      selected={selected}
+      vertical={vertical}
+      fontSize={fontSize}
+      name={item}
+    />
+  );
+};
+
 const Settings = ({navigation, route}) => {
   const [factor, setFactor] = useState(MIN_FACTOR);
   const [roadPreset, setRoadPreset] = useState(MIN_PRESET);
@@ -209,6 +276,11 @@ const Settings = ({navigation, route}) => {
   const [modalText, setModalText] = useState('N/A');
   const [statusText, setStatusText] = useState('Idle');
   const [startScan, setStartScan] = useState(false);
+  const [pickerModalVisible, setPickerModalVisible] = useState(false);
+  const [pickerModalText, setPickerModalText] = useState('N/A');
+  const [factorIndex, setFactorIndex] = useState(0);
+  const [roadPresetIndex, setRoadPresetIndex] = useState(0);
+  const [trailPresetIndex, setTrailPresetIndex] = useState(0);
   // const isMountedRef = useRef(null);
 
   // useEffect(() => {
@@ -350,6 +422,16 @@ const Settings = ({navigation, route}) => {
       useNativeDriver: false,
       // useNativeDriver: true,
     }).start();
+  };
+
+  const onRoadPresetChange = index => {
+    setRoadPresetIndex(index);
+  };
+  const onTrailPresetChange = index => {
+    setTrailPresetIndex(index);
+  };
+  const onFactorChange = index => {
+    setFactorIndex(index);
   };
 
   const onDeviceDisconnect = (error, device) => {
@@ -616,7 +698,6 @@ const Settings = ({navigation, route}) => {
   return (
     <SafeAreaView style={{flex: 1}}>
       <FocusedStatusBar backgroundColor={COLORS.primary} />
-
       <Modal
         animationType="slide"
         transparent={true}
@@ -706,6 +787,167 @@ const Settings = ({navigation, route}) => {
                   {modalError ? 'Dismiss' : 'Ok'}
                 </Text>
               </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalText == null ? false : pickerModalVisible}
+        onRequestClose={() => {
+          Alert.alert('Modal has been closed.');
+          setPickerModalVisible(!pickerModalVisible);
+        }}>
+        <View
+          style={{
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            flex: 1,
+          }}>
+          <View
+            style={{
+              flex: 1,
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginTop: 22,
+            }}>
+            <View
+              style={{
+                width: '80%',
+                margin: 20,
+                backgroundColor: 'white',
+                borderRadius: 20,
+
+                shadowColor: '#000',
+                shadowOffset: {
+                  width: 0,
+                  height: 2,
+                },
+                shadowOpacity: 0.25,
+                shadowRadius: 4,
+                elevation: 5,
+                paddingTop: '5%',
+              }}>
+              <Text
+                style={{
+                  color: '#6f7173',
+                  paddingRight: 40,
+                  paddingLeft: 40,
+                  marginBottom: 20,
+                  fontSize: 30,
+                  fontWeight: 'bold',
+                  textAlign: 'center',
+                }}>
+                {pickerModalText}
+              </Text>
+
+              <View
+                style={{
+                  width: '100%',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}>
+                <SmoothPicker
+                  horizontal={true}
+                  initialScrollToIndex={
+                    pickerModalText == 'Road Preset'
+                      ? PRESET_OPTIONS.indexOf(roadPreset)
+                      : pickerModalText == 'Trail Preset'
+                      ? PRESET_OPTIONS.indexOf(trailPreset)
+                      : FACTOR_OPTIONS.indexOf(factor)
+                  }
+                  onScrollToIndexFailed={() => {}}
+                  keyExtractor={(_, index) => index.toString()}
+                  showsHorizontalScrollIndicator={false}
+                  data={
+                    pickerModalText == 'Factor'
+                      ? FACTOR_OPTIONS
+                      : PRESET_OPTIONS
+                  }
+                  onSelected={({item, index}) => {
+                    if (pickerModalText == 'Road Preset') {
+                      setRoadPresetIndex(index);
+                    } else if (pickerModalText == 'Trail Preset') {
+                      setTrailPresetIndex(index);
+                    } else {
+                      setFactorIndex(index);
+                    }
+                  }}
+                  magnet={false}
+                  scrollAnimation={false}
+                  startMargin={200}
+                  endMargin={200}
+                  renderItem={option =>
+                    ItemToRender(
+                      option,
+                      pickerModalText == 'Road Preset'
+                        ? roadPresetIndex
+                        : pickerModalText == 'Trail Preset'
+                        ? trailPresetIndex
+                        : factorIndex,
+                      false,
+                    )
+                  }
+                  selectOnPress={true}
+                />
+              </View>
+
+              <View
+                style={{
+                  flexDirection: 'row',
+                }}>
+                <Pressable
+                  style={{
+                    borderBottomLeftRadius: 20,
+                    width: '50%',
+                    padding: 20,
+                    elevation: 2,
+                    backgroundColor: '#ed5c5f',
+                    marginTop: 30,
+                    bottom: 0,
+                  }}
+                  onPress={() => setPickerModalVisible(!pickerModalVisible)}>
+                  <Text
+                    style={{
+                      color: 'white',
+                      fontSize: 20,
+                      textAlign: 'center',
+                    }}>
+                    Cancel
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={{
+                    borderBottomRightRadius: 20,
+                    width: '50%',
+                    padding: 20,
+                    elevation: 2,
+                    backgroundColor: '#2196F3',
+                    marginTop: 30,
+                    bottom: 0,
+                  }}
+                  onPress={() => {
+                    setPickerModalVisible(!pickerModalVisible);
+
+                    if (pickerModalText == 'Road Preset') {
+                      setRoadPreset(PRESET_OPTIONS[roadPresetIndex]);
+                    } else if (pickerModalText == 'Trail Preset') {
+                      setTrailPreset(PRESET_OPTIONS[trailPresetIndex]);
+                    } else {
+                      setFactor(FACTOR_OPTIONS[factorIndex]);
+                    }
+                  }}>
+                  <Text
+                    style={{
+                      color: 'white',
+                      fontSize: 20,
+                      textAlign: 'center',
+                    }}>
+                    Submit
+                  </Text>
+                </Pressable>
+              </View>
             </View>
           </View>
         </View>
@@ -810,7 +1052,6 @@ const Settings = ({navigation, route}) => {
         }}>
         <Text style={{fontSize: 30}}>Settings</Text>
       </View>
-
       <View
         style={{
           backgroundColor: '#242424',
@@ -820,104 +1061,68 @@ const Settings = ({navigation, route}) => {
           borderTopRightRadius: 20,
           alignItems: 'center',
           flexDirection: 'row',
+          justifyContent: 'space-between',
         }}>
         <Text style={{fontSize: 40, marginLeft: 20}}>Factor</Text>
-        <TextInput
-          keyboardType="numeric"
-          allowFontScaling={true}
-          maxLength={3}
-          onChangeText={text => {
-            setFactor(text);
+        <RectButton
+          width={'10%'}
+          fontSize={15}
+          handlePressDown={() => {}}
+          handlePressUp={() => {
+            setPickerModalText('Factor');
+            setPickerModalVisible(true);
           }}
-          onPressOut={() => {
-            setFactor(factor !== '' ? parseFloat(factor) : MIN_FACTOR);
-            if (factor > MAX_FACTOR) {
-              setFactor(MAX_FACTOR);
-            } else if (factor < MIN_FACTOR) {
-              setFactor(MIN_FACTOR);
-            }
-          }}
-          onEndEditing={() => {
-            console.log('factor', factor);
-            setFactor(factor !== '' ? parseFloat(factor) : MIN_FACTOR);
-            if (factor > MAX_FACTOR) {
-              setFactor(MAX_FACTOR);
-            } else if (factor < MIN_FACTOR) {
-              setFactor(MIN_FACTOR);
-            }
-          }}
-          style={{
+          text={JSON.stringify(factor)}
+          {...{
             fontSize: 40,
-            right: 30,
-            position: 'absolute',
-            marginRight: 20,
             backgroundColor: '#1B1B1B',
             paddingLeft: 20,
             paddingRight: 20,
             paddingTop: 10,
             paddingBottom: 10,
             borderRadius: 20,
+            marginRight: 20,
+            width: 'auto',
+            height: 'auto',
+            ...SHADOWS.extraDark,
           }}
-          value={factor.toString()}></TextInput>
+        />
       </View>
-
       <View
         style={{
           marginTop: 10,
           backgroundColor: '#242424',
           width: '100%',
           height: '17%',
-
           alignItems: 'center',
           flexDirection: 'row',
+          justifyContent: 'space-between',
         }}>
         <Text style={{fontSize: 40, marginLeft: 20}}>Road Preset</Text>
-        <TextInput
-          keyboardType="numeric"
-          allowFontScaling={true}
-          maxLength={2}
-          onChangeText={text => {
-            setRoadPreset(text);
+        <RectButton
+          width={'10%'}
+          fontSize={15}
+          handlePressDown={() => {}}
+          handlePressUp={() => {
+            setPickerModalText('Road Preset');
+            setPickerModalVisible(true);
           }}
-          onPressOut={() => {
-            setRoadPreset(
-              roadPreset !== ''
-                ? Math.floor(parseFloat(roadPreset))
-                : MIN_PRESET,
-            );
-            if (roadPreset > MAX_PRESET) {
-              setRoadPreset(MAX_PRESET);
-            } else if (roadPreset < MIN_PRESET) {
-              setRoadPreset(MIN_PRESET);
-            }
-          }}
-          onEndEditing={() => {
-            setRoadPreset(
-              roadPreset !== ''
-                ? Math.floor(parseFloat(roadPreset))
-                : MIN_PRESET,
-            );
-            if (roadPreset > MAX_PRESET) {
-              setRoadPreset(MAX_PRESET);
-            } else if (roadPreset < MIN_PRESET) {
-              setRoadPreset(MIN_PRESET);
-            }
-          }}
-          style={{
+          text={JSON.stringify(roadPreset)}
+          {...{
             fontSize: 40,
-            right: 30,
-            position: 'absolute',
-            marginRight: 20,
             backgroundColor: '#1B1B1B',
             paddingLeft: 20,
             paddingRight: 20,
             paddingTop: 10,
             paddingBottom: 10,
             borderRadius: 20,
+            marginRight: 20,
+            width: 'auto',
+            height: 'auto',
+            ...SHADOWS.extraDark,
           }}
-          value={roadPreset.toString()}></TextInput>
+        />
       </View>
-
       <View
         style={{
           marginTop: 10,
@@ -928,86 +1133,65 @@ const Settings = ({navigation, route}) => {
           borderBottomRightRadius: 20,
           alignItems: 'center',
           flexDirection: 'row',
+          justifyContent: 'space-between',
         }}>
         <Text style={{fontSize: 40, marginLeft: 20}}>Trail Preset</Text>
-        <TextInput
-          keyboardType="numeric"
-          allowFontScaling={true}
-          maxLength={2}
-          onChangeText={text => {
-            setTrailPreset(text);
+        <RectButton
+          width={'10%'}
+          fontSize={15}
+          handlePressDown={() => {}}
+          handlePressUp={() => {
+            setPickerModalText('Trail Preset');
+            setPickerModalVisible(true);
           }}
-          onPressOut={() => {
-            setTrailPreset(
-              trailPreset !== ''
-                ? Math.floor(parseFloat(trailPreset))
-                : MIN_PRESET,
-            );
-            if (trailPreset > MAX_PRESET) {
-              setTrailPreset(MAX_PRESET);
-            } else if (trailPreset < MIN_PRESET) {
-              setTrailPreset(MIN_PRESET);
-            }
-          }}
-          onEndEditing={() => {
-            setTrailPreset(
-              trailPreset !== ''
-                ? Math.floor(parseFloat(trailPreset))
-                : MIN_PRESET,
-            );
-            if (trailPreset > MAX_PRESET) {
-              setTrailPreset(MAX_PRESET);
-            } else if (trailPreset < MIN_PRESET) {
-              setTrailPreset(MIN_PRESET);
-            }
-          }}
-          style={{
+          text={JSON.stringify(trailPreset)}
+          {...{
             fontSize: 40,
-            right: 30,
-            position: 'absolute',
-            marginRight: 20,
             backgroundColor: '#1B1B1B',
             paddingLeft: 20,
             paddingRight: 20,
             paddingTop: 10,
             paddingBottom: 10,
             borderRadius: 20,
+            marginRight: 20,
+            width: 'auto',
+            height: 'auto',
+            ...SHADOWS.extraDark,
           }}
-          value={trailPreset.toString()}></TextInput>
-        <View
+        />
+      </View>
+      <View
+        style={{
+          width: '100%',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginTop: 80,
+        }}>
+        <Text style={{fontSize: 20}}>All units are measured in PSI</Text>
+        <Text style={{fontSize: 20}}>On Air Version 4.4</Text>
+        <Text
           style={{
-            width: '100%',
-            alignItems: 'center',
-            justifyContent: 'center',
-            right: 220,
-            top: 150,
+            fontSize: 20,
+            position: 'absolute',
+            top: 55,
+            right: 235,
           }}>
-          <Text style={{fontSize: 20}}>All units are measured in PSI</Text>
-          <Text style={{fontSize: 20}}>On Air Version 4.4</Text>
-          <Text
-            style={{
-              fontSize: 20,
-              position: 'absolute',
-              top: 55,
-              right: 235,
-            }}>
-            App By:
-          </Text>
-          <Text
-            onPress={() =>
-              Linking.openURL('https://github.com/KingOfTNT10/on_air_project')
-            }
-            style={{
-              color: '#2269B2',
-              fontSize: 20,
-              marginLeft: 50,
-              position: 'absolute',
-              top: 55,
-              right: 100,
-            }}>
-            KingOfTNT10
-          </Text>
-        </View>
+          App By:
+        </Text>
+        <Text
+          onPress={() =>
+            Linking.openURL('https://github.com/KingOfTNT10/on_air_project')
+          }
+          style={{
+            color: '#2269B2',
+            fontSize: 20,
+            marginLeft: 50,
+            position: 'absolute',
+            top: 55,
+            right: 100,
+          }}>
+          KingOfTNT10
+        </Text>
       </View>
     </SafeAreaView>
   );

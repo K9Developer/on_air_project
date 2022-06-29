@@ -79,8 +79,8 @@ const AboutMe = ({navigation}) => {
               handlePressUp={() => {
                 email('ilai.keinan@gmail.com', {
                   subject: '--+=Feedback about OnAir App=+--',
-                  body: 'My experience using the app (out of 10):\n\n\nOther notes:\n',
-                  checkCanOpen: false, // Call Linking.canOpenURL prior to Linking.openURL
+                  body: 'My experience using the app (out of 10):\n\n\nOther notes:\n\n',
+                  checkCanOpen: false,
                 }).catch(console.error);
               }}
               size={[70, 70]}

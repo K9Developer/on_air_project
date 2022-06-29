@@ -1,4 +1,6 @@
 rootProject.name = 'on_air_project'
+include ':react-native-number-selector'
+project(':react-native-number-selector').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-number-selector/android')
 include ':react-native-sound'
 project(':react-native-sound').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-sound/android')
 include ':react-native-ble-plx'
