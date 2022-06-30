@@ -6,6 +6,7 @@ import Home from './screens/Home';
 import Details from './screens/Settings';
 import Permissions from './screens/Permissions';
 import AboutMe from './screens/AboutMe';
+import DeviceChooser from './screens/DeviceChooser';
 
 const theme = {
   ...DefaultTheme,
@@ -69,6 +70,7 @@ const App = () => {
         <Stack.Screen name="Home" component={Home} />
         <Stack.Screen name="Settings" component={Details} />
         <Stack.Screen name="AboutMe" component={AboutMe} />
+        <Stack.Screen name="DeviceChooser" component={DeviceChooser} />
       </Stack.Navigator>
     </NavigationContainer>
   );

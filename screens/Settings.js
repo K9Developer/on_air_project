@@ -23,33 +23,24 @@ import SmoothPicker from 'react-native-smooth-picker';
 const Buffer = require('buffer').Buffer;
 
 const MIN_FACTOR = 3;
-const MAX_FACTOR = 10;
+// const MAX_FACTOR = 10;
 const MIN_PRESET = 3;
-const MAX_PRESET = 50;
+// const MAX_PRESET = 50;
+let scannedDevices = [];
 const PRESET_OPTIONS = Array(48)
   .fill(3)
   .map((x, y) => x + y);
 const FACTOR_OPTIONS = [
   3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10,
 ];
-const opacities = {
-  0: 1,
-  1: 1,
-  2: 0.6,
-  3: 0.3,
-  4: 0.1,
-};
-const sizeText = {
-  0: 15,
-  1: 10,
-  2: 7,
-};
+
 let BT05_DEVICE = null;
 let DEVICE_SERVICE_UUID = null;
 let DEVICE_CHARACTERISTICS_UUID = null;
 let MANAGER = null;
 let scanTimer = null;
-let onDisconnectEvent = null;
+let onDisconnectEvent = null; // CURRENTLY CHECKING WHY onDisconnectEvent IS AN OBJECT WHEN IT SHOULD BE NULL WHEN REACHING LINE 390
+console.log('Set onDisconnectEvent [setup]');
 
 const getData = async key => {
   try {
@@ -71,7 +62,7 @@ const getErrorText = error => {
 
   console.log('Error reason: ' + error.reason);
 
-  if (error.reason == null) {
+  if (!error.reason) {
     return null;
   }
 
@@ -219,54 +210,6 @@ const storeData = async () => {
   }
 };
 
-const Item = React.memo(({opacity, selected, vertical, fontSize, name}) => {
-  return (
-    <View
-      style={{
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: 10,
-        marginBottom: 10,
-        paddingTop: 10,
-        paddingBottom: 10,
-        paddingLeft: 30,
-        paddingRight: 30,
-        height: 50,
-        borderWidth: 3,
-        borderRadius: 10,
-        opacity,
-        borderColor: selected ? '#ABC9AF' : 'transparent',
-        width: 'auto',
-      }}>
-      <Text style={{fontSize: fontSize, color: 'black'}}>{name}</Text>
-    </View>
-  );
-});
-
-const ItemToRender = ({item, index}, indexSelected, vertical) => {
-  const selected = index === indexSelected;
-  const gap = Math.abs(index - indexSelected);
-
-  let opacity = opacities[gap];
-  if (gap > 3) {
-    opacity = opacities[4];
-  }
-  let fontSize = sizeText[gap];
-  if (gap > 1) {
-    fontSize = sizeText[2];
-  }
-
-  return (
-    <Item
-      opacity={opacity}
-      selected={selected}
-      vertical={vertical}
-      fontSize={fontSize}
-      name={item}
-    />
-  );
-};
-
 const Settings = ({navigation, route}) => {
   const [factor, setFactor] = useState(MIN_FACTOR);
   const [roadPreset, setRoadPreset] = useState(MIN_PRESET);
@@ -290,6 +233,29 @@ const Settings = ({navigation, route}) => {
   //   };
   // });
 
+  const onDeviceDisconnect = (error, device) => {
+    console.log('REACHED DISCONNECT');
+
+    if (error) {
+      console.log(console.log('On device disconnect error: ', err));
+    } else {
+      // if (isMountedRef.current === true) {
+      console.log('Start dropIn();');
+      dropIn();
+      console.log('End dropIn();');
+      console.log('Device disconnected: ' + device.id);
+      console.log('Start SetStatus');
+      console.log('SetStatus - ' + JSON.stringify(setStatusText));
+      setStatusText('Device has been disconnected');
+      console.log('End SetStatus');
+      console.log('Start Icon change');
+      setBluetoothImageId(3);
+      console.log('End Icon change');
+      BT05_DEVICE = null;
+      // }
+    }
+  };
+
   useEffect(() => {
     navigation.addListener('focus', () => {
       if (
@@ -298,13 +264,53 @@ const Settings = ({navigation, route}) => {
         route.params != null &&
         route.params != undefined
       ) {
-        if (route.params.device != null && route.params.device != undefined) {
+        if (
+          route.params.device != null &&
+          route.params.device != undefined &&
+          route.params.device.hasOwnProperty('id')
+        ) {
           BT05_DEVICE = route.params.device;
-          onDisconnectEvent = BT05_DEVICE.onDisconnected(onDeviceDisconnect);
+          console.log('BT: ' + Object.getOwnPropertyNames(BT05_DEVICE));
+          // try {
+          //   BT05_DEVICE.isConnected()
+          //     .then(isConnected => {
+          //       if (isConnected) {
+          //         console.log('Set event [params]');
+
+          //       } else {
+          //         console.log('Device is not connected');
+          //       }
+          //     })
+          //     .catch(error => {
+          //       console.log('Error checking connection params: ', error);
+          //     });
+          // } catch (error) {
+          //   console.log('Error 2 checking connection params: ', error);
+          // }
+
+          if (MANAGER === null) {
+            MANAGER = new BleManager();
+            console.log('CREATED BLE MANAGER [connect btn]');
+          } else {
+            console.log('BLE MANAGER ALREADY EXISTS [connect btn]');
+          }
+          // try {
+          //   MANAGER.isDeviceConnected(BT05_DEVICE.id)
+          //     .then(isConnected => {
+          //       if (isConnected) {
+          //         console.log('Set event [params]');
+          //         onDisconnectEvent =
+          //           BT05_DEVICE.onDisconnected(onDeviceDisconnect);
+          //       }
+          //     })
+          //     .catch(error => {});
+          //   console.log('Successuflly transfered device from home?');
+          // } catch {}
           DEVICE_SERVICE_UUID = route.params.serviceUUID;
           DEVICE_CHARACTERISTICS_UUID = route.params.characteristicsUUID;
         }
         setStartScan(route.params.startConnect);
+
         console.log('Start connection with device: ' + startScan);
       }
 
@@ -348,18 +354,99 @@ const Settings = ({navigation, route}) => {
       //   })
       //   .catch(err => console.log('getData device error', err));
 
+      console.log('man: ' + MANAGER);
+      if (route.params.connectToDevice) {
+        console.log(
+          'WENT FROM SELECT TO SETTINGS, DEVICE - ' +
+            JSON.stringify(BT05_DEVICE),
+        );
+        dropIn();
+        setStatusText('Pairing...');
+
+        scannedDevices = [];
+        // let continueConnection = false;
+        // if (MANAGER && BT05_DEVICE && BT05_DEVICE.hasOwnProperty('id')) {
+        //   MANAGER.cancelDeviceConnection(BT05_DEVICE.id)
+        //     .then(() => {
+        //       continueConnection = true;
+        //     })
+        //     .catch((err) => {
+        //       console.log("Failed to cancel connection: " + JSON.stringify(err));
+        //     });
+        // } else {
+        //   continueConnection = true;
+        // }
+
+        // if (continueConnection) {
+        console.log('CREATING BLE MANAGER [connect btn]');
+        if (MANAGER === null) {
+          MANAGER = new BleManager();
+          console.log('CREATED BLE MANAGER [connect btn]');
+        } else {
+          console.log('BLE MANAGER ALREADY EXISTS [connect btn]');
+        }
+        console.log('Active manager: ' + MANAGER);
+        console.log('Source of device: Reconnect');
+        DEVICE_SERVICE_UUID = null;
+        DEVICE_CHARACTERISTICS_UUID = null;
+
+        console.log('CONNECTING TO DEVICE [BEFORE]');
+
+        const subscription = MANAGER.onStateChange(state => {
+          if (state === 'PoweredOn') {
+            console.log('CONNECTING TO DEVICE [AFTER]');
+            connectToDevice(BT05_DEVICE);
+            subscription.remove();
+          }
+        }, true);
+      }
+
       getData('@btImage')
         .then(value => {
           if (value != null && value != undefined) {
             console.log('LOADED BT Image: ' + typeof BT05_DEVICE);
             if (parseInt(value) == 2) {
-              if (BT05_DEVICE != null && BT05_DEVICE != undefined) {
+              if (
+                BT05_DEVICE != null &&
+                BT05_DEVICE != undefined &&
+                BT05_DEVICE.hasOwnProperty('id')
+              ) {
                 try {
                   console.log('BT05_DEVICE: ' + JSON.stringify(BT05_DEVICE));
-                  BT05_DEVICE.isConnected()
+                  console.log('MANAGER: ' + MANAGER);
+                  MANAGER.isDeviceConnected(BT05_DEVICE.id)
                     .then(connected => {
                       if (connected) {
                         setBluetoothImageId(2);
+                        console.log(
+                          'onDisconnectEvent: ' +
+                            JSON.stringify(typeof onDisconnectEvent),
+                        );
+                        console.log(!onDisconnectEvent);
+                        console.log(typeof onDisconnectEvent == 'object');
+                        console.log(
+                          !onDisconnectEvent ||
+                            typeof onDisconnectEvent == 'object',
+                        );
+                        if (
+                          !onDisconnectEvent ||
+                          typeof onDisconnectEvent == 'object'
+                        ) {
+                          console.log(
+                            'Set onDisconnectEvent [icon switch focus]',
+                          );
+
+                          onDisconnectEvent =
+                            BT05_DEVICE.onDisconnected(onDeviceDisconnect);
+                        }
+                        // try {
+                        //   onDisconnectEvent.remove();
+                        // } catch {}
+                        // onDisconnectEvent =
+                        //   MANAGER.onDeviceDisconnected(onDeviceDisconnect);
+                        // console.log(
+                        //   'Event = ' + JSON.stringify(onDisconnectEvent),
+                        // );
                       } else {
                         setBluetoothImageId(3);
                       }
@@ -369,7 +456,10 @@ const Settings = ({navigation, route}) => {
                     });
                 } catch (error) {
                   console.log(
-                    "Couldn't get BT05_DEVICE.isConnected(): " + error,
+                    "Couldn't get BT05_DEVICE.isConnected(): " +
+                      error +
+                      ' - ' +
+                      BT05_DEVICE,
                   );
                   setBluetoothImageId(1);
                 }
@@ -424,6 +514,16 @@ const Settings = ({navigation, route}) => {
     }).start();
   };
 
+  const dropOut = () => {
+    // Will change fadeAnim value to 1 in 5 seconds
+    Animated.timing(dropAnim, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: false,
+      // useNativeDriver: true,
+    }).start();
+  };
+
   const onRoadPresetChange = index => {
     setRoadPresetIndex(index);
   };
@@ -434,32 +534,28 @@ const Settings = ({navigation, route}) => {
     setFactorIndex(index);
   };
 
-  const onDeviceDisconnect = (error, device) => {
-    if (error) {
-      console.log(console.log('On device disconnect error: ', err));
-    } else {
-      // if (isMountedRef.current === true) {
-      console.log('Start dropIn();');
-      dropIn();
-      console.log('End dropIn();');
-      console.log('Device disconnected: ' + device.id);
-      console.log('Start SetStatus');
-      console.log('SetStatus - ' + JSON.stringify(setStatusText));
-      setStatusText('Device has been disconnected');
-      console.log('End SetStatus');
-      console.log('Start Icon change');
-      setBluetoothImageId(3);
-      console.log('End Icon change');
-      BT05_DEVICE = null;
-      // }
-    }
-  };
-
-  const connectToDevice = device => {
+  const connectToDevice = async device => {
     console.log('CLearing timer:', scanTimer);
     clearTimeout(scanTimer);
+    console.log('Device - ' + JSON.stringify(device));
+    // if (MANAGER === null) {
+    //   MANAGER = new BleManager();
+    //   console.log('CREATED BLE MANAGER [connect btn]');
+    // } else {
+    //   console.log('BLE MANAGER ALREADY EXISTS [connect btn]');
+    // }
+    // device.cancelConnection();
+    if (await MANAGER.isDeviceConnected(device.id)) {
+      try {
+        device = await MANAGER.cancelDeviceConnection(device.id);
+      } catch (error) {}
+    }
+    console.log('device.id: ' + device.id);
 
-    let deviceConnected = MANAGER.connectToDevice(device.id)
+    MANAGER.destroy();
+    MANAGER = new BleManager();
+    let d = {...device};
+    MANAGER.connectToDevice(d.id)
       .then(device => {
         console.log('connect success:', device.name, device.id);
         console.log('Source of device: Connect function');
@@ -524,7 +620,10 @@ const Settings = ({navigation, route}) => {
               Vibration.vibrate([350, 250]);
             }
             playConnectedSound();
-            BT05_DEVICE.onDisconnected(onDeviceDisconnect);
+            console.log(
+              'console.log("Set onDisconnectEvent [connected in connect function]")',
+            );
+            onDisconnectEvent = BT05_DEVICE.onDisconnected(onDeviceDisconnect);
             return d;
           })
           .then(() => {
@@ -548,50 +647,78 @@ const Settings = ({navigation, route}) => {
         setModalVisible(true);
         setStatusText('An Error occurred');
       });
-    console.log('Source of device: Connect function end');
-    BT05_DEVICE = {...deviceConnected};
-    return deviceConnected;
+    // console.log('Source of device: Connect function end');
+    // BT05_DEVICE = {...deviceConnected};
+    // return deviceConnected;
   };
 
   const scanForDevice = async manager => {
-    setStatusText('Scanning for devices...');
+    setStatusText('Scanning for devices... (Found: 0)');
 
-    (scanTimer = setTimeout(() => {
-      setModalError(false);
-      setModalText(
-        "We have been scanning for 10 seconds and didn't find the device! please try the following:\n\n- Restart OnAir device\n- Restart App\n- Get closer to device\n- Make sure the device is on",
-      );
-      setModalVisible(true);
-      setStatusText('Please try again');
-      if (MANAGER) {
+    scanTimer = setTimeout(() => {
+      if (scannedDevices.length == 0) {
+        setModalError(false);
+        setModalText(
+          "We have been scanning for 10 seconds and didn't find any devices! please try the following:\n\n- Restart OnAir device\n- Restart App\n- Get closer to device\n- Make sure the device is on",
+        );
+        setModalVisible(true);
+        setStatusText('Please try again');
+        if (MANAGER) {
+          MANAGER.stopDeviceScan();
+        }
+      } else if (scannedDevices.length == 1) {
         MANAGER.stopDeviceScan();
+        setStatusText('Pairing...');
+        connectToDevice(scannedDevices[0]);
+      } else {
+        MANAGER.stopDeviceScan();
+        dropOut();
+        navigation.navigate('DeviceChooser', {
+          scannedDevices: scannedDevices,
+        });
+        // Go to DeviceChooser screen
       }
-    }, 10000)),
-      await manager.startDeviceScan(
-        null,
-        null,
-        (error, device) => {
-          if (error) {
-            setModalError(true);
-            setModalText(getErrorText(error));
-            setModalVisible(true);
-            setStatusText('An Error occurred');
-          }
+      console.log('All Scanned Devices: ' + JSON.stringify(scannedDevices));
+    }, 10000);
 
-          if (device !== 'null') {
-            console.log('Found Device Name: ' + device.name);
-            if (device.name === 'BT05') {
-              console.log('Found BT05');
-              setStatusText('Found On Air bluetooth device!');
-              manager.stopDeviceScan();
-              console.log('Stopped Scan');
-              setStatusText('Pairing...');
-              connectToDevice(device);
+    await manager.startDeviceScan(
+      null,
+      null,
+      (error, device) => {
+        if (error) {
+          setModalError(true);
+          setModalText(getErrorText(error));
+          setModalVisible(true);
+          setStatusText('An Error occurred');
+        }
+
+        if (device !== 'null') {
+          console.log('Found Device Name: ' + device.name);
+          if (device.name === 'BT05') {
+            let push = true;
+
+            for (let bt of scannedDevices) {
+              if (
+                bt.id == device.id ||
+                (BT05_DEVICE &&
+                  BT05_DEVICE.hasOwnProperty('id') &&
+                  device.id == BT05_DEVICE.id)
+              ) {
+                push = false;
+              }
             }
+            if (push) {
+              scannedDevices.push(device);
+              setStatusText(`Scanning for devices... (Found: ${scannedDevices.length})`);
+              console.log('Found BT05 - ' + device.id);
+            }
+            // setStatusText('Pairing...');
+            // connectToDevice(device);
           }
-        },
-        setBluetoothImageId(4),
-      );
+        }
+      },
+      setBluetoothImageId(4),
+    );
   };
 
   const removeSubscriptions = () => {
@@ -614,14 +741,20 @@ const Settings = ({navigation, route}) => {
     }
   };
 
-  const startConnection = () => {
+  const startConnection = async () => {
     dropIn();
-    try {
-      MANAGER.destroy();
-      MANAGER = null;
-    } catch (error) {
-      console.log('Error destroying manager: ', error);
+
+    scannedDevices = [];
+
+    if (
+      MANAGER &&
+      BT05_DEVICE &&
+      BT05_DEVICE.hasOwnProperty('id') &&
+      (await BT05_DEVICE.isConnected())
+    ) {
+      await MANAGER.cancelDeviceConnection(BT05_DEVICE.id);
     }
+
     console.log('CREATING BLE MANAGER [connect btn]');
     if (MANAGER === null) {
       MANAGER = new BleManager();
@@ -629,7 +762,6 @@ const Settings = ({navigation, route}) => {
     } else {
       console.log('BLE MANAGER ALREADY EXISTS [connect btn]');
     }
-
     console.log('Active manager: ' + MANAGER);
     BT05_DEVICE = null;
     console.log('Source of device: Reconnect');
@@ -668,6 +800,7 @@ const Settings = ({navigation, route}) => {
       onDisconnectEvent.remove();
     } catch {}
     clearTimeout(scanTimer);
+    scannedDevices = [];
     console.log('Exit app');
   };
 

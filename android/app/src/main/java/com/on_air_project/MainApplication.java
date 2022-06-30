@@ -7,7 +7,7 @@ import com.facebook.react.ReactApplication;
 import com.zmxv.RNSound.RNSoundPackage;
 import com.polidea.reactnativeble.BlePackage;
 import com.polidea.reactnativeble.BlePackage;
-import com.rnfs.RNFSPackage;
+// import com.rnfs.RNFSPackage;
 import com.facebook.react.ReactInstanceManager;
 import com.facebook.react.ReactNativeHost;
 import com.facebook.react.ReactPackage;

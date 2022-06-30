@@ -433,28 +433,33 @@ const Home = ({navigation, route}) => {
           console.log('Passed params checks');
           MANAGER = route.params.manager;
           BT05_DEVICE = route.params.device;
-          console.log('MANAGER: ' + typeof MANAGER);
-          MANAGER.isDeviceConnected(BT05_DEVICE.id)
-            .then(isConnected => {
-              console.log('IS CONNECTED: ' + isConnected);
-              if (isConnected) {
-                setDisconnectMonitor(
-                  BT05_DEVICE.onDisconnected(onDeviceDisconnect),
-                );
-                setReadMonitor(
-                  MANAGER.monitorCharacteristicForDevice(
-                    BT05_DEVICE.id,
-                    'FFE0',
-                    'FFE1',
-                    monitorDeviceData,
-                  ),
-                );
-                setConnected(true);
-              }
-            })
-            .catch(error => {
-              console.log('ERROR: ' + JSON.stringify(error));
-            });
+
+          console.log('DVICE has id: ' + BT05_DEVICE.hasOwnProperty('id'));
+          if (BT05_DEVICE.hasOwnProperty('id')) {
+            MANAGER.isDeviceConnected(BT05_DEVICE.id)
+              .then(isConnected => {
+                console.log('IS CONNECTED: ' + isConnected);
+                if (isConnected) {
+                  setDisconnectMonitor(
+                    BT05_DEVICE.onDisconnected(onDeviceDisconnect),
+                  );
+                  setReadMonitor(
+                    MANAGER.monitorCharacteristicForDevice(
+                      BT05_DEVICE.id,
+                      'FFE0',
+                      'FFE1',
+                      monitorDeviceData,
+                    ),
+                  );
+                  setConnected(true);
+                }
+              })
+              .catch(error => {
+                console.log('ERROR: ' + JSON.stringify(error));
+              });
+          } else {
+            BT05_DEVICE = null;
+          }
           DEVICE_SERVICE_UUID = route.params.serviceUUID;
           DEVICE_CHARACTERISTICS_UUID = route.params.characteristicsUUID;
         }
@@ -596,14 +601,16 @@ const Home = ({navigation, route}) => {
           MANAGER._activeSubscriptions[val].remove();
         } catch (error) {}
       }
-
-      for (const [_key, val] of Object.entries(
-        BT05_DEVICE._manager._activeSubscriptions,
-      )) {
-        try {
-          BT05_DEVICE._manager._activeSubscriptions[val].remove();
-        } catch (error) {}
-      }
+      try {
+        for (const [_key, val] of Object.entries(
+          BT05_DEVICE._manager._activeSubscriptions,
+        )) {
+          try {
+            BT05_DEVICE._manager._activeSubscriptions[val].remove();
+          } catch (error) {}
+        }
+      } catch (error) {}
+      
     }
   };
 
@@ -890,6 +897,7 @@ const Home = ({navigation, route}) => {
                 serviceUUID: DEVICE_SERVICE_UUID,
                 characteristicsUUID: DEVICE_CHARACTERISTICS_UUID,
                 startConnect: true,
+                connectToDevice: false,
               });
             }}>
             {dropMessageButtonText}
@@ -913,6 +921,7 @@ const Home = ({navigation, route}) => {
               serviceUUID: DEVICE_SERVICE_UUID,
               characteristicsUUID: DEVICE_CHARACTERISTICS_UUID,
               startConnect: false,
+              connectToDevice: false,
             });
           }}
           size={[50, 50]}
