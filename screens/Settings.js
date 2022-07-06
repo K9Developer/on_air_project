@@ -8,14 +8,12 @@ import {
   Pressable,
   Image,
   Animated,
-  Vibration,
-  Platform,
   AppState,
   Dimensions,
   TouchableOpacity,
 } from 'react-native';
 import React, {useState, useRef, useEffect} from 'react';
-import {FocusedStatusBar, CircleButton, RectButton} from '../components';
+import {FocusedStatusBar, CircleButton} from '../components';
 import {COLORS, SHADOWS} from '../constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Sound from 'react-native-sound';
@@ -208,7 +206,7 @@ const storeData = async () => {
 
   if (!JSON.parse(await AsyncStorage.getItem('@btImage'))) {
     try {
-      await AsyncStorage.setItem('@BtImage', JSON.stringify(null));
+      await AsyncStorage.setItem('@btImage', JSON.stringify(null));
     } catch (error) {
       console.log('ERROR SAVING BtImage', error);
     }
@@ -315,9 +313,17 @@ const Settings = ({navigation, route}) => {
           console.log('=> DEVICE is OK');
           MANAGER.isDeviceConnected(BT05_DEVICE.id).then(connected => {
             if (connected) {
-              console.log('=> DEVICE is Connected');
+              console.log('=> DEVICE is Connected : ' + BT05_DEVICE);
+
               dropIn();
               setStatusText('Connected To Device');
+              if (!onDisconnectEvent) {
+                onDisconnectEvent = MANAGER.onDeviceDisconnected(
+                  BT05_DEVICE.id,
+                  onDeviceDisconnect,
+                );
+              }
+              setBluetoothImageId(2);
             } else {
               console.log('=> DEVICE is not Connected');
               BT05_DEVICE = null;
@@ -343,16 +349,19 @@ const Settings = ({navigation, route}) => {
 
       getData('@btImage')
         .then(value => {
+          console.log('VALUE: ' + value);
+          console.log('VALUE: ' + value);
+          console.log('VALUE: ' + value);
+          console.log('VALUE: ' + value);
           if (value != null && value != undefined) {
-            console.log('LOADED BT Image: ' + typeof BT05_DEVICE);
             if (parseInt(value) == 2) {
               if (
                 BT05_DEVICE != null &&
                 BT05_DEVICE != undefined &&
                 BT05_DEVICE.hasOwnProperty('id')
               ) {
+                console.log('BT05_DEVICE: ' + JSON.stringify(BT05_DEVICE));
                 try {
-                  console.log('BT05_DEVICE: ' + JSON.stringify(BT05_DEVICE));
                   console.log('MANAGER: ' + MANAGER);
                   MANAGER.isDeviceConnected(BT05_DEVICE.id).then(d =>
                     console.log('IS DEVICE CONNECTED? - ' + d),
@@ -379,18 +388,11 @@ const Settings = ({navigation, route}) => {
                           console.log(
                             'Set onDisconnectEvent [icon switch focus]',
                           );
-
-                          onDisconnectEvent =
-                            BT05_DEVICE.onDisconnected(onDeviceDisconnect);
                         }
-                        // try {
-                        //   onDisconnectEvent.remove();
-                        // } catch {}
-                        // onDisconnectEvent =
-                        //   MANAGER.onDeviceDisconnected(onDeviceDisconnect);
-                        // console.log(
-                        //   'Event = ' + JSON.stringify(onDisconnectEvent),
-                        // );
+                        onDisconnectEvent = MANAGER.onDeviceDisconnected(
+                          BT05_DEVICE.id,
+                          onDeviceDisconnect,
+                        );
                       } else {
                         setBluetoothImageId(3);
                       }
@@ -479,6 +481,7 @@ const Settings = ({navigation, route}) => {
         );
         setModalVisible(true);
         setStatusText('Please try again');
+        setBluetoothImageId(1);
         if (MANAGER) {
           MANAGER.stopDeviceScan();
         }
@@ -496,7 +499,7 @@ const Settings = ({navigation, route}) => {
         // Go to DeviceChooser screen
       }
       console.log('All Scanned Devices: ' + JSON.stringify(scannedDevices));
-    }, 3000);
+    }, 7000);
 
     await manager.startDeviceScan(
       null,
@@ -531,8 +534,6 @@ const Settings = ({navigation, route}) => {
               );
               console.log('Found BT05 - ' + device.id);
             }
-            // setStatusText('Pairing...');
-            // connectToDevice(device);
           }
         }
       },
@@ -613,32 +614,6 @@ const Settings = ({navigation, route}) => {
     setStartScan(false);
   }
 
-  const Item = React.memo(({opacity, selected, vertical, fontSize, name}) => {
-    return (
-      <View
-        style={{
-          justifyContent: 'center',
-          alignItems: 'center',
-          marginTop: 10,
-          marginBottom: 10,
-          paddingTop: 10,
-          paddingBottom: 10,
-          paddingLeft: 30,
-          paddingRight: 30,
-          height: 50,
-          borderWidth: 3,
-          borderRadius: 2 * (winWidth / 50),
-          opacity,
-          borderColor: selected ? '#ABC9AF' : 'transparent',
-          width: 'auto',
-        }}>
-        <Text style={{fontSize: 2 * (winWidth / fontSize), color: 'black'}}>
-          {name}
-        </Text>
-      </View>
-    );
-  });
-
   const renderItem = (item, index) => {
     return (
       <Text
@@ -666,28 +641,33 @@ const Settings = ({navigation, route}) => {
   };
 
   useEffect(() => {
-    if (bluetoothImageId != 1) {
-      AsyncStorage.setItem('@btImage', JSON.stringify(bluetoothImageId));
-    }
+    const saveId = async () => {
+      console.log('----- BLUETOOTH IMAGE ID - ' + bluetoothImageId + ' -----');
+      if (bluetoothImageId != 1) {
+        await AsyncStorage.setItem(
+          '@btImage',
+          JSON.stringify(bluetoothImageId),
+        );
+      } else {
+        if ((await AsyncStorage.getItem('@btImage')) == '2') {
+          setBluetoothImageId(2);
+        }
+      }
+    };
+    saveId();
   }, [bluetoothImageId]);
 
-  useEffect(() => {
-    if (factor != MIN_FACTOR) {
-      AsyncStorage.setItem('@factor', JSON.stringify(factor));
-    }
-  }, [factor]);
+  // useEffect(() => {
+  //   AsyncStorage.setItem('@factor', JSON.stringify(factor));
+  // }, [factor]);
 
-  useEffect(() => {
-    if (roadPreset != MIN_PRESET) {
-      AsyncStorage.setItem('@roadPreset', JSON.stringify(roadPreset));
-    }
-  }, [roadPreset]);
+  // useEffect(() => {
+  //   AsyncStorage.setItem('@roadPreset', JSON.stringify(roadPreset));
+  // }, [roadPreset]);
 
-  useEffect(() => {
-    if (trailPreset != MIN_PRESET) {
-      AsyncStorage.setItem('@trailPreset', JSON.stringify(trailPreset));
-    }
-  }, [trailPreset]);
+  // useEffect(() => {
+  //   AsyncStorage.setItem('@trailPreset', JSON.stringify(trailPreset));
+  // }, [trailPreset]);
 
   return (
     <SafeAreaView style={{flex: 1}}>
@@ -697,7 +677,6 @@ const Settings = ({navigation, route}) => {
         transparent={true}
         visible={modalText == null ? false : modalVisible}
         onRequestClose={() => {
-          Alert.alert('Modal has been closed.');
           setModalVisible(!modalVisible);
         }}>
         <TouchableWithoutFeedback
@@ -867,6 +846,7 @@ const Settings = ({navigation, route}) => {
                   flex: 1,
                   width: '100%',
                 }}
+                initialIndex={11}
                 data={
                   pickerModalText == 'Factor' ? FACTOR_OPTIONS : PRESET_OPTIONS
                 }
@@ -937,10 +917,31 @@ const Settings = ({navigation, route}) => {
 
                     if (pickerModalText == 'Road Preset') {
                       setRoadPreset(PRESET_OPTIONS[roadPresetIndex]);
+                      AsyncStorage.setItem(
+                        '@roadPreset',
+                        JSON.stringify(PRESET_OPTIONS[roadPresetIndex]),
+                      );
+                      console.log(
+                        'roadPreset',
+                        PRESET_OPTIONS[roadPresetIndex],
+                      );
                     } else if (pickerModalText == 'Trail Preset') {
                       setTrailPreset(PRESET_OPTIONS[trailPresetIndex]);
+                      AsyncStorage.setItem(
+                        '@trailPreset',
+                        JSON.stringify(PRESET_OPTIONS[trailPresetIndex]),
+                      );
+                      console.log(
+                        'trailPreset',
+                        PRESET_OPTIONS[trailPresetIndex],
+                      );
                     } else {
                       setFactor(FACTOR_OPTIONS[factorIndex]);
+                      AsyncStorage.setItem(
+                        '@factor',
+                        JSON.stringify(FACTOR_OPTIONS[factorIndex]),
+                      );
+                      console.log('factor', FACTOR_OPTIONS[factorIndex]);
                     }
                   }}>
                   <Text
@@ -1036,7 +1037,9 @@ const Settings = ({navigation, route}) => {
           }
           handlePressDown={() => {}}
           handlePressUp={() => {
-            startConnection();
+            if (bluetoothImageId != 4) {
+              startConnection();
+            }
           }}
           size={[winWidth / 7, winWidth / 7]}
           {...{
@@ -1081,6 +1084,7 @@ const Settings = ({navigation, route}) => {
           onPress={() => {
             setPickerModalText('Factor');
             setPickerModalVisible(true);
+            setFactorIndex(0);
           }}
           style={{
             paddingVertical: '2%',
@@ -1125,6 +1129,7 @@ const Settings = ({navigation, route}) => {
           onPress={() => {
             setPickerModalText('Road Preset');
             setPickerModalVisible(true);
+            setRoadPresetIndex(0);
           }}
           style={{
             paddingVertical: '2%',
@@ -1171,6 +1176,7 @@ const Settings = ({navigation, route}) => {
           onPress={() => {
             setPickerModalText('Trail Preset');
             setPickerModalVisible(true);
+            setTrailPresetIndex(0);
           }}
           style={{
             paddingVertical: '2%',

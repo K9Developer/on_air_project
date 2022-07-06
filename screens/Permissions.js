@@ -89,18 +89,7 @@ const Permissions = ({navigation, route}) => {
     }
   };
 
-  // Run every update
   useEffect(() => {
-    checkAllPermissions();
-    if (
-      locationPermission == 'granted' &&
-      bluetoothStatus == 'PoweredOn' &&
-      bluetoothConnectPermission == 'granted' &&
-      bluetoothScanPermission == 'granted'
-    ) {
-      clearInterval(permissionTimer);
-      navigation.dispatch(StackActions.replace('Home'));
-    }
     permissionTimer = setInterval(() => {
       checkAllPermissions();
       if (
@@ -113,7 +102,7 @@ const Permissions = ({navigation, route}) => {
         navigation.dispatch(StackActions.replace('Home'));
       }
     }, 500);
-  });
+  }, []);
 
   return (
     <SafeAreaView
@@ -126,9 +115,8 @@ const Permissions = ({navigation, route}) => {
         <Modal
           animationType="slide"
           transparent={true}
-          visible={modalVisible}
+          visible={modalText == null ? false : modalVisible}
           onRequestClose={() => {
-            Alert.alert('Modal has been closed.');
             setModalVisible(!modalVisible);
           }}>
           <TouchableWithoutFeedback
@@ -180,7 +168,7 @@ const Permissions = ({navigation, route}) => {
                   paddingRight: 40,
                   paddingLeft: 40,
                   marginBottom: 20,
-                  fontSize: 30,
+                  fontSize: 2 * (winWidth / 30),
                   fontWeight: 'bold',
                   textAlign: 'center',
                 }}>
@@ -191,7 +179,7 @@ const Permissions = ({navigation, route}) => {
                   color: '#6f7173',
                   paddingRight: 40,
                   paddingLeft: 40,
-                  fontSize: 15,
+                  fontSize: 2 * (winWidth / 50),
                   textAlign: 'center',
                 }}>
                 {modalText}
@@ -219,7 +207,7 @@ const Permissions = ({navigation, route}) => {
                 <Text
                   style={{
                     color: 'white',
-                    fontSize: 20,
+                    fontSize: 2 * (winWidth / 30),
                     textAlign: 'center',
                   }}>
                   {modalError ? 'Dismiss' : 'Ok'}

@@ -7,6 +7,7 @@ import {
   AppState,
   ActivityIndicator,
   Dimensions,
+  BackHandler,
 } from 'react-native';
 import React, {useEffect, useState} from 'react';
 import {CircleButton} from '../components';
@@ -70,27 +71,60 @@ const DeviceChooser = ({navigation, route}) => {
     exitApp();
   });
 
+  const exit = async () => {
+    try {
+      for (let i = 0; i < 10; i++) {
+        await sendDeviceSignal(connectedDevice, 'Ok');
+      }
+      console.log('SENT OK SIGNAL');
+    } catch (error) {
+      console.log('ERROR SENDING Ok:', error);
+    }
+    navigation.navigate('Settings', {connectToDevice: false});
+  };
+
   useEffect(() => {
     AppState.addEventListener('change', currentState => {
       if (currentState === 'background') {
         exitApp();
       }
     });
+    BackHandler.addEventListener('hardwareBackPress', async () => {
+      console.log('Exit back button');
+      await exit();
+    });
+    return () => {
+      BackHandler.removeEventListener('hardwareBackPress', async () => {
+        console.log('Exit back button');
+        await exit();
+      });
+    };
   }, []);
 
   const transferToSettings = async device => {
-    console.log(
-      'connectedDevice: ' + !connectedDevice ||
-        (connectedDevice && device.id != connectedDevice.id),
-    );
-    if (
-      !connectedDevice ||
-      (connectedDevice && device.id != connectedDevice.id) ||
-      (connectedDevice && !(await connectedDevice.isConnected()))
-    ) {
-      console.log('Device is not connected, connecting...');
-      connectedDevice = await connectToDevice(device);
+    if (connectedDevice) {
+      try {
+        for (let i = 0; i < 10; i++) {
+          await sendDeviceSignal(connectedDevice, 'Ok');
+        }
+        console.log('SENT OK SIGNAL');
+      } catch (error) {
+        console.log('ERROR SENDING Ok:', error);
+      }
     }
+    try {
+      if (
+        !connectedDevice ||
+        (connectedDevice && device.id != connectedDevice.id) ||
+        (connectedDevice && !(await connectedDevice.isConnected()))
+      ) {
+        console.log('Device is not connected, connecting...');
+        connectedDevice = await connectToDevice(device);
+      }
+    } catch (error) {
+      console.log('ERROR CONNECTING TO DEVICE [chooser]:', error);
+    }
+
     navigation.navigate('Settings', {
       connectToDevice: true,
       device: connectedDevice,
@@ -139,13 +173,15 @@ const DeviceChooser = ({navigation, route}) => {
   };
 
   const sendDeviceSignal = async (device, signal) => {
-    let base64Signal = Buffer.from('~' + signal + '^').toString('base64');
-    return await MANAGER.writeCharacteristicWithoutResponseForDevice(
-      device.id,
-      'FFE0',
-      'FFE1',
-      base64Signal,
-    );
+    try {
+      let base64Signal = Buffer.from('~' + signal + '^').toString('base64');
+      return await MANAGER.writeCharacteristicWithoutResponseForDevice(
+        device.id,
+        'FFE0',
+        'FFE1',
+        base64Signal,
+      );
+    } catch {}
   };
 
   const startPing = async device => {
@@ -232,30 +268,6 @@ const DeviceChooser = ({navigation, route}) => {
       }
       return startPing(connectedDevice);
     }, 3000);
-    // try {
-    //   monitorSub = await connectedDevice.monitorCharacteristicForService(
-    //     'FFE0',
-    //     'FFE1',
-    //     (error, data) => {
-    //       if (error) {
-    //         console.log('Error in read monitor: ', JSON.stringify(error));
-    //       }
-    //       if (data == 'pong') {
-    //         clearTimeout(timeoutTimer);
-    //         monitorSub.remove();
-    //         // connectedDevice.cancelConnection();
-    //       } else {
-    //         console.log('NO RESPONSE... TRYING AGAIN [auto read]');
-    //         monitorSub.remove();
-    //         clearTimeout(timeoutTimer);
-    //         // connectedDevice.cancelConnection();
-    //         return startPing(connectedDevice);
-    //       }
-    //     },
-    //   );
-    // } catch (error) {
-    //   console.log('ERROR MONITORING CHARACTERISTIC:', error);
-    // }
   };
 
   const Item = ({title, id, data, index, length}) => (
@@ -424,15 +436,7 @@ const DeviceChooser = ({navigation, route}) => {
               imgUrl={require('../assets/icons/back.png')}
               handlePressDown={() => {}}
               handlePressUp={async () => {
-                try {
-                  for (let i = 0; i < 10; i++) {
-                    await sendDeviceSignal(connectedDevice, 'Ok');
-                  }
-                  console.log('SENT OK SIGNAL');
-                } catch (error) {
-                  console.log('ERROR SENDING Ok:', error);
-                }
-                navigation.navigate('Settings', {connectToDevice: false});
+                await exit();
               }}
               size={[winWidth / 15, winWidth / 15]}
               {...{

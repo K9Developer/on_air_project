@@ -639,11 +639,11 @@ const Home = ({navigation, route}) => {
   };
 
   const handleStatusId = async (startTime, statusId) => {
-    startTime -= 2;
+    startTime -= 1;
     for (timer of timerList) {
       clearInterval(timer);
     }
-    if (startTime == -3) {
+    if (startTime == -2) {
       setStatusText(StatusIdMap[statusId]);
       if (statusId == 3) {
         doneStatus();
@@ -655,7 +655,7 @@ const Home = ({navigation, route}) => {
     timerList.push(
       setInterval(() => {
         setStatusText(
-          `${StatusIdMap[statusId]} - ${
+          `${StatusIdMap[statusId]}: ${
             startTime - x >= 0 ? startTime - x : 0
           }s`,
         );
@@ -736,7 +736,6 @@ const Home = ({navigation, route}) => {
         transparent={true}
         visible={modalText == null ? false : modalVisible}
         onRequestClose={() => {
-          Alert.alert('Modal has been closed.');
           setModalVisible(!modalVisible);
         }}>
         <TouchableWithoutFeedback
@@ -799,7 +798,7 @@ const Home = ({navigation, route}) => {
                 color: '#6f7173',
                 paddingRight: 40,
                 paddingLeft: 40,
-                fontSize: 2 * (winWidth / 15),
+                fontSize: 2 * (winWidth / 50),
                 textAlign: 'center',
               }}>
               {modalText}
@@ -820,7 +819,7 @@ const Home = ({navigation, route}) => {
               <Text
                 style={{
                   color: 'white',
-                  fontSize: 2 * (winWidth / 20),
+                  fontSize: 2 * (winWidth / 30),
                   textAlign: 'center',
                 }}>
                 {modalError ? 'Dismiss' : 'Ok'}
@@ -996,7 +995,7 @@ const Home = ({navigation, route}) => {
             <Image
               source={require('../assets/icons/logo.png')}
               resizeMode="center"
-              style={{width: '150%', height: '150%'}}
+              style={{width: winWidth / 1.7, height: winWidth / 5}}
             />
           </Pressable>
         </View>
@@ -1183,15 +1182,16 @@ const Home = ({navigation, route}) => {
           </Text>
           <Text
             adjustsFontSizeToFit
+            numberOfLines={1}
             style={{
-              fontSize: 2 * (winWidth / 25),
+              fontSize: 2 * (winWidth / 35),
               backgroundColor: '#1B1B1B',
 
               paddingHorizontal: '6%',
               paddingVertical: '2%',
               borderRadius: 2 * (winWidth / 25),
               textAlign: 'center',
-              width: 'auto',
+              maxWidth: '70%',
               color: 'white',
             }}>
             {statusText}
