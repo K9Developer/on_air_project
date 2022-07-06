@@ -25,29 +25,29 @@ const DeviceChooser = ({navigation, route}) => {
   // 0: Bell
   // 1: Checkmark
   // 2: X
-  route = {
-    params: {
-      scannedDevices: [],
-    },
-  };
+  // route = {
+  //   params: {
+  //     scannedDevices: [],
+  //   },
+  // };
 
-  route.params.scannedDevices = [
-    {
-      name: 'Test1',
-      id: '1',
-      otherData: 'sdfsdf',
-    },
-    {
-      name: 'Test2',
-      id: '2',
-      otherData: 'sdfsdf',
-    },
-    {
-      name: 'Test3',
-      id: '3',
-      otherData: 'sdfsdf',
-    },
-  ];
+  // route.params.scannedDevices = [
+  //   {
+  //     name: 'Test1',
+  //     id: '1',
+  //     otherData: 'sdfsdf',
+  //   },
+  //   {
+  //     name: 'Test2',
+  //     id: '2',
+  //     otherData: 'sdfsdf',
+  //   },
+  //   {
+  //     name: 'Test3',
+  //     id: '3',
+  //     otherData: 'sdfsdf',
+  //   },
+  // ];
 
   const [loadingPing, setLoadingPing] = useState([false, null]);
 
@@ -78,27 +78,45 @@ const DeviceChooser = ({navigation, route}) => {
     });
   }, []);
 
-  const transferToSettings = device => {
-    navigation.navigate('Settings', {connectToDevice: true, device: device});
+  const transferToSettings = async device => {
+    console.log(
+      'connectedDevice: ' + !connectedDevice ||
+        (connectedDevice && device.id != connectedDevice.id),
+    );
+    if (
+      !connectedDevice ||
+      (connectedDevice && device.id != connectedDevice.id) ||
+      (connectedDevice && !(await connectedDevice.isConnected()))
+    ) {
+      console.log('Device is not connected, connecting...');
+      connectedDevice = await connectToDevice(device);
+    }
+    navigation.navigate('Settings', {
+      connectToDevice: true,
+      device: connectedDevice,
+      manager: MANAGER,
+    });
   };
 
   const createManager = () => {
-    if (MANAGER === null) {
+    if (!MANAGER) {
       MANAGER = new BleManager();
       console.log('CREATED BLE MANAGER [connect btn]');
     } else {
       console.log('BLE MANAGER ALREADY EXISTS [connect btn]');
-      MANAGER.destroy();
-      MANAGER = new BleManager();
     }
   };
 
   const connectToDevice = async device => {
     try {
+      if (!MANAGER) {
+        createManager();
+      }
       let connectedDevice = await MANAGER.connectToDevice(device.id);
       await connectedDevice.discoverAllServicesAndCharacteristics();
       return connectedDevice;
     } catch (error) {
+      console.log('ERROR CONNECTING TO DEVICE', error);
       return null;
     }
   };
@@ -106,11 +124,8 @@ const DeviceChooser = ({navigation, route}) => {
   const failed = () => {
     // Icon change
     pingCounter = 0;
-    setPingImageId(2);
     setLoadingPing([false, null]);
-    setTimeout(() => {
-      setPingImageId(0);
-    }, 1000);
+
     Toast.show({
       type: 'error',
       text1: 'Ping Error',
@@ -148,6 +163,9 @@ const DeviceChooser = ({navigation, route}) => {
 
     try {
       if (connectedDevice.id != device.id) {
+        console.log(
+          'Clicked device id isnt equal to last device pinged, cancelling and connecting',
+        );
         await connectedDevice.cancelConnection();
         connectedDevice = null;
       }
@@ -190,9 +208,7 @@ const DeviceChooser = ({navigation, route}) => {
               type: 'success',
               text1: 'Ping Successful',
             });
-            setTimeout(() => {
-              setPingImageId(0);
-            }, 1000);
+
             clearTimeout(timeoutTimer);
             try {
               for (let i = 0; i < 10; i++) {
@@ -285,18 +301,18 @@ const DeviceChooser = ({navigation, route}) => {
             }}>
             <Text
               style={{
-                fontSize: 2 * (winWidth / 35),
+                fontSize: 2 * (winWidth / 40),
                 fontWeight: 'bold',
                 color: 'white',
-                marginTop: 2 * (winWidth / 90),
+                marginTop: 2 * (winWidth / 50),
               }}>
               {title}
             </Text>
             <Text
               style={{
-                fontSize: 2 * (winWidth / 40),
+                fontSize: 2 * (winWidth / 50),
                 color: 'gray',
-                marginBottom: 2 * (winWidth / 90),
+                marginBottom: 2 * (winWidth / 50),
               }}>
               {id}
             </Text>
@@ -383,7 +399,7 @@ const DeviceChooser = ({navigation, route}) => {
         <Toast
           visibilityTime={6000}
           style={{
-            zIndex: 10,
+            zIndex: 20,
           }}
         />
         <View
@@ -402,11 +418,20 @@ const DeviceChooser = ({navigation, route}) => {
               paddingBottom: winWidth / 25,
               borderBottomWidth: 1,
               borderColor: 'gray',
+              zIndex: -10,
             }}>
             <CircleButton
               imgUrl={require('../assets/icons/back.png')}
               handlePressDown={() => {}}
-              handlePressUp={() => {
+              handlePressUp={async () => {
+                try {
+                  for (let i = 0; i < 10; i++) {
+                    await sendDeviceSignal(connectedDevice, 'Ok');
+                  }
+                  console.log('SENT OK SIGNAL');
+                } catch (error) {
+                  console.log('ERROR SENDING Ok:', error);
+                }
                 navigation.navigate('Settings', {connectToDevice: false});
               }}
               size={[winWidth / 15, winWidth / 15]}

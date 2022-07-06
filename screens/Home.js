@@ -26,9 +26,9 @@ import Sound from 'react-native-sound';
 let timer = null;
 let waitTimer = null;
 let BT05_DEVICE = null;
+let MANAGER = null;
 let DEVICE_SERVICE_UUID = null;
 let DEVICE_CHARACTERISTICS_UUID = null;
-let MANAGER = null;
 let MIN_FACTOR = 3;
 const MAX_PSI = 50;
 const MIN_PSI = 3;
@@ -342,6 +342,32 @@ const Home = ({navigation, route}) => {
   const [allMessagesSentByDevice, setAllMessagesSentByDevice] = useState([]);
   const dropAnim = useRef(new Animated.Value(0)).current;
 
+  const onDeviceDisconnect = (error, device) => {
+    if (error) {
+      console.log('ERROR');
+      setModalError(true);
+      setModalText(getErrorText(error));
+      setModalVisible(true);
+    } else {
+      if (disconnectMonitor) {
+        disconnectMonitor.remove();
+        setDisconnectMonitor(null);
+      }
+
+      if (readMonitor) {
+        readMonitor.remove();
+        setReadMonitor(null);
+      }
+      console.log('Device disconnected: ' + device.id);
+      setConnected(false);
+
+      removeSubscriptions();
+      setDropMessageText('You have disconnected from the device.');
+      setDropMessageButtonText('Reconnect');
+      dropIn();
+    }
+  };
+
   useEffect(() => {
     return navigation.addListener('focus', () => {
       console.log('navigation focus');
@@ -406,15 +432,22 @@ const Home = ({navigation, route}) => {
           MANAGER = route.params.manager;
           BT05_DEVICE = route.params.device;
 
-          console.log('DVICE has id: ' + BT05_DEVICE.hasOwnProperty('id'));
+          console.log('MANAGER: ' + JSON.stringify(MANAGER));
+          console.log('DEVICE has id: ' + BT05_DEVICE.hasOwnProperty('id'));
           if (BT05_DEVICE.hasOwnProperty('id')) {
             MANAGER.isDeviceConnected(BT05_DEVICE.id)
               .then(isConnected => {
                 console.log('IS CONNECTED: ' + isConnected);
                 if (isConnected) {
+                  console.log('Passed isConnected checks');
                   setDisconnectMonitor(
-                    BT05_DEVICE.onDisconnected(onDeviceDisconnect),
+                    MANAGER.onDeviceDisconnected(
+                      BT05_DEVICE.id,
+                      onDeviceDisconnect,
+                    ),
                   );
+
+                  console.log('Passed set disconnect monitor');
                   setReadMonitor(
                     MANAGER.monitorCharacteristicForDevice(
                       BT05_DEVICE.id,
@@ -423,7 +456,10 @@ const Home = ({navigation, route}) => {
                       monitorDeviceData,
                     ),
                   );
+                  console.log('Passed set read monitor');
                   setConnected(true);
+
+                  console.log('Passed set connected');
                 }
               })
               .catch(error => {
@@ -432,9 +468,16 @@ const Home = ({navigation, route}) => {
           } else {
             BT05_DEVICE = null;
           }
+
           DEVICE_SERVICE_UUID = route.params.serviceUUID;
           DEVICE_CHARACTERISTICS_UUID = route.params.characteristicsUUID;
+        } else {
+          BT05_DEVICE = null;
         }
+        console.log('AT END BT05 IS: ' + BT05_DEVICE);
+        console.log('AT END BT05 IS: ' + BT05_DEVICE);
+        console.log('AT END BT05 IS: ' + BT05_DEVICE);
+        console.log('AT END BT05 IS: ' + BT05_DEVICE);
       }
     });
   }, [route]);
@@ -582,32 +625,6 @@ const Home = ({navigation, route}) => {
           } catch (error) {}
         }
       } catch (error) {}
-    }
-  };
-
-  const onDeviceDisconnect = (error, device) => {
-    if (error) {
-      console.log('ERROR');
-      setModalError(true);
-      setModalText(getErrorText(error));
-      setModalVisible(true);
-    } else {
-      if (disconnectMonitor) {
-        disconnectMonitor.remove();
-        setDisconnectMonitor(null);
-      }
-
-      if (readMonitor) {
-        readMonitor.remove();
-        setReadMonitor(null);
-      }
-      console.log('Device disconnected: ' + device.id);
-      setConnected(false);
-
-      removeSubscriptions();
-      setDropMessageText('You have disconnected from the device.');
-      setDropMessageButtonText('Reconnect');
-      dropIn();
     }
   };
 
@@ -870,6 +887,7 @@ const Home = ({navigation, route}) => {
                 characteristicsUUID: DEVICE_CHARACTERISTICS_UUID,
                 startConnect: true,
                 connectToDevice: false,
+                manager: MANAGER,
               });
             }}>
             {dropMessageButtonText}
@@ -912,6 +930,7 @@ const Home = ({navigation, route}) => {
               characteristicsUUID: DEVICE_CHARACTERISTICS_UUID,
               startConnect: false,
               connectToDevice: false,
+              manager: MANAGER,
             });
           }}
           size={[2 * (winWidth / 15), 2 * (winHeight / 15)]}
