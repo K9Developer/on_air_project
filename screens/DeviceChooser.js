@@ -12,7 +12,7 @@ import {
 import React, {useEffect, useState} from 'react';
 import {CircleButton} from '../components';
 import {BleManager} from 'react-native-ble-plx';
-import Toast from 'react-native-toast-message';
+import Toast, {SuccessToast, ErrorToast} from 'react-native-toast-message';
 const Buffer = require('buffer').Buffer;
 
 let MANAGER = null;
@@ -21,6 +21,31 @@ let timeoutTimer = null;
 let connectedDevice = null;
 let pingCounter = 0;
 const winWidth = Dimensions.get('window').width;
+
+const toastConfig = {
+  error: props => (
+    <ErrorToast
+      {...props}
+      text1Style={{
+        fontSize: 17,
+      }}
+      text2Style={{
+        fontSize: 15,
+      }}
+    />
+  ),
+  success: props => (
+    <SuccessToast
+      {...props}
+      text1Style={{
+        fontSize: 17,
+      }}
+      text2Style={{
+        fontSize: 15,
+      }}
+    />
+  ),
+};
 
 const DeviceChooser = ({navigation, route}) => {
   // 0: Bell
@@ -51,6 +76,7 @@ const DeviceChooser = ({navigation, route}) => {
   // ];
 
   const [loadingPing, setLoadingPing] = useState([false, null]);
+  const [loadingConnection, setLoadingConnection] = useState(false);
 
   const exitApp = () => {
     // monitorSub.remove();
@@ -80,7 +106,7 @@ const DeviceChooser = ({navigation, route}) => {
     } catch (error) {
       console.log('ERROR SENDING Ok:', error);
     }
-    navigation.navigate('Settings', {connectToDevice: false});
+    navigation.navigate('Settings', {connectToDevice: false, device: null});
   };
 
   useEffect(() => {
@@ -142,15 +168,18 @@ const DeviceChooser = ({navigation, route}) => {
   };
 
   const connectToDevice = async device => {
+    setLoadingConnection(true);
     try {
       if (!MANAGER) {
         createManager();
       }
       let connectedDevice = await MANAGER.connectToDevice(device.id);
       await connectedDevice.discoverAllServicesAndCharacteristics();
+      setLoadingConnection(false);
       return connectedDevice;
     } catch (error) {
       console.log('ERROR CONNECTING TO DEVICE', error);
+      setLoadingConnection(false);
       return null;
     }
   };
@@ -214,6 +243,15 @@ const DeviceChooser = ({navigation, route}) => {
         (connectedDevice && !(await connectedDevice.isConnected()))
       ) {
         connectedDevice = await connectToDevice(device);
+        if (!connectedDevice) {
+          Toast.show({
+            type: 'error',
+            text1: 'Connection Error',
+            text2: "We couldn't connect to the device",
+          });
+          setLoadingPing([false, null]);
+          return null;
+        }
         console.log('Connected to device - ' + device);
       } else {
         console.log('Already connected to device - ' + device);
@@ -226,48 +264,61 @@ const DeviceChooser = ({navigation, route}) => {
     } catch (error) {
       console.log('ERROR SENDING PING:', error);
     }
-    timeoutTimer = setTimeout(async () => {
-      for (let i = 0; i < 10; i++) {
-        try {
-          let readData = await connectedDevice.readCharacteristicForService(
-            'FFE0',
-            'FFE1',
-          );
-          readData = Buffer.from(readData.value, 'base64').toString();
-          console.log('read timeout - ' + JSON.stringify(readData));
-          if (readData.includes('pong')) {
-            console.log('RESPONSE RECEIVED - ' + readData);
-
-            pingCounter = 0;
-            setLoadingPing(false);
-            Toast.show({
-              type: 'success',
-              text1: 'Ping Successful',
-            });
-
-            clearTimeout(timeoutTimer);
-            try {
-              for (let i = 0; i < 10; i++) {
-                sendDeviceSignal(connectedDevice, 'Ok');
-              }
-              console.log('SENT OK SIGNAL');
-            } catch (error) {
-              console.log('ERROR SENDING Ok:', error);
-            }
-            return true;
-          } else {
-            console.log('NO RESPONSE... TRYING AGAIN [manual read]');
-
-            // monitorSub.remove();
-
-            // connectedDevice.cancelConnection();
-          }
-        } catch (error) {
-          console.log('ERROR READING DATA:', error); // ISOLATE PONG MESSAGE, IF DOESNT WORK THEN ADD TO STATUS
-        }
+    let x = 0;
+    timeoutTimer = setInterval(async () => {
+      x++;
+      if (x > 30) {
+        clearInterval(timeoutTimer);
+        failed();
+        return;
       }
-      return startPing(connectedDevice);
-    }, 3000);
+      try {
+        let readData = await connectedDevice.readCharacteristicForService(
+          'FFE0',
+          'FFE1',
+        );
+        readData = Buffer.from(readData.value, 'base64').toString();
+        console.log('read timeout - ' + JSON.stringify(readData));
+        if (readData.includes('pong')) {
+          console.log('RESPONSE RECEIVED - ' + readData);
+
+          pingCounter = 0;
+          setLoadingPing(false);
+          Toast.show({
+            type: 'success',
+            text1: 'Ping Successful',
+          });
+
+          clearTimeout(timeoutTimer);
+          try {
+            for (let i = 0; i < 10; i++) {
+              sendDeviceSignal(connectedDevice, 'Ok');
+            }
+            console.log('SENT OK SIGNAL');
+          } catch (error) {
+            console.log('ERROR SENDING Ok:', error);
+          }
+          return true;
+        } else {
+          console.log('NO RESPONSE... TRYING AGAIN [manual read]');
+
+          // monitorSub.remove();
+
+          // connectedDevice.cancelConnection();
+        }
+      } catch (error) {
+        if (error.errorCode == 205) {
+          Toast.show({
+            type: 'error',
+            text1: 'Connection Error',
+            text2: "We couldn't connect to the device",
+          });
+          setLoadingPing([false, null]);
+          return null;
+        }
+        console.log('ERROR READING DATA:', JSON.stringify(error)); // ISOLATE PONG MESSAGE, IF DOESNT WORK THEN ADD TO STATUS
+      }
+    }, 300);
   };
 
   const Item = ({title, id, data, index, length}) => (
@@ -365,19 +416,31 @@ const DeviceChooser = ({navigation, route}) => {
             </TouchableOpacity>
           )}
 
-          <TouchableOpacity
-            onPress={() => {
-              transferToSettings(data);
-            }}>
-            <Image
-              source={require('../assets/icons/bluetooth_connected2.png')}
+          {loadingConnection ? (
+            <ActivityIndicator
+              size="large"
+              color="#fff"
               style={{
-                width: winWidth / 9,
-                height: winWidth / 9,
-                marginRight: 10,
+                width: 30,
+                height: 30,
+                marginRight: 20,
               }}
             />
-          </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              onPress={() => {
+                transferToSettings(data);
+              }}>
+              <Image
+                source={require('../assets/icons/bluetooth_connected2.png')}
+                style={{
+                  width: winWidth / 9,
+                  height: winWidth / 9,
+                  marginRight: 10,
+                }}
+              />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     </View>
@@ -409,7 +472,8 @@ const DeviceChooser = ({navigation, route}) => {
           justifyContent: 'center',
         }}>
         <Toast
-          visibilityTime={6000}
+          visibilityTime={5000}
+          config={toastConfig}
           style={{
             zIndex: 20,
           }}
