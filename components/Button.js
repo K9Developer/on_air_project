@@ -1,7 +1,8 @@
 import React from 'react';
-import {TouchableOpacity, Text, Image} from 'react-native';
+import {TouchableOpacity, Text, Image,Dimensions} from 'react-native';
 
 import {COLORS, SIZES, FONTS, SHADOWS} from '../constants';
+const winWidth = Dimensions.get('window').width;
 
 export const CircleButton = ({
   imgUrl,
@@ -16,7 +17,7 @@ export const CircleButton = ({
         width: 60,
         height: 60,
         backgroundColor: '#427ef5',
-        borderRadius: 100,
+        borderRadius: 2 * (winWidth / 5),
         alignItems: 'center',
         justifyContent: 'center',
         ...props,
@@ -45,9 +46,9 @@ export const RectButton = ({
     <TouchableOpacity
       style={{
         backgroundColor: COLORS.primary,
-        borderRadius: SIZES.large,
+        borderRadius: 2 * (winWidth / 25),
         width: width,
-        height: 60,
+        height: 'auto',
         justifyContent: 'center',
         ...props,
       }}
@@ -76,21 +77,20 @@ export const ImageRectButton = ({
   return (
     <TouchableOpacity
       style={{
-        backgroundColor: COLORS.primary,
-        borderRadius: SIZES.large,
+        backgroundColor: 'red',
+        borderRadius: 2 * (winWidth / 25),
         width: size[0],
-        height: 100,
+        height: size[1],
         justifyContent: 'center',
         alignItems: 'center',
-        ...SHADOWS.dark,
         ...props,
       }}
       onPressIn={handlePressDown}
       onPressOut={handlePressUp}>
       <Image
         source={img}
-        resizeMode="contain"
-        style={{width: size[0], height: size[1]}}
+        resizeMode="center"
+        // style={{width: size[0], height: size[1]}}
       />
     </TouchableOpacity>
   );

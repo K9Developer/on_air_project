@@ -1,7 +1,7 @@
 import {
   View,
   SafeAreaView,
-  TextInput,
+  TouchableWithoutFeedback,
   Text,
   Linking,
   Modal,
@@ -11,6 +11,8 @@ import {
   Vibration,
   Platform,
   AppState,
+  Dimensions,
+  TouchableOpacity,
 } from 'react-native';
 import React, {useState, useRef, useEffect} from 'react';
 import {FocusedStatusBar, CircleButton, RectButton} from '../components';
@@ -18,9 +20,11 @@ import {COLORS, SHADOWS} from '../constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Sound from 'react-native-sound';
 import {BleManager} from 'react-native-ble-plx';
-import SmoothPicker from 'react-native-smooth-picker';
+import ValuePicker from 'react-native-picker-horizontal';
 
 const Buffer = require('buffer').Buffer;
+
+const winWidth = Dimensions.get('window').width;
 
 const MIN_FACTOR = 3;
 // const MAX_FACTOR = 10;
@@ -39,7 +43,8 @@ let DEVICE_SERVICE_UUID = null;
 let DEVICE_CHARACTERISTICS_UUID = null;
 let MANAGER = null;
 let scanTimer = null;
-let onDisconnectEvent = null; // CURRENTLY CHECKING WHY onDisconnectEvent IS AN OBJECT WHEN IT SHOULD BE NULL WHEN REACHING LINE 390
+let onDisconnectEvent = null;
+
 console.log('Set onDisconnectEvent [setup]');
 
 const getData = async key => {
@@ -224,14 +229,6 @@ const Settings = ({navigation, route}) => {
   const [factorIndex, setFactorIndex] = useState(0);
   const [roadPresetIndex, setRoadPresetIndex] = useState(0);
   const [trailPresetIndex, setTrailPresetIndex] = useState(0);
-  // const isMountedRef = useRef(null);
-
-  // useEffect(() => {
-  //   isMountedRef.current = true;
-  //   return () => {
-  //     isMountedRef.current = false;
-  //   };
-  // });
 
   const onDeviceDisconnect = (error, device) => {
     console.log('REACHED DISCONNECT');
@@ -257,6 +254,8 @@ const Settings = ({navigation, route}) => {
   };
 
   useEffect(() => {
+    console.log('ROUTE: ' + JSON.stringify(route));
+    console.log('ROUTE DEVICE: ' + JSON.stringify(route.params.device));
     navigation.addListener('focus', () => {
       if (
         route != null &&
@@ -269,8 +268,7 @@ const Settings = ({navigation, route}) => {
           route.params.device != undefined &&
           route.params.device.hasOwnProperty('id')
         ) {
-          BT05_DEVICE = route.params.device;
-          console.log('BT: ' + Object.getOwnPropertyNames(BT05_DEVICE));
+          BT05_DEVICE = {...route.params.device};
           // try {
           //   BT05_DEVICE.isConnected()
           //     .then(isConnected => {
@@ -293,6 +291,8 @@ const Settings = ({navigation, route}) => {
             console.log('CREATED BLE MANAGER [connect btn]');
           } else {
             console.log('BLE MANAGER ALREADY EXISTS [connect btn]');
+            // MANAGER.destroy();
+            // MANAGER = new BleManager();
           }
           // try {
           //   MANAGER.isDeviceConnected(BT05_DEVICE.id)
@@ -378,14 +378,14 @@ const Settings = ({navigation, route}) => {
         // }
 
         // if (continueConnection) {
-        console.log('CREATING BLE MANAGER [connect btn]');
-        if (MANAGER === null) {
-          MANAGER = new BleManager();
-          console.log('CREATED BLE MANAGER [connect btn]');
-        } else {
-          console.log('BLE MANAGER ALREADY EXISTS [connect btn]');
-        }
-        console.log('Active manager: ' + MANAGER);
+        // console.log('CREATING BLE MANAGER [connect btn]');
+        // if (MANAGER === null) {
+        //   MANAGER = new BleManager();
+        //   console.log('CREATED BLE MANAGER [connect btn]');
+        // } else {
+        //   console.log('BLE MANAGER ALREADY EXISTS [connect btn]');
+        // }
+        // console.log('Active manager: ' + MANAGER);
         console.log('Source of device: Reconnect');
         DEVICE_SERVICE_UUID = null;
         DEVICE_CHARACTERISTICS_UUID = null;
@@ -414,6 +414,10 @@ const Settings = ({navigation, route}) => {
                 try {
                   console.log('BT05_DEVICE: ' + JSON.stringify(BT05_DEVICE));
                   console.log('MANAGER: ' + MANAGER);
+                  MANAGER.isDeviceConnected(BT05_DEVICE.id).then(d =>
+                    console.log('IS DEVICE CONNECTED? - ' + d),
+                  );
+
                   MANAGER.isDeviceConnected(BT05_DEVICE.id)
                     .then(connected => {
                       if (connected) {
@@ -507,7 +511,7 @@ const Settings = ({navigation, route}) => {
   const dropIn = () => {
     // Will change fadeAnim value to 1 in 5 seconds
     Animated.timing(dropAnim, {
-      toValue: 50,
+      toValue: winWidth / 10,
       duration: 200,
       useNativeDriver: false,
       // useNativeDriver: true,
@@ -522,16 +526,6 @@ const Settings = ({navigation, route}) => {
       useNativeDriver: false,
       // useNativeDriver: true,
     }).start();
-  };
-
-  const onRoadPresetChange = index => {
-    setRoadPresetIndex(index);
-  };
-  const onTrailPresetChange = index => {
-    setTrailPresetIndex(index);
-  };
-  const onFactorChange = index => {
-    setFactorIndex(index);
   };
 
   const connectToDevice = async device => {
@@ -551,9 +545,9 @@ const Settings = ({navigation, route}) => {
       } catch (error) {}
     }
     console.log('device.id: ' + device.id);
-
-    MANAGER.destroy();
-    MANAGER = new BleManager();
+    // let manager = {...MANAGER};
+    // if (manager) manager.destroy();
+    // MANAGER = new BleManager();
     let d = {...device};
     MANAGER.connectToDevice(d.id)
       .then(device => {
@@ -666,10 +660,10 @@ const Settings = ({navigation, route}) => {
         if (MANAGER) {
           MANAGER.stopDeviceScan();
         }
-      } else if (scannedDevices.length == 1) {
-        MANAGER.stopDeviceScan();
-        setStatusText('Pairing...');
-        connectToDevice(scannedDevices[0]);
+        // } else if (scannedDevices.length == 1) {
+        //   MANAGER.stopDeviceScan();
+        //   setStatusText('Pairing...');
+        //   connectToDevice(scannedDevices[0]);
       } else {
         MANAGER.stopDeviceScan();
         dropOut();
@@ -679,7 +673,7 @@ const Settings = ({navigation, route}) => {
         // Go to DeviceChooser screen
       }
       console.log('All Scanned Devices: ' + JSON.stringify(scannedDevices));
-    }, 10000);
+    }, 3000);
 
     await manager.startDeviceScan(
       null,
@@ -709,7 +703,9 @@ const Settings = ({navigation, route}) => {
             }
             if (push) {
               scannedDevices.push(device);
-              setStatusText(`Scanning for devices... (Found: ${scannedDevices.length})`);
+              setStatusText(
+                `Scanning for devices... (Found: ${scannedDevices.length})`,
+              );
               console.log('Found BT05 - ' + device.id);
             }
             // setStatusText('Pairing...');
@@ -746,21 +742,14 @@ const Settings = ({navigation, route}) => {
 
     scannedDevices = [];
 
-    if (
-      MANAGER &&
-      BT05_DEVICE &&
-      BT05_DEVICE.hasOwnProperty('id') &&
-      (await BT05_DEVICE.isConnected())
-    ) {
-      await MANAGER.cancelDeviceConnection(BT05_DEVICE.id);
-    }
-
     console.log('CREATING BLE MANAGER [connect btn]');
     if (MANAGER === null) {
       MANAGER = new BleManager();
       console.log('CREATED BLE MANAGER [connect btn]');
     } else {
       console.log('BLE MANAGER ALREADY EXISTS [connect btn]');
+      MANAGER.destroy();
+      MANAGER = new BleManager();
     }
     console.log('Active manager: ' + MANAGER);
     BT05_DEVICE = null;
@@ -789,6 +778,49 @@ const Settings = ({navigation, route}) => {
     setStartScan(false);
   }
 
+  const Item = React.memo(({opacity, selected, vertical, fontSize, name}) => {
+    return (
+      <View
+        style={{
+          justifyContent: 'center',
+          alignItems: 'center',
+          marginTop: 10,
+          marginBottom: 10,
+          paddingTop: 10,
+          paddingBottom: 10,
+          paddingLeft: 30,
+          paddingRight: 30,
+          height: 50,
+          borderWidth: 3,
+          borderRadius: 2 * (winWidth / 50),
+          opacity,
+          borderColor: selected ? '#ABC9AF' : 'transparent',
+          width: 'auto',
+        }}>
+        <Text style={{fontSize: 2 * (winWidth / fontSize), color: 'black'}}>
+          {name}
+        </Text>
+      </View>
+    );
+  });
+
+  const renderItem = (item, index) => {
+    return (
+      <Text
+        adjustsFontSizeToFit
+        numberOfLines={1}
+        style={{
+          width: winWidth / 5.1,
+          fontSize: winWidth / 20,
+          textAlign: 'center',
+          justifyContent: 'center',
+          alignItems: 'center',
+          color: 'black',
+        }}>
+        {item}
+      </Text>
+    );
+  };
   const exitApp = () => {
     if (BT05_DEVICE == null && BT05_DEVICE == undefined) {
       if (MANAGER != null && MANAGER != undefined) {
@@ -839,92 +871,96 @@ const Settings = ({navigation, route}) => {
           Alert.alert('Modal has been closed.');
           setModalVisible(!modalVisible);
         }}>
+        <TouchableWithoutFeedback
+          onPress={() => setModalVisible(!modalVisible)}>
+          <View
+            style={{
+              width: '100%',
+              height: '100%',
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              flex: 1,
+              position: 'absolute',
+            }}></View>
+        </TouchableWithoutFeedback>
         <View
           style={{
-            backgroundColor: 'rgba(0,0,0,0.5)',
             flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginTop: 22,
           }}>
           <View
             style={{
-              flex: 1,
-              justifyContent: 'center',
+              width: '80%',
+              margin: 20,
+              backgroundColor: 'white',
+              borderRadius: 2 * (winWidth / 25),
               alignItems: 'center',
-              marginTop: 22,
+              shadowColor: '#000',
+              shadowOffset: {
+                width: 0,
+                height: 2,
+              },
+              shadowOpacity: 0.25,
+              shadowRadius: 4,
+              elevation: 5,
+              paddingTop: '5%',
             }}>
-            <View
+            <Image
+              source={
+                modalError
+                  ? require('../assets/icons/error.png')
+                  : require('../assets/icons/info.png')
+              }
+              style={{width: 90, height: 90, marginBottom: 20}}
+            />
+            <Text
               style={{
-                width: '80%',
-                margin: 20,
-                backgroundColor: 'white',
-                borderRadius: 20,
-                alignItems: 'center',
-                shadowColor: '#000',
-                shadowOffset: {
-                  width: 0,
-                  height: 2,
-                },
-                shadowOpacity: 0.25,
-                shadowRadius: 4,
-                elevation: 5,
-                paddingTop: '5%',
+                color: '#6f7173',
+                paddingRight: 40,
+                paddingLeft: 40,
+                marginBottom: 20,
+                fontSize: 2 * (winWidth / 30),
+                fontWeight: 'bold',
+                textAlign: 'center',
               }}>
-              <Image
-                source={
-                  modalError
-                    ? require('../assets/icons/error.png')
-                    : require('../assets/icons/info.png')
-                }
-                style={{width: 90, height: 90, marginBottom: 20}}
-              />
-              <Text
-                style={{
-                  color: '#6f7173',
-                  paddingRight: 40,
-                  paddingLeft: 40,
-                  marginBottom: 20,
-                  fontSize: 30,
-                  fontWeight: 'bold',
-                  textAlign: 'center',
-                }}>
-                {modalError ? 'Oh Snap!' : 'Info'}
-              </Text>
-              <Text
-                style={{
-                  color: '#6f7173',
-                  paddingRight: 40,
-                  paddingLeft: 40,
-                  fontSize: 15,
-                  textAlign: 'center',
-                }}>
-                {modalText}
-              </Text>
+              {modalError ? 'Oh Snap!' : 'Info'}
+            </Text>
+            <Text
+              style={{
+                color: '#6f7173',
+                paddingRight: 40,
+                paddingLeft: 40,
+                fontSize: 2 * (winWidth / 15),
+                textAlign: 'center',
+              }}>
+              {modalText}
+            </Text>
 
-              <Pressable
+            <Pressable
+              style={{
+                borderBottomRightRadius: 20,
+                borderBottomLeftRadius: 20,
+                width: '100%',
+                padding: 20,
+                elevation: 2,
+                backgroundColor: modalError ? '#db4d4d' : '#2196F3',
+                marginTop: 30,
+                bottom: 0,
+              }}
+              onPress={() => setModalVisible(!modalVisible)}>
+              <Text
                 style={{
-                  borderBottomRightRadius: 20,
-                  borderBottomLeftRadius: 20,
-                  width: '100%',
-                  padding: 20,
-                  elevation: 2,
-                  backgroundColor: modalError ? '#db4d4d' : '#2196F3',
-                  marginTop: 30,
-                  bottom: 0,
-                }}
-                onPress={() => setModalVisible(!modalVisible)}>
-                <Text
-                  style={{
-                    color: 'white',
-                    fontSize: 20,
-                    textAlign: 'center',
-                  }}>
-                  {modalError ? 'Dismiss' : 'Ok'}
-                </Text>
-              </Pressable>
-            </View>
+                  color: 'white',
+                  fontSize: 2 * (winWidth / 20),
+                  textAlign: 'center',
+                }}>
+                {modalError ? 'Dismiss' : 'Ok'}
+              </Text>
+            </Pressable>
           </View>
         </View>
       </Modal>
-
       <Modal
         animationType="slide"
         transparent={true}
@@ -933,118 +969,125 @@ const Settings = ({navigation, route}) => {
           Alert.alert('Modal has been closed.');
           setPickerModalVisible(!pickerModalVisible);
         }}>
+        <TouchableWithoutFeedback
+          onPress={() => setPickerModalVisible(!pickerModalVisible)}>
+          <View
+            style={{
+              width: '100%',
+              height: '100%',
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              flex: 1,
+              position: 'absolute',
+            }}></View>
+        </TouchableWithoutFeedback>
         <View
           style={{
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            flex: 1,
+            width: '100%',
+            height: '100%',
+            justifyContent: 'center',
+            alignItems: 'center',
           }}>
           <View
             style={{
+              backgroundColor: 'white',
+              borderRadius: 2 * (winWidth / 25),
               flex: 1,
-              justifyContent: 'center',
-              alignItems: 'center',
-              marginTop: 22,
+              width: '80%',
+              maxHeight: '40%',
+              position: 'relative',
             }}>
-            <View
+            {/* <View
               style={{
-                width: '80%',
-                margin: 20,
-                backgroundColor: 'white',
-                borderRadius: 20,
-
-                shadowColor: '#000',
-                shadowOffset: {
-                  width: 0,
-                  height: 2,
-                },
-                shadowOpacity: 0.25,
-                shadowRadius: 4,
-                elevation: 5,
-                paddingTop: '5%',
+                width: '100%',
+                height: '100%',
+                position: 'absolute',
+                justifyContent: 'center',
+                alignItems: 'center',
               }}>
+              <View
+                style={{
+                  height: 40,
+                  paddingHorizontal: 25,
+                  position: 'absolute',
+                  borderLeftWidth: 1,
+                  borderRightWidth: 1,
+                  borderLeftColor: '#6f7173',
+                  borderRightColor: '#6f7173',
+                }}>
+                <Text style={{lineHeight: 0}}></Text>
+              </View>
+            </View> */}
+            <View style={{alignItems: 'center'}}>
               <Text
                 style={{
-                  color: '#6f7173',
-                  paddingRight: 40,
-                  paddingLeft: 40,
-                  marginBottom: 20,
-                  fontSize: 30,
+                  color: 'black',
+                  fontSize: 2 * (winWidth / 25),
                   fontWeight: 'bold',
-                  textAlign: 'center',
+                  paddingVertical: '5%',
                 }}>
                 {pickerModalText}
               </Text>
+            </View>
 
-              <View
+            <View style={{flex: 1}}>
+              <ValuePicker
                 style={{
+                  // justifyContent: 'center',
+                  // alignItems: 'center',
+                  textAlign: 'center',
+                  flex: 1,
                   width: '100%',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                }}>
-                <SmoothPicker
-                  horizontal={true}
-                  initialScrollToIndex={
-                    pickerModalText == 'Road Preset'
-                      ? PRESET_OPTIONS.indexOf(roadPreset)
-                      : pickerModalText == 'Trail Preset'
-                      ? PRESET_OPTIONS.indexOf(trailPreset)
-                      : FACTOR_OPTIONS.indexOf(factor)
+                }}
+                data={
+                  pickerModalText == 'Factor' ? FACTOR_OPTIONS : PRESET_OPTIONS
+                }
+                renderItem={renderItem}
+                itemWidth={winWidth / 5.1}
+                mark={
+                  <View
+                    style={{
+                      aspectRatio: 1,
+                      width: '25%',
+                      paddingHorizontal: 25,
+                      borderWidth: winWidth / 270,
+                      borderLeftColor: '#6f7173',
+                      borderRightColor: '#6f7173',
+                      borderRadius: 2 * (winWidth / 50),
+                    }}></View>
+                }
+                onChange={index => {
+                  if (pickerModalText == 'Road Preset') {
+                    setRoadPresetIndex(index);
+                  } else if (pickerModalText == 'Trail Preset') {
+                    setTrailPresetIndex(index);
+                  } else {
+                    setFactorIndex(index);
                   }
-                  onScrollToIndexFailed={() => {}}
-                  keyExtractor={(_, index) => index.toString()}
-                  showsHorizontalScrollIndicator={false}
-                  data={
-                    pickerModalText == 'Factor'
-                      ? FACTOR_OPTIONS
-                      : PRESET_OPTIONS
-                  }
-                  onSelected={({item, index}) => {
-                    if (pickerModalText == 'Road Preset') {
-                      setRoadPresetIndex(index);
-                    } else if (pickerModalText == 'Trail Preset') {
-                      setTrailPresetIndex(index);
-                    } else {
-                      setFactorIndex(index);
-                    }
-                  }}
-                  magnet={false}
-                  scrollAnimation={false}
-                  startMargin={200}
-                  endMargin={200}
-                  renderItem={option =>
-                    ItemToRender(
-                      option,
-                      pickerModalText == 'Road Preset'
-                        ? roadPresetIndex
-                        : pickerModalText == 'Trail Preset'
-                        ? trailPresetIndex
-                        : factorIndex,
-                      false,
-                    )
-                  }
-                  selectOnPress={true}
-                />
-              </View>
-
-              <View
-                style={{
-                  flexDirection: 'row',
-                }}>
+                }}
+              />
+            </View>
+            <View
+              style={{
+                marginTop: 30,
+              }}>
+              <View style={{flexDirection: 'row'}}>
                 <Pressable
                   style={{
                     borderBottomLeftRadius: 20,
+                    paddingVertical: '5%',
                     width: '50%',
                     padding: 20,
                     elevation: 2,
                     backgroundColor: '#ed5c5f',
-                    marginTop: 30,
-                    bottom: 0,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    backgroundColor: 'red',
                   }}
                   onPress={() => setPickerModalVisible(!pickerModalVisible)}>
                   <Text
                     style={{
                       color: 'white',
-                      fontSize: 20,
+                      fontSize: 2 * (winWidth / 30),
                       textAlign: 'center',
                     }}>
                     Cancel
@@ -1057,8 +1100,8 @@ const Settings = ({navigation, route}) => {
                     padding: 20,
                     elevation: 2,
                     backgroundColor: '#2196F3',
-                    marginTop: 30,
-                    bottom: 0,
+                    justifyContent: 'center',
+                    alignItems: 'center',
                   }}
                   onPress={() => {
                     setPickerModalVisible(!pickerModalVisible);
@@ -1074,7 +1117,7 @@ const Settings = ({navigation, route}) => {
                   <Text
                     style={{
                       color: 'white',
-                      fontSize: 20,
+                      fontSize: 2 * (winWidth / 30),
                       textAlign: 'center',
                     }}>
                     Submit
@@ -1106,12 +1149,15 @@ const Settings = ({navigation, route}) => {
             height: dropAnim,
           },
         ]}>
-        <Text style={{fontSize: 20, color: 'white'}}>{statusText}</Text>
+        <Text style={{color: 'white', fontSize: 2 * (winWidth / 50)}}>
+          {statusText}
+        </Text>
       </Animated.View>
 
       <View
         style={{
           flexDirection: 'row',
+          justifyContent: 'space-between',
         }}>
         <CircleButton
           imgUrl={require('../assets/icons/back.png')}
@@ -1141,8 +1187,12 @@ const Settings = ({navigation, route}) => {
               characteristicUUID: DEVICE_CHARACTERISTICS_UUID,
             });
           }}
-          size={[30, 30]}
-          {...{marginLeft: 10, marginTop: 10, backgroundColor: 'transparent'}}
+          size={[winWidth / 10, winWidth / 10]}
+          {...{
+            marginLeft: winWidth / 15,
+            marginTop: winWidth / 15,
+            backgroundColor: 'transparent',
+          }}
         />
 
         <CircleButton
@@ -1166,12 +1216,11 @@ const Settings = ({navigation, route}) => {
             //   } catch (error) {}
             // }
           }}
-          size={[50, 50]}
+          size={[winWidth / 7, winWidth / 7]}
           {...{
-            marginTop: 10,
+            marginRight: winWidth / 15,
+            marginTop: winWidth / 15,
             backgroundColor: 'transparent',
-            marginLeft: 260,
-            ...SHADOWS.dark,
           }}
         />
       </View>
@@ -1183,7 +1232,9 @@ const Settings = ({navigation, route}) => {
           alignContent: 'center',
           alignItems: 'center',
         }}>
-        <Text style={{fontSize: 30}}>Settings</Text>
+        <Text style={{fontSize: 2 * (winWidth / 30), color: 'white'}}>
+          Settings
+        </Text>
       </View>
       <View
         style={{
@@ -1196,120 +1247,142 @@ const Settings = ({navigation, route}) => {
           flexDirection: 'row',
           justifyContent: 'space-between',
         }}>
-        <Text style={{fontSize: 40, marginLeft: 20}}>Factor</Text>
-        <RectButton
-          width={'10%'}
-          fontSize={15}
-          handlePressDown={() => {}}
-          handlePressUp={() => {
+        <Text
+          style={{
+            fontSize: 2 * (winWidth / 30),
+            marginLeft: 50,
+            color: 'white',
+          }}>
+          Factor
+        </Text>
+        <TouchableOpacity
+          onPress={() => {
             setPickerModalText('Factor');
             setPickerModalVisible(true);
           }}
-          text={JSON.stringify(factor)}
-          {...{
-            fontSize: 40,
-            backgroundColor: '#1B1B1B',
-            paddingLeft: 20,
-            paddingRight: 20,
-            paddingTop: 10,
-            paddingBottom: 10,
-            borderRadius: 20,
-            marginRight: 20,
-            width: 'auto',
-            height: 'auto',
-            ...SHADOWS.extraDark,
-          }}
-        />
+          style={{
+            paddingVertical: '2%',
+            width: '15%',
+            backgroundColor: '#424242',
+            borderRadius: 2 * (winWidth / 10),
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: 50,
+          }}>
+          <Text
+            style={{
+              fontSize: 2 * (winWidth / 30),
+              width: 'auto',
+              height: 'auto',
+              color: 'white',
+              ...SHADOWS.extraDark,
+            }}>
+            {JSON.stringify(factor)}
+          </Text>
+        </TouchableOpacity>
       </View>
       <View
         style={{
-          marginTop: 10,
           backgroundColor: '#242424',
           width: '100%',
           height: '17%',
+          marginTop: '1%',
           alignItems: 'center',
           flexDirection: 'row',
           justifyContent: 'space-between',
         }}>
-        <Text style={{fontSize: 40, marginLeft: 20}}>Road Preset</Text>
-        <RectButton
-          width={'10%'}
-          fontSize={15}
-          handlePressDown={() => {}}
-          handlePressUp={() => {
+        <Text
+          style={{
+            fontSize: 2 * (winWidth / 30),
+            marginLeft: 50,
+            color: 'white',
+          }}>
+          Road Preset
+        </Text>
+        <TouchableOpacity
+          onPress={() => {
             setPickerModalText('Road Preset');
             setPickerModalVisible(true);
           }}
-          text={JSON.stringify(roadPreset)}
-          {...{
-            fontSize: 40,
-            backgroundColor: '#1B1B1B',
-            paddingLeft: 20,
-            paddingRight: 20,
-            paddingTop: 10,
-            paddingBottom: 10,
-            borderRadius: 20,
-            marginRight: 20,
-            width: 'auto',
-            height: 'auto',
-            ...SHADOWS.extraDark,
-          }}
-        />
+          style={{
+            paddingVertical: '2%',
+            width: '15%',
+            backgroundColor: '#424242',
+            borderRadius: 2 * (winWidth / 10),
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: 50,
+          }}>
+          <Text
+            style={{
+              fontSize: 2 * (winWidth / 30),
+              width: 'auto',
+              height: 'auto',
+              color: 'white',
+              ...SHADOWS.extraDark,
+            }}>
+            {JSON.stringify(roadPreset)}
+          </Text>
+        </TouchableOpacity>
       </View>
       <View
         style={{
-          marginTop: 10,
           backgroundColor: '#242424',
           width: '100%',
           height: '17%',
+          marginTop: '1%',
           borderBottomLeftRadius: 20,
           borderBottomRightRadius: 20,
           alignItems: 'center',
           flexDirection: 'row',
           justifyContent: 'space-between',
         }}>
-        <Text style={{fontSize: 40, marginLeft: 20}}>Trail Preset</Text>
-        <RectButton
-          width={'10%'}
-          fontSize={15}
-          handlePressDown={() => {}}
-          handlePressUp={() => {
+        <Text
+          style={{
+            fontSize: 2 * (winWidth / 30),
+            marginLeft: 50,
+            color: 'white',
+          }}>
+          Trail Preset
+        </Text>
+        <TouchableOpacity
+          onPress={() => {
             setPickerModalText('Trail Preset');
             setPickerModalVisible(true);
           }}
-          text={JSON.stringify(trailPreset)}
-          {...{
-            fontSize: 40,
-            backgroundColor: '#1B1B1B',
-            paddingLeft: 20,
-            paddingRight: 20,
-            paddingTop: 10,
-            paddingBottom: 10,
-            borderRadius: 20,
-            marginRight: 20,
-            width: 'auto',
-            height: 'auto',
-            ...SHADOWS.extraDark,
-          }}
-        />
+          style={{
+            paddingVertical: '2%',
+            width: '15%',
+            backgroundColor: '#424242',
+            borderRadius: 2 * (winWidth / 10),
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: 50,
+          }}>
+          <Text
+            style={{
+              fontSize: 2 * (winWidth / 30),
+              width: 'auto',
+              height: 'auto',
+              color: 'white',
+              ...SHADOWS.extraDark,
+            }}>
+            {JSON.stringify(trailPreset)}
+          </Text>
+        </TouchableOpacity>
       </View>
       <View
         style={{
           width: '100%',
           alignItems: 'center',
           justifyContent: 'center',
-          marginTop: 80,
+          marginTop: '15%',
         }}>
-        <Text style={{fontSize: 20}}>All units are measured in PSI</Text>
-        <Text style={{fontSize: 20}}>On Air Version 4.4</Text>
-        <Text
-          style={{
-            fontSize: 20,
-            position: 'absolute',
-            top: 55,
-            right: 235,
-          }}>
-          App By:
+        <Text style={{fontSize: 2 * (winWidth / 40), color: 'white'}}>
+          All units are measured in PSI
+        </Text>
+        <Text style={{fontSize: 2 * (winWidth / 40), color: 'white'}}>
+          On Air Version 4.4
         </Text>
         <Text
           onPress={() =>
@@ -1317,13 +1390,9 @@ const Settings = ({navigation, route}) => {
           }
           style={{
             color: '#2269B2',
-            fontSize: 20,
-            marginLeft: 50,
-            position: 'absolute',
-            top: 55,
-            right: 100,
+            fontSize: 2 * (winWidth / 40),
           }}>
-          KingOfTNT10
+          Code On Github
         </Text>
       </View>
     </SafeAreaView>

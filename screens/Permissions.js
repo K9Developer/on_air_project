@@ -1,11 +1,14 @@
 import {
   View,
   Text,
+  TouchableOpacity,
   Pressable,
   Platform,
   Modal,
   TouchableWithoutFeedback,
   Image,
+  SafeAreaView,
+  Dimensions,
 } from 'react-native';
 import React, {useEffect, useState} from 'react';
 import {
@@ -24,6 +27,7 @@ LogBox.ignoreLogs([
 ]);
 
 let permissionTimer = null;
+const winWidth = Dimensions.get('window').width;
 
 const Permissions = ({navigation, route}) => {
   const [locationPermission, setLocationPermission] = useState(null);
@@ -72,16 +76,6 @@ const Permissions = ({navigation, route}) => {
         setLocationPermission,
       );
       checkBluetooth(setBluetoothStatus);
-
-      // console.log(
-      //   '\n-------------------------------------------------\n' +
-      //     'Permission - BLUETOOTH_CONNECT:',
-      //   bluetoothConnectPermission + ', Permission - BLUETOOTH_SCAN:',
-      //   bluetoothScanPermission + ', Permission - ACCESS_FINE_LOCATION:',
-      //   locationPermission + ', Bluetooth Status:',
-      //   bluetoothStatus +
-      //     '\n-------------------------------------------------\n',
-      // );
     } else {
       checkPermission(
         PERMISSIONS.IOS.BLUETOOTH_PERIPHERAL,
@@ -122,140 +116,148 @@ const Permissions = ({navigation, route}) => {
   });
 
   return (
-    <View>
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => {
-          Alert.alert('Modal has been closed.');
-          setModalVisible(!modalVisible);
-        }}>
-        <TouchableWithoutFeedback
-          onPress={() => setModalVisible(!modalVisible)}>
-          <View
-            style={{
-              width: '100%',
-              height: '100%',
-              backgroundColor: 'rgba(0,0,0,0.5)',
-              flex: 1,
-              position: 'absolute',
-            }}></View>
-        </TouchableWithoutFeedback>
-        <View
-          style={{
-            flex: 1,
-            justifyContent: 'center',
-            alignItems: 'center',
-            marginTop: 22,
-          }}>
-          <View
-            style={{
-              width: '80%',
-              margin: 20,
-              backgroundColor: 'white',
-              borderRadius: 20,
-              alignItems: 'center',
-              shadowColor: '#000',
-              shadowOffset: {
-                width: 0,
-                height: 2,
-              },
-              shadowOpacity: 0.25,
-              shadowRadius: 4,
-              elevation: 5,
-              paddingTop: '5%',
-            }}>
-            <Image
-              source={
-                modalError
-                  ? require('../assets/icons/error.png')
-                  : require('../assets/icons/info.png')
-              }
-              style={{width: 90, height: 90, marginBottom: 20}}
-            />
-            <Text
-              style={{
-                color: '#6f7173',
-                paddingRight: 40,
-                paddingLeft: 40,
-                marginBottom: 20,
-                fontSize: 30,
-                fontWeight: 'bold',
-                textAlign: 'center',
-              }}>
-              {modalError ? 'Oh Snap!' : 'Info'}
-            </Text>
-            <Text
-              style={{
-                color: '#6f7173',
-                paddingRight: 40,
-                paddingLeft: 40,
-                fontSize: 15,
-                textAlign: 'center',
-              }}>
-              {modalText}
-            </Text>
-
-            <Pressable
-              style={{
-                borderBottomRightRadius: 20,
-                borderBottomLeftRadius: 20,
-                width: '100%',
-                padding: 20,
-                elevation: 2,
-                backgroundColor: modalError ? '#db4d4d' : '#2196F3',
-                marginTop: 30,
-                bottom: 0,
-              }}
-              onPress={() => {
-                setModalVisible(!modalVisible);
-                if (!modalError) {
-                  openSettings().catch(() =>
-                    console.warn('cannot open settings'),
-                  );
-                }
-              }}>
-              <Text
-                style={{
-                  color: 'white',
-                  fontSize: 20,
-                  textAlign: 'center',
-                }}>
-                {modalError ? 'Dismiss' : 'Ok'}
-              </Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-
+    <SafeAreaView
+      style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
       <View
         style={{
-          height: '100%',
-          alignItems: 'center',
-          justifyContent: 'center',
-          margin: 40,
+          width: '75%',
+          height: '75%',
         }}>
-        <Text
-          style={{
-            fontFamily: 'Inter-Bold',
-            fontSize: 20,
-            marginBottom: 25,
-            color: 'white',
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={modalVisible}
+          onRequestClose={() => {
+            Alert.alert('Modal has been closed.');
+            setModalVisible(!modalVisible);
           }}>
-          WE NEED SOME ACCESS
-        </Text>
-        <Text style={{textAlign: 'center', lineHeight: 25, marginBottom: 30}}>
-          Our app is using BLE (bluetooth low energy). Apps using that, require
-          location and bluetooth permission. Don't worry we dont share or store
-          your information.
-        </Text>
+          <TouchableWithoutFeedback
+            onPress={() => setModalVisible(!modalVisible)}>
+            <View
+              style={{
+                width: '100%',
+                height: '100%',
+                backgroundColor: 'rgba(0,0,0,0.5)',
+                flex: 1,
+                position: 'absolute',
+              }}></View>
+          </TouchableWithoutFeedback>
+          <View
+            style={{
+              flex: 1,
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginTop: 22,
+            }}>
+            <View
+              style={{
+                width: '80%',
+                margin: 20,
+                backgroundColor: 'white',
+                borderRadius: 2 * (winWidth / 25),
+                alignItems: 'center',
+                shadowColor: '#000',
+                shadowOffset: {
+                  width: 0,
+                  height: 2,
+                },
+                shadowOpacity: 0.25,
+                shadowRadius: 4,
+                elevation: 5,
+                paddingTop: '5%',
+              }}>
+              <Image
+                source={
+                  modalError
+                    ? require('../assets/icons/error.png')
+                    : require('../assets/icons/info.png')
+                }
+                style={{width: 90, height: 90, marginBottom: 20}}
+              />
+              <Text
+                style={{
+                  color: '#6f7173',
+                  paddingRight: 40,
+                  paddingLeft: 40,
+                  marginBottom: 20,
+                  fontSize: 30,
+                  fontWeight: 'bold',
+                  textAlign: 'center',
+                }}>
+                {modalError ? 'Oh Snap!' : 'Info'}
+              </Text>
+              <Text
+                style={{
+                  color: '#6f7173',
+                  paddingRight: 40,
+                  paddingLeft: 40,
+                  fontSize: 15,
+                  textAlign: 'center',
+                }}>
+                {modalText}
+              </Text>
+
+              <Pressable
+                style={{
+                  borderBottomRightRadius: 20,
+                  borderBottomLeftRadius: 20,
+                  width: '100%',
+                  padding: 20,
+                  elevation: 2,
+                  backgroundColor: modalError ? '#db4d4d' : '#2196F3',
+                  marginTop: 30,
+                  bottom: 0,
+                }}
+                onPress={() => {
+                  setModalVisible(!modalVisible);
+                  if (!modalError) {
+                    openSettings().catch(() =>
+                      console.warn('cannot open settings'),
+                    );
+                  }
+                }}>
+                <Text
+                  style={{
+                    color: 'white',
+                    fontSize: 20,
+                    textAlign: 'center',
+                  }}>
+                  {modalError ? 'Dismiss' : 'Ok'}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
 
         <View
           style={{
-            marginBottom: 10,
+            height: '100%',
+            alignItems: 'center',
+            justifyContent: 'center',
           }}>
-          <Pressable
+          <Text
+            style={{
+              fontFamily: 'Inter-Bold',
+              marginBottom: '10%',
+              color: 'white',
+              fontSize: 2 * (winWidth / 60),
+            }}>
+            WE NEED SOME ACCESS
+          </Text>
+          <Text
+            style={{
+              textAlign: 'center',
+              lineHeight: 2 * (winWidth / 60),
+              marginBottom: 30,
+              color: 'gray',
+              fontSize: 2 * (winWidth / 80),
+            }}>
+            Our app is using BLE (bluetooth low energy). Apps using that,
+            require location and bluetooth permission. Don't worry we dont share
+            or store your information.
+          </Text>
+
+          <TouchableOpacity
             onPress={() => {
               if (locationPermission != 'granted') {
                 if (locationPermission != 'blocked') {
@@ -284,32 +286,31 @@ const Permissions = ({navigation, route}) => {
             style={{
               backgroundColor:
                 locationPermission != 'granted' ? 'white' : 'gray',
-              borderRadius: 50,
+              borderRadius: 2 * (winWidth / 10),
               borderColor: 'black',
               borderWidth: locationPermission == 'granted' ? 0 : 2,
               shadowColor: '#000',
               shadowOffset: {width: -4, height: 4},
               shadowOpacity: 1,
               shadowRadius: 1,
+              width: '100%',
+              height: '8%',
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginBottom: '5%',
               elevation: locationPermission == 'granted' ? 0 : 2,
             }}>
             <Text
               style={{
                 color: locationPermission == 'granted' ? 'darkgrey' : 'black',
-                paddingHorizontal: 60,
-                paddingVertical: 20,
                 fontFamily: 'Inter-Bold',
+                fontSize: 2 * (winWidth / 60),
               }}>
               GRANT LOCATION ACCESS
             </Text>
-          </Pressable>
-        </View>
+          </TouchableOpacity>
 
-        <View
-          style={{
-            marginBottom: 10,
-          }}>
-          <Pressable
+          <TouchableOpacity
             onPress={() => {
               if (
                 bluetoothConnectPermission != 'granted' ||
@@ -323,7 +324,10 @@ const Permissions = ({navigation, route}) => {
                     requestMultiple([
                       PERMISSIONS.ANDROID.BLUETOOTH_CONNECT,
                       PERMISSIONS.ANDROID.BLUETOOTH_SCAN,
-                    ]).then(() => {
+                    ]).then(s => {
+                      setModalText(s);
+                      setModalError(false);
+                      setModalVisible(true);
                       checkAllPermissions();
                     });
                   } else {
@@ -348,7 +352,7 @@ const Permissions = ({navigation, route}) => {
                 bluetoothConnectPermission != 'granted'
                   ? 'white'
                   : 'gray',
-              borderRadius: 50,
+              borderRadius: 2 * (winWidth / 10),
               borderColor: 'black',
               borderWidth:
                 bluetoothScanPermission == 'granted' &&
@@ -359,6 +363,11 @@ const Permissions = ({navigation, route}) => {
               shadowOffset: {width: -4, height: 4},
               shadowOpacity: 1,
               shadowRadius: 1,
+              width: '100%',
+              height: '8%',
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginBottom: '5%',
               elevation:
                 bluetoothScanPermission == 'granted' &&
                 bluetoothConnectPermission == 'granted'
@@ -372,56 +381,60 @@ const Permissions = ({navigation, route}) => {
                   bluetoothConnectPermission == 'granted'
                     ? 'darkgrey'
                     : 'black',
-                paddingHorizontal: 55,
-                paddingVertical: 20,
+
                 fontFamily: 'Inter-Bold',
+                fontSize: 2 * (winWidth / 60),
               }}>
               GRANT BLUETOOTH ACCESS
             </Text>
-          </Pressable>
-        </View>
-        <Pressable
-          onPress={() => {
-            if (bluetoothStatus != 'granted') {
-              if (
-                bluetoothConnectPermission == 'granted' &&
-                bluetoothScanPermission == 'granted'
-              ) {
-                BluetoothStateManager.requestToEnable().catch(e => {
-                  console.log('error turning on bluetooth:', e);
-                });
-              } else {
-                setModalError(true);
-                setModalText(
-                  'You have to allow bluetooth permission before trying to turn on bluetooth!',
-                );
-                setModalVisible(true);
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              if (bluetoothStatus != 'granted') {
+                if (
+                  bluetoothConnectPermission == 'granted' &&
+                  bluetoothScanPermission == 'granted'
+                ) {
+                  BluetoothStateManager.requestToEnable().catch(e => {
+                    console.log('error turning on bluetooth:', e);
+                  });
+                } else {
+                  setModalError(true);
+                  setModalText(
+                    'You have to allow bluetooth permission before trying to turn on bluetooth!',
+                  );
+                  setModalVisible(true);
+                }
               }
-            }
-          }}
-          style={{
-            backgroundColor: bluetoothStatus == 'PoweredOn' ? 'grey' : 'white',
-            borderRadius: 50,
-            borderColor: 'black',
-            borderWidth: bluetoothStatus == 'PoweredOn' ? 0 : 2,
-            shadowColor: '#000',
-            shadowOffset: {width: -4, height: 4},
-            shadowOpacity: 1,
-            shadowRadius: 1,
-            elevation: bluetoothStatus == 'PoweredOn' ? 0 : 2,
-          }}>
-          <Text
+            }}
             style={{
-              color: bluetoothStatus == 'PoweredOn' ? 'darkgrey' : 'black',
-              paddingHorizontal: 80,
-              paddingVertical: 20,
-              fontFamily: 'Inter-Bold',
+              backgroundColor:
+                bluetoothStatus == 'PoweredOn' ? 'grey' : 'white',
+              borderRadius: 2 * (winWidth / 10),
+              borderColor: 'black',
+              borderWidth: bluetoothStatus == 'PoweredOn' ? 0 : 2,
+              shadowColor: '#000',
+              shadowOffset: {width: -4, height: 4},
+              shadowOpacity: 1,
+              shadowRadius: 1,
+              width: '100%',
+              height: '8%',
+              justifyContent: 'center',
+              alignItems: 'center',
+              elevation: bluetoothStatus == 'PoweredOn' ? 0 : 2,
             }}>
-            TURN ON BLUETOOTH
-          </Text>
-        </Pressable>
+            <Text
+              style={{
+                color: bluetoothStatus == 'PoweredOn' ? 'darkgrey' : 'black',
+                fontFamily: 'Inter-Bold',
+                fontSize: 2 * (winWidth / 60),
+              }}>
+              TURN ON BLUETOOTH
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 export default Permissions;

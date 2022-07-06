@@ -10,18 +10,14 @@ import {
   Animated,
   AppState,
   Vibration,
+  Dimensions,
 } from 'react-native';
 import {useState, useEffect, useRef} from 'react';
 
 import {check, PERMISSIONS} from 'react-native-permissions';
 import BluetoothStateManager from 'react-native-bluetooth-state-manager';
 
-import {
-  FocusedStatusBar,
-  CircleButton,
-  RectButton,
-  ImageRectButton,
-} from '../components';
+import {FocusedStatusBar, CircleButton, RectButton} from '../components';
 import {COLORS, SHADOWS} from '../constants';
 import React from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -46,6 +42,10 @@ const StatusIdMap = {
   4: 'Stand By',
 };
 const timerList = [];
+
+const winWidth = Dimensions.get('window').width;
+const winHeight = Dimensions.get('window').height;
+
 const Buffer = require('buffer').Buffer;
 Sound.setCategory('Playback');
 
@@ -251,32 +251,6 @@ const isValidData = data => {
         'x',
         'y',
         'z',
-        'A',
-        'B',
-        'C',
-        'D',
-        'E',
-        'F',
-        'G',
-        'H',
-        'I',
-        'J',
-        'K',
-        'L',
-        'M',
-        'N',
-        'O',
-        'P',
-        'Q',
-        'R',
-        'S',
-        'T',
-        'U',
-        'V',
-        'W',
-        'X',
-        'Y',
-        'Z',
         '1',
         '2',
         '3',
@@ -287,11 +261,9 @@ const isValidData = data => {
         '8',
         '9',
         '0',
-        '{',
-        '}',
+        '"',
         '[',
         ']',
-        ' ',
         '.',
         ',',
         '-',
@@ -610,7 +582,6 @@ const Home = ({navigation, route}) => {
           } catch (error) {}
         }
       } catch (error) {}
-      
     }
   };
 
@@ -709,6 +680,7 @@ const Home = ({navigation, route}) => {
       isValidData(data)
     ) {
       let dataArray = eval(data);
+      console.log(dataArray);
       handleStatusId(dataArray[1], dataArray[0]);
       setTirePressure(dataArray[2]);
     }
@@ -773,7 +745,7 @@ const Home = ({navigation, route}) => {
               width: '80%',
               margin: 20,
               backgroundColor: 'white',
-              borderRadius: 20,
+              borderRadius: 2 * (winWidth / 25),
               alignItems: 'center',
               shadowColor: '#000',
               shadowOffset: {
@@ -799,7 +771,7 @@ const Home = ({navigation, route}) => {
                 paddingRight: 40,
                 paddingLeft: 40,
                 marginBottom: 20,
-                fontSize: 30,
+                fontSize: 2 * (winWidth / 30),
                 fontWeight: 'bold',
                 textAlign: 'center',
               }}>
@@ -810,7 +782,7 @@ const Home = ({navigation, route}) => {
                 color: '#6f7173',
                 paddingRight: 40,
                 paddingLeft: 40,
-                fontSize: 15,
+                fontSize: 2 * (winWidth / 15),
                 textAlign: 'center',
               }}>
               {modalText}
@@ -831,7 +803,7 @@ const Home = ({navigation, route}) => {
               <Text
                 style={{
                   color: 'white',
-                  fontSize: 20,
+                  fontSize: 2 * (winWidth / 20),
                   textAlign: 'center',
                 }}>
                 {modalError ? 'Dismiss' : 'Ok'}
@@ -873,7 +845,6 @@ const Home = ({navigation, route}) => {
           }}>
           <Text
             style={{
-              fontSize: 15,
               color: 'white',
               // marginLeft: 10,
             }}>
@@ -882,7 +853,8 @@ const Home = ({navigation, route}) => {
           <Text
             style={{
               textDecorationLine: 'underline',
-              marginLeft: 25,
+              marginLeft: '5%',
+              color: 'white',
             }}
             onPress={() => {
               Animated.timing(dropAnim, {
@@ -915,7 +887,25 @@ const Home = ({navigation, route}) => {
           imgUrl={require('../assets/icons/cog.png')}
           handlePressDown={() => {}}
           handlePressUp={() => {
+            try {
+              MANAGER.isDeviceConnected(BT05_DEVICE.id).then(d => {
+                console.log('BEFORE LEAVE, CONNECTED 1 - ' + d);
+              });
+            } catch (err) {
+              console.log(
+                'Error checking connected before leave home 1 - ' + err,
+              );
+            }
             removeSubscriptions();
+            try {
+              MANAGER.isDeviceConnected(BT05_DEVICE.id).then(d => {
+                console.log('BEFORE LEAVE, CONNECTED 2 - ' + d);
+              });
+            } catch (err) {
+              console.log(
+                'Error checking connected before leave home 2 - ' + err,
+              );
+            }
             navigation.navigate('Settings', {
               device: BT05_DEVICE,
               serviceUUID: DEVICE_SERVICE_UUID,
@@ -924,8 +914,12 @@ const Home = ({navigation, route}) => {
               connectToDevice: false,
             });
           }}
-          size={[50, 50]}
-          {...{marginLeft: 10, marginTop: 10, backgroundColor: 'transparent'}}
+          size={[2 * (winWidth / 15), 2 * (winHeight / 15)]}
+          {...{
+            marginLeft: winWidth / 15,
+            marginTop: winWidth / 15,
+            backgroundColor: 'transparent',
+          }}
         />
         <CircleButton
           imgUrl={require('../assets/icons/aboutme.png')}
@@ -934,8 +928,12 @@ const Home = ({navigation, route}) => {
             removeSubscriptions();
             navigation.navigate('AboutMe');
           }}
-          size={[50, 50]}
-          {...{marginRight: 10, marginTop: 10, backgroundColor: 'transparent'}}
+          size={[2 * (winWidth / 15), 2 * (winWidth / 15)]}
+          {...{
+            marginRight: winWidth / 15,
+            marginTop: winWidth / 15,
+            backgroundColor: 'transparent',
+          }}
         />
       </View>
       <View
@@ -944,56 +942,44 @@ const Home = ({navigation, route}) => {
           alignItems: 'center',
         }}>
         {/* Logo */}
-
         <View
           style={{
             width: '100%',
-            position: 'relative',
+            height: '10%',
+            justifyContent: 'center',
             alignItems: 'center',
+            marginBottom: '10%',
+            marginTop: '2%',
           }}>
-          <ImageRectButton
-            handlePressDown={() => {}}
-            handlePressUp={() => {
+          <Pressable
+            style={{
+              width: '50%',
+              height: '100%',
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
+            onPress={() => {
               if (BT05_DEVICE != null) {
                 if (connected) {
                   console.log('Sending all data to the device');
                   sendAllData(wantedPsi, factor);
                 } else {
-                  // setModalError(true);
-                  // setModalText(
-                  //   'You are not connected to the device! to connect, please go to the settings page and click on the bluetooth icon. (device is not connected)',
-                  // );
-                  // setModalVisible(true);
                   dropIn();
                   setDropMessageText('You are not connected to the device.');
                   setDropMessageButtonText('Connect');
                 }
               } else {
-                // setModalError(true);
-                // setModalText(
-                //   'You have not connected tp the device the device! to connect, please go to the settings page and click on the bluetooth icon. (device is null)',
-                // );
-                // setModalVisible(true);
                 setDropMessageText('You are not connected to the device.');
                 setDropMessageButtonText('Connect');
                 dropIn();
               }
-            }}
-            img={require('../assets/icons/logo.png')}
-            size={[768 / 3, 260 / 3]}
-            {...{
-              marginBottom: 30,
-              backgroundColor: 'transparent',
-            }}
-          />
-          {/* <Image
-            source={require('../assets/icons/logo.png')}
-            style={{
-              width: 768 / 3,
-              height: 260 / 3,
-              marginBottom: 30,
-            }}
-          /> */}
+            }}>
+            <Image
+              source={require('../assets/icons/logo.png')}
+              resizeMode="center"
+              style={{width: '150%', height: '150%'}}
+            />
+          </Pressable>
         </View>
 
         {/* BODY */}
@@ -1009,21 +995,23 @@ const Home = ({navigation, route}) => {
             borderTopRightRadius: 20,
             alignItems: 'center',
             flexDirection: 'row',
+            justifyContent: 'space-between',
+            paddingHorizontal: '5%',
             ...SHADOWS.extraDark,
           }}>
-          <Text style={{fontSize: 40, marginLeft: 70}}>TIRE</Text>
+          <Text style={{fontSize: 2 * (winWidth / 30), color: 'white'}}>
+            TIRE
+          </Text>
           <Text
             style={{
-              fontSize: 50,
-              right: 30,
-              position: 'absolute',
-              marginRight: 20,
+              fontSize: 2 * (winWidth / 30),
               backgroundColor: '#1B1B1B',
-              paddingLeft: 20,
-              paddingRight: 20,
-              paddingTop: 0,
-              paddingBottom: 0,
-              borderRadius: 20,
+              paddingLeft: '7%',
+              paddingRight: '7%',
+              paddingTop: '2%',
+              paddingBottom: '2%',
+              borderRadius: 2 * (winWidth / 25),
+              color: 'white',
             }}>
             {tirePressure}
           </Text>
@@ -1032,36 +1020,41 @@ const Home = ({navigation, route}) => {
         {/* SET GROUP */}
         <View
           style={{
-            marginTop: 10,
+            marginTop: '2%',
             backgroundColor: '#242424',
             width: '100%',
             height: '25%',
-            flexDirection: 'row',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            paddingHorizontal: '5%',
             ...SHADOWS.extraDark,
           }}>
           {/* SET TEXT */}
           <View
             style={{
               width: '100%',
-              marginTop: 0,
-              justifyContent: 'center',
+
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexDirection: 'row',
               height: '50%',
+              color: 'white',
             }}>
-            <Text style={{fontSize: 40, marginLeft: 75, marginTop: 10}}>
+            <Text style={{fontSize: 2 * (winWidth / 30), color: 'white'}}>
               SET
             </Text>
             <Text
               style={{
-                fontSize: 50,
-                right: 30,
-                position: 'absolute',
-                marginRight: 20,
+                fontSize: 2 * (winWidth / 30),
                 backgroundColor: '#1B1B1B',
-                paddingLeft: 20,
-                paddingRight: 20,
-                paddingTop: 0,
-                paddingBottom: 0,
-                borderRadius: 20,
+                alignContent: 'center',
+                justifyContent: 'center',
+                paddingLeft: '7%',
+                paddingRight: '7%',
+                paddingTop: '2%',
+                paddingBottom: '2%',
+                borderRadius: 2 * (winWidth / 25),
+                color: 'white',
               }}>
               {wantedPsi}
             </Text>
@@ -1072,11 +1065,11 @@ const Home = ({navigation, route}) => {
             style={{
               position: 'relative',
               flexDirection: 'row',
-              marginTop: -10,
+              marginTop: '2%',
             }}>
             <RectButton
-              width={60}
-              fontSize={30}
+              width={'20%'}
+              fontSize={2 * (winWidth / 30)}
               handlePressDown={() => {
                 downPressPlus(wantedPsi, setWantedPsi);
               }}
@@ -1085,82 +1078,64 @@ const Home = ({navigation, route}) => {
               }}
               text={'+'}
               {...{
-                paddingBottom: 5,
                 backgroundColor: '#116AC1',
                 ...SHADOWS.dark,
-                position: 'absolute',
-                right: 100,
-                height: 50,
-                top: 120,
+                paddingBottom: 5,
+                marginRight: '2%',
               }}
             />
             <RectButton
-              width={60}
-              fontSize={30}
+              width={'20%'}
+              fontSize={2 * (winWidth / 30)}
               handlePressDown={() => {
                 downPressMinus(wantedPsi, setWantedPsi);
               }}
               handlePressUp={() => {
                 upPressMinus(wantedPsi, setWantedPsi);
-                // setData('@wantedPsi', wantedPsi.toString());
               }}
               text={'-'}
               {...{
-                paddingBottom: 5,
                 backgroundColor: '#116AC1',
                 ...SHADOWS.dark,
-                position: 'absolute',
-                right: 25,
-                height: 50,
-                top: 120,
+                paddingBottom: 5,
+                marginRight: '5%',
               }}
             />
             <RectButton
-              width={20}
-              fontSize={20}
+              width={'25%'}
+              fontSize={2 * (winWidth / 40)}
               handlePressUp={() => {
                 getData('@roadPreset')
                   .then(data => data)
                   .then(value => {
                     setWantedPsi(parseInt(JSON.parse(value)));
-                    // setData('@wantedPsi', wantedPsi.toString());
                   })
                   .catch(err => console.log(err));
               }}
               text={'Road'}
               {...{
-                paddingBottom: 4,
                 backgroundColor: '#489143',
                 ...SHADOWS.dark,
-                position: 'absolute',
-                right: 300,
-                height: 60,
-                top: 115,
-                width: 90,
+                paddingBottom: 5,
+                marginRight: '2%',
               }}
             />
             <RectButton
-              width={20}
-              fontSize={20}
+              width={'25%'}
+              fontSize={2 * (winWidth / 40)}
               handlePressUp={() => {
                 getData('@trailPreset')
                   .then(data => data)
                   .then(value => {
                     setWantedPsi(parseInt(value));
-                    // setData('@wantedPsi', wantedPsi.toString());
                   })
                   .catch(err => console.log(err));
               }}
               text={'Trail'}
               {...{
-                paddingBottom: 4,
                 backgroundColor: '#489143',
                 ...SHADOWS.dark,
-                position: 'absolute',
-                right: 200,
-                height: 60,
-                top: 115,
-                width: 90,
+                paddingBottom: 5,
               }}
             />
           </View>
@@ -1176,25 +1151,29 @@ const Home = ({navigation, route}) => {
             borderBottomRightRadius: 20,
             alignItems: 'center',
             flexDirection: 'row',
-            marginTop: 10,
+            justifyContent: 'space-between',
+            marginTop: '2%',
+            paddingHorizontal: '5%',
             ...SHADOWS.extraDark,
           }}>
-          <Text style={{fontSize: 40, marginLeft: 25}}>STATUS</Text>
+          <Text
+            adjustsFontSizeToFit
+            numberOfLines={1}
+            style={{fontSize: 2 * (winWidth / 30), color: 'white'}}>
+            STATUS
+          </Text>
           <Text
             adjustsFontSizeToFit
             style={{
-              fontSize: 25,
-              right: 0,
-              position: 'absolute',
-              marginRight: 20,
+              fontSize: 2 * (winWidth / 25),
               backgroundColor: '#1B1B1B',
-              paddingLeft: 20,
-              paddingRight: 20,
-              paddingTop: 0,
-              paddingBottom: 5,
-              borderRadius: 10,
+
+              paddingHorizontal: '6%',
+              paddingVertical: '2%',
+              borderRadius: 2 * (winWidth / 25),
               textAlign: 'center',
-              width: 200,
+              width: 'auto',
+              color: 'white',
             }}>
             {statusText}
           </Text>
@@ -1204,16 +1183,16 @@ const Home = ({navigation, route}) => {
           style={{
             width: '75%',
             height: '15%',
-            borderRadius: 30,
+            borderRadius: 2 * (winWidth / 16.666),
             borderColor: isDone ? '#2D9626' : '#545454',
-            borderWidth: 10,
-            marginTop: 50,
+            borderWidth: 2 * (winWidth / 80),
+            marginTop: '10%',
             alignItems: 'center',
             justifyContent: 'center',
           }}>
           <Text
             style={{
-              fontSize: 50,
+              fontSize: 2 * (winWidth / 20),
               color: isDone ? '#2D9626' : '#545454',
               fontWeight: 'bold',
             }}>

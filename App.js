@@ -65,7 +65,7 @@ const App = () => {
     <NavigationContainer theme={theme}>
       <Stack.Navigator
         screenOptions={{headerShown: false}}
-        initialRouteName="Permissions">
+        initialRouteName="Home">
         <Stack.Screen name="Permissions" component={Permissions} />
         <Stack.Screen name="Home" component={Home} />
         <Stack.Screen name="Settings" component={Details} />
