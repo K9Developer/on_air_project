@@ -150,6 +150,12 @@ const DeviceChooser = ({navigation, route}) => {
     } catch (error) {
       console.log('ERROR CONNECTING TO DEVICE [chooser]:', error);
     }
+    try {
+      await sendDeviceSignal(connectedDevice, 'Connected');
+      console.log('SENT Connected SIGNAL');
+    } catch (error) {
+      console.log('ERROR SENDING Connected:', error);
+    }
 
     navigation.navigate('Settings', {
       connectToDevice: true,
@@ -168,7 +174,6 @@ const DeviceChooser = ({navigation, route}) => {
   };
 
   const connectToDevice = async device => {
-    setLoadingConnection(true);
     try {
       if (!MANAGER) {
         createManager();
@@ -360,6 +365,7 @@ const DeviceChooser = ({navigation, route}) => {
           }}>
           <TouchableOpacity
             onPress={() => {
+              setLoadingConnection(true);
               transferToSettings(data);
             }}>
             <Text
@@ -429,6 +435,7 @@ const DeviceChooser = ({navigation, route}) => {
           ) : (
             <TouchableOpacity
               onPress={() => {
+                setLoadingConnection(true);
                 transferToSettings(data);
               }}>
               <Image

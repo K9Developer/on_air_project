@@ -5,6 +5,7 @@ import {
   Modal,
   Pressable,
   TouchableWithoutFeedback,
+  TouchableOpacity,
   Image,
   Platform,
   Animated,
@@ -969,7 +970,7 @@ const Home = ({navigation, route}) => {
             marginBottom: '10%',
             marginTop: '2%',
           }}>
-          <Pressable
+          <TouchableOpacity
             style={{
               width: '50%',
               height: '100%',
@@ -979,6 +980,9 @@ const Home = ({navigation, route}) => {
             onPress={() => {
               if (BT05_DEVICE != null) {
                 if (connected) {
+                  if (isDone) {
+                    setIsDone(false);
+                  }
                   console.log('Sending all data to the device');
                   sendAllData(wantedPsi, factor);
                 } else {
@@ -997,7 +1001,7 @@ const Home = ({navigation, route}) => {
               resizeMode="center"
               style={{width: winWidth / 1.7, height: winWidth / 5}}
             />
-          </Pressable>
+          </TouchableOpacity>
         </View>
 
         {/* BODY */}
