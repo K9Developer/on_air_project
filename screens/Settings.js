@@ -25,9 +25,9 @@ const Buffer = require('buffer').Buffer;
 const winWidth = Dimensions.get('window').width;
 
 const MIN_FACTOR = 3;
-// const MAX_FACTOR = 10;
 const MIN_PRESET = 3;
-// const MAX_PRESET = 50;
+const startChar = '~';
+const endChar = '^';
 let scannedDevices = [];
 const PRESET_OPTIONS = Array(48)
   .fill(3)
@@ -42,6 +42,7 @@ let DEVICE_CHARACTERISTICS_UUID = null;
 let MANAGER = null;
 let scanTimer = null;
 let onDisconnectEvent = null;
+let readMonitor = null;
 
 console.log('Set onDisconnectEvent [setup]');
 
@@ -231,23 +232,45 @@ const Settings = ({navigation, route}) => {
   const onDeviceDisconnect = (error, device) => {
     console.log('REACHED DISCONNECT');
 
+    if (readMonitor) {
+      readMonitor.remove();
+      readMonitor = null;
+    }
+
+    if (onDisconnectEvent) {
+      onDisconnectEvent.remove();
+      onDisconnectEvent = null;
+    }
+
     if (error) {
       console.log(console.log('On device disconnect error: ', err));
     } else {
-      // if (isMountedRef.current === true) {
-      console.log('Start dropIn();');
       dropIn();
-      console.log('End dropIn();');
-      console.log('Device disconnected: ' + device.id);
-      console.log('Start SetStatus');
-      console.log('SetStatus - ' + JSON.stringify(setStatusText));
       setStatusText('Device has been disconnected');
-      console.log('End SetStatus');
-      console.log('Start Icon change');
       setBluetoothImageId(3);
-      console.log('End Icon change');
       BT05_DEVICE = null;
-      // }
+    }
+  };
+
+  const monitorDeviceData = (error, data) => {
+    if (error) {
+      setModalError(true);
+      setModalText(getErrorText(error));
+      setModalVisible(true);
+      return null;
+    }
+    data = Buffer.from(data.value, 'base64').toString();
+    data = data.substring(data.indexOf(startChar) + 1, data.indexOf(endChar));
+    if (data.includes('alive')) {
+      console.log('Asking for connection status');
+      let x = 0;
+      let timer = setInterval(() => {
+        x++;
+        sendDeviceSignal('yes');
+        if (x == 5) {
+          clearInterval(timer);
+        }
+      }, 170);
     }
   };
 
@@ -255,6 +278,19 @@ const Settings = ({navigation, route}) => {
     console.log('ROUTE: ' + JSON.stringify(route));
     console.log('ROUTE DEVICE: ' + JSON.stringify(route.params.device));
     navigation.addListener('focus', () => {
+      if (readMonitor) {
+        readMonitor.remove();
+        readMonitor = null;
+      }
+
+      if (onDisconnectEvent) {
+        onDisconnectEvent.remove();
+        onDisconnectEvent = null;
+      }
+
+      console.log("Gained Foucs")
+      console.log("ROUTE: " + JSON.stringify(route));
+
       if (
         route != null &&
         route != undefined &&
@@ -270,6 +306,23 @@ const Settings = ({navigation, route}) => {
           console.log('--->> DEVICE CHECK 1: ' + BT05_DEVICE);
           MANAGER = route.params.manager;
           console.log('--->> DEVICE CHECK 2: ' + BT05_DEVICE);
+
+          MANAGER.isDeviceConnected(BT05_DEVICE.id).then(isConnected => {
+            if (isConnected) {
+              console.log('Device is connect so setting events');
+              onDisconnectEvent = MANAGER.onDeviceDisconnected(
+                BT05_DEVICE.id,
+                onDeviceDisconnect,
+              );
+              readMonitor = MANAGER.monitorCharacteristicForDevice(
+                BT05_DEVICE.id,
+                'FFE0',
+                'FFE1',
+                monitorDeviceData,
+              );
+            }
+          });
+
           DEVICE_SERVICE_UUID = route.params.serviceUUID;
           DEVICE_CHARACTERISTICS_UUID = route.params.characteristicsUUID;
         }
@@ -321,6 +374,15 @@ const Settings = ({navigation, route}) => {
                 onDisconnectEvent = MANAGER.onDeviceDisconnected(
                   BT05_DEVICE.id,
                   onDeviceDisconnect,
+                );
+              }
+
+              if (!readMonitor) {
+                readMonitor = MANAGER.monitorCharacteristicForDevice(
+                  BT05_DEVICE.id,
+                  'FFE0',
+                  'FFE1',
+                  monitorDeviceData,
                 );
               }
               setBluetoothImageId(2);
@@ -392,6 +454,12 @@ const Settings = ({navigation, route}) => {
                         onDisconnectEvent = MANAGER.onDeviceDisconnected(
                           BT05_DEVICE.id,
                           onDeviceDisconnect,
+                        );
+                        readMonitor = MANAGER.monitorCharacteristicForDevice(
+                          BT05_DEVICE.id,
+                          'FFE0',
+                          'FFE1',
+                          monitorDeviceData,
                         );
                       } else {
                         setBluetoothImageId(3);
@@ -512,7 +580,7 @@ const Settings = ({navigation, route}) => {
           setStatusText('An Error occurred');
         }
 
-        if (device !== 'null') {
+        if (device && device !== 'null') {
           console.log('Found Device Name: ' + device.name);
           if (device.name === 'BT05') {
             let push = true;
@@ -632,9 +700,15 @@ const Settings = ({navigation, route}) => {
     );
   };
   const exitApp = () => {
-    try {
+    if (readMonitor) {
+      readMonitor.remove();
+      readMonitor = null;
+    }
+
+    if (onDisconnectEvent) {
       onDisconnectEvent.remove();
-    } catch {}
+      onDisconnectEvent = null;
+    }
     clearTimeout(scanTimer);
     scannedDevices = [];
     console.log('Exit app');
@@ -846,7 +920,6 @@ const Settings = ({navigation, route}) => {
                   flex: 1,
                   width: '100%',
                 }}
-                initialIndex={11}
                 data={
                   pickerModalText == 'Factor' ? FACTOR_OPTIONS : PRESET_OPTIONS
                 }

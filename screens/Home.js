@@ -581,7 +581,7 @@ const Home = ({navigation, route}) => {
     let base64Signal = Buffer.from(startChar + signal + endChar).toString(
       'base64',
     );
-    console.log(base64Signal + ' - ' + (base64Signal.length + 3));
+    // console.log(base64Signal + ' - ' + (base64Signal.length + 3));
     return MANAGER.writeCharacteristicWithoutResponseForDevice(
       BT05_DEVICE.id,
       'FFE0',
@@ -690,6 +690,17 @@ const Home = ({navigation, route}) => {
         data[0] == '[' &&
         isValidData(data),
     );
+    console.log(
+      '[DATA CHECK] Is sent by device: ' +
+        allMessagesSentByDevice.includes(data),
+    );
+    console.log('[DATA CHECK] Is empty: ' + data == '~^');
+    console.log(
+      '[DATA CHECK] Is "Data Was Read": ' + data == '~DATA WAS READ^',
+    );
+    console.log('[DATA CHECK] Is first letter "[": ' + data[0] == '[');
+    console.log('[DATA CHECK] Is valid: ' + isValidData(data));
+
     if (
       !allMessagesSentByDevice.includes(data) &&
       data != '~^' &&
@@ -697,10 +708,22 @@ const Home = ({navigation, route}) => {
       data[0] == '[' &&
       isValidData(data)
     ) {
-      let dataArray = eval(data);
-      console.log(dataArray);
-      handleStatusId(dataArray[1], dataArray[0]);
-      setTirePressure(dataArray[2]);
+      if (data.includes('alive')) {
+        console.log('Asking for connection status');
+        let x = 0;
+        let timer = setInterval(() => {
+          x++;
+          sendDeviceSignal('yes');
+          if (x == 5) {
+            clearInterval(timer);
+          }
+        }, 170);
+      } else {
+        let dataArray = eval(data);
+        console.log(dataArray);
+        handleStatusId(dataArray[1], dataArray[0]);
+        setTirePressure(dataArray[2]);
+      }
     }
   };
 

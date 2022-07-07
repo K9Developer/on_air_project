@@ -26,8 +26,8 @@ LogBox.ignoreLogs([
   'Non-serializable values were found in the navigation state',
 ]);
 
-let permissionTimer = null;
 const winWidth = Dimensions.get('window').width;
+let permissionTimer = null;
 
 const Permissions = ({navigation, route}) => {
   const [locationPermission, setLocationPermission] = useState(null);
@@ -76,6 +76,16 @@ const Permissions = ({navigation, route}) => {
         setLocationPermission,
       );
       checkBluetooth(setBluetoothStatus);
+
+      // console.log(
+      //   '\n-------------------------------------------------\n' +
+      //     'Permission - BLUETOOTH_CONNECT:',
+      //   bluetoothConnectPermission + ', Permission - BLUETOOTH_SCAN:',
+      //   bluetoothScanPermission + ', Permission - ACCESS_FINE_LOCATION:',
+      //   locationPermission + ', Bluetooth Status:',
+      //   bluetoothStatus +
+      //     '\n-------------------------------------------------\n',
+      // );
     } else {
       checkPermission(
         PERMISSIONS.IOS.BLUETOOTH_PERIPHERAL,
@@ -89,7 +99,18 @@ const Permissions = ({navigation, route}) => {
     }
   };
 
+  // Run every update
   useEffect(() => {
+    checkAllPermissions();
+    if (
+      locationPermission == 'granted' &&
+      bluetoothStatus == 'PoweredOn' &&
+      bluetoothConnectPermission == 'granted' &&
+      bluetoothScanPermission == 'granted'
+    ) {
+      clearInterval(permissionTimer);
+      navigation.dispatch(StackActions.replace('Home'));
+    }
     permissionTimer = setInterval(() => {
       checkAllPermissions();
       if (
@@ -102,7 +123,7 @@ const Permissions = ({navigation, route}) => {
         navigation.dispatch(StackActions.replace('Home'));
       }
     }, 500);
-  }, []);
+  });
 
   return (
     <SafeAreaView
@@ -313,9 +334,6 @@ const Permissions = ({navigation, route}) => {
                       PERMISSIONS.ANDROID.BLUETOOTH_CONNECT,
                       PERMISSIONS.ANDROID.BLUETOOTH_SCAN,
                     ]).then(s => {
-                      setModalText(s);
-                      setModalError(false);
-                      setModalVisible(true);
                       checkAllPermissions();
                     });
                   } else {
