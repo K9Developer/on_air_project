@@ -58,15 +58,11 @@ const getData = async key => {
 };
 
 const getErrorText = error => {
-  console.log('error from getErrorText: ' + error);
+  if (error.reason == null) {
+    return null;
+  }
 
-  console.log('-----------------------------------------------------');
-  console.log('Caller of getErrorText: ' + JSON.stringify(getErrorText.caller));
-  console.log('-----------------------------------------------------');
-
-  console.log('Error reason: ' + error.reason);
-
-  if (!error.reason) {
+  if (error.errorCode == 201) {
     return null;
   }
 
@@ -86,7 +82,7 @@ const getErrorText = error => {
     104: 'BluetoothLE is resetting',
     105: 'Bluetooth state change failed',
     200: 'Device connection failed',
-    201: 'Device was disconnected',
+    201: 'Device was disconnected, please go to the settings page and reconnect.',
     202: 'RSSI read failed for device',
     203: 'Device is already connected',
     204: 'Device not found',
@@ -173,7 +169,7 @@ const playConnectedSound = () => {
 const storeData = async () => {
   if (!JSON.parse(await AsyncStorage.getItem('@factor'))) {
     try {
-      await AsyncStorage.setItem('@factor', JSON.stringify(3.2));
+      await AsyncStorage.setItem('@factor', JSON.stringify(3.5));
     } catch (error) {
       console.log('ERROR SAVING FACTOR', error);
     }
@@ -221,7 +217,7 @@ const Settings = ({navigation, route}) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [modalError, setModalError] = useState(false);
   const [modalText, setModalText] = useState('N/A');
-  const [statusText, setStatusText] = useState('Idle');
+  const [statusText, setStatusText] = useState('ERROR, Please report!');
   const [startScan, setStartScan] = useState(false);
   const [pickerModalVisible, setPickerModalVisible] = useState(false);
   const [pickerModalText, setPickerModalText] = useState('N/A');
@@ -254,9 +250,11 @@ const Settings = ({navigation, route}) => {
 
   const monitorDeviceData = (error, data) => {
     if (error) {
-      setModalError(true);
-      setModalText(getErrorText(error));
-      setModalVisible(true);
+      if (error.errorCode != 0) {
+        setModalError(true);
+        setModalText(getErrorText(error));
+        setModalVisible(true);
+      }
       return null;
     }
     data = Buffer.from(data.value, 'base64').toString();
@@ -288,8 +286,8 @@ const Settings = ({navigation, route}) => {
         onDisconnectEvent = null;
       }
 
-      console.log("Gained Foucs")
-      console.log("ROUTE: " + JSON.stringify(route));
+      console.log('Gained Foucs');
+      console.log('ROUTE: ' + JSON.stringify(route));
 
       if (
         route != null &&
@@ -539,6 +537,7 @@ const Settings = ({navigation, route}) => {
   };
 
   const scanForDevice = async manager => {
+    console.log('Scan func');
     setStatusText('Scanning for devices... (Found: 0)');
 
     scanTimer = setTimeout(() => {
@@ -588,7 +587,7 @@ const Settings = ({navigation, route}) => {
             for (let bt of scannedDevices) {
               if (
                 bt.id == device.id ||
-                (BT05_DEVICE &&
+                (BT05_DEVICE != null &&
                   BT05_DEVICE.hasOwnProperty('id') &&
                   device.id == BT05_DEVICE.id)
               ) {
@@ -640,6 +639,15 @@ const Settings = ({navigation, route}) => {
 
   const resetBluetoothData = async () => {
     console.log('CREATING BLE MANAGER [connect btn]');
+    if (readMonitor) {
+      readMonitor.remove();
+      readMonitor = null;
+    }
+
+    if (onDisconnectEvent) {
+      onDisconnectEvent.remove();
+      onDisconnectEvent = null;
+    }
     if (MANAGER === null) {
       MANAGER = new BleManager();
       console.log('CREATED BLE MANAGER [connect btn]');
@@ -662,18 +670,21 @@ const Settings = ({navigation, route}) => {
     createManager();
     resetBluetoothData();
     if (MANAGER !== null) {
-      MANAGER.state().then(state => {
-        console.log('MANAGER STATUS: ' + state);
-      });
-
       console.log('SCANNING FOR DEVICE');
-
-      const subscription = MANAGER.onStateChange(state => {
-        if (state === 'PoweredOn') {
-          scanForDevice(MANAGER);
-          subscription.remove();
-        }
-      }, true);
+      console.log('Current manager: ' + MANAGER);
+      try {
+        const subscription = MANAGER.onStateChange(state => {
+          if (state === 'PoweredOn') {
+            scanForDevice(MANAGER);
+            subscription.remove();
+          }
+        }, true);
+      } catch {
+        console.log(
+          'Error subscribing to state change, manager: ' +
+            JSON.stringify(MANAGER),
+        );
+      }
     }
   };
 

@@ -281,7 +281,7 @@ const isValidData = data => {
 const storeData = async () => {
   if (!JSON.parse(await AsyncStorage.getItem('@factor'))) {
     try {
-      await AsyncStorage.setItem('@factor', JSON.stringify(3.2));
+      await AsyncStorage.setItem('@factor', JSON.stringify(3.5));
     } catch (error) {
       console.log('ERROR SAVING FACTOR', error);
     }
@@ -550,7 +550,7 @@ const Home = ({navigation, route}) => {
   const exitApp = () => {
     // console.log('Wanted PSI: ' + wantedPsi);
     // setData('@wantedPsi', wantedPsi.toString());
-
+    console.log('exit APp');
     if (disconnectMonitor) {
       disconnectMonitor.remove();
       setDisconnectMonitor(null);
@@ -1000,8 +1000,18 @@ const Home = ({navigation, route}) => {
               justifyContent: 'center',
               alignItems: 'center',
             }}
-            onPress={() => {
+            onPress={async () => {
               if (BT05_DEVICE != null) {
+                try {
+                  let d = await MANAGER.isDeviceConnected(BT05_DEVICE.id);
+                  if (!d) {
+                    console.log('BT05_DEVICE is not connected');
+                    setConnected(false);
+                  }
+                } catch (err) {
+                  console.log('Error checking connected - ' + err);
+                }
+
                 if (connected) {
                   if (isDone) {
                     setIsDone(false);
@@ -1009,14 +1019,18 @@ const Home = ({navigation, route}) => {
                   console.log('Sending all data to the device');
                   sendAllData(wantedPsi, factor);
                 } else {
-                  dropIn();
-                  setDropMessageText('You are not connected to the device.');
-                  setDropMessageButtonText('Connect');
+                  if (!JSON.parse(JSON.stringify(dropAnim))) {
+                    dropIn();
+                    setDropMessageText('You are not connected to the device.');
+                    setDropMessageButtonText('Connect');
+                  }
                 }
               } else {
-                setDropMessageText('You are not connected to the device.');
-                setDropMessageButtonText('Connect');
-                dropIn();
+                if (!JSON.parse(JSON.stringify(dropAnim))) {
+                  setDropMessageText('You are not connected to the device.');
+                  setDropMessageButtonText('Connect');
+                  dropIn();
+                }
               }
             }}>
             <Image

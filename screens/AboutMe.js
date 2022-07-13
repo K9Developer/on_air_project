@@ -1,7 +1,15 @@
 import React from 'react';
-import {Text, View, ScrollView, SafeAreaView, Dimensions} from 'react-native';
+import {
+  Text,
+  View,
+  ScrollView,
+  SafeAreaView,
+  Dimensions,
+  Platform,
+} from 'react-native';
 import {CircleButton} from '../components';
 import {Linking} from 'react-native';
+import DeviceInfo from 'react-native-device-info';
 import email from 'react-native-email';
 
 const winWidth = Dimensions.get('window').width;
@@ -17,7 +25,11 @@ const AboutMe = ({navigation}) => {
             navigation.navigate('Home');
           }}
           size={[winWidth / 15, winWidth / 15]}
-          {...{marginLeft: winWidth / 15, marginTop: winWidth / 15, backgroundColor: 'transparent'}}
+          {...{
+            marginLeft: winWidth / 15,
+            marginTop: winWidth / 15,
+            backgroundColor: 'transparent',
+          }}
         />
         <View
           style={{
@@ -89,9 +101,15 @@ const AboutMe = ({navigation}) => {
                 imgUrl={require('../assets/icons/email.png')}
                 handlePressDown={() => {}}
                 handlePressUp={() => {
+                  let os = Platform.OS;
+                  let osVersion = Platform.Version;
+                  let brand = DeviceInfo.getBrand();
+                  let deviceId = DeviceInfo.getDeviceId();
+                  let model = DeviceInfo.getModel();
+
                   email('ilai.keinan@gmail.com', {
                     subject: '--+=Feedback about OnAir App=+--',
-                    body: 'My experience using the app (out of 10):\n\n\nOther notes:\n\n',
+                    body: `\n─────────────────────────────\n\nMy experience with the app [0-10]:\n\n─────────────────────────────\n\n\n\n─────────────────────────────\n\nHow many bugs did you find [0 - ∞]:\n\n─────────────────────────────\n\n\n\n─────────────────────────────\n\nOther notes (the bugs/feedback):\n\n─────────────────────────────\n\n\n\n─────────────────────────────\n\nSystem info (for developer):\n\n    OS: ${os}\n    OS Version: ${osVersion}\n    Device Brand: ${brand}\n    Device ID: ${deviceId}\n    Device Model: ${model}\n\n─────────────────────────────`,
                     checkCanOpen: false,
                   }).catch(console.error);
                 }}

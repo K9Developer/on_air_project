@@ -101,16 +101,16 @@ const Permissions = ({navigation, route}) => {
 
   // Run every update
   useEffect(() => {
-    checkAllPermissions();
-    if (
-      locationPermission == 'granted' &&
-      bluetoothStatus == 'PoweredOn' &&
-      bluetoothConnectPermission == 'granted' &&
-      bluetoothScanPermission == 'granted'
-    ) {
-      clearInterval(permissionTimer);
-      navigation.dispatch(StackActions.replace('Home'));
-    }
+    // checkAllPermissions();
+    // if (
+    //   locationPermission == 'granted' &&
+    //   bluetoothStatus == 'PoweredOn' &&
+    //   bluetoothConnectPermission == 'granted' &&
+    //   bluetoothScanPermission == 'granted'
+    // ) {
+    //   clearInterval(permissionTimer);
+    //   navigation.dispatch(StackActions.replace('Home'));
+    // }
     permissionTimer = setInterval(() => {
       checkAllPermissions();
       if (
