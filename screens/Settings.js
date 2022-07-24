@@ -511,7 +511,7 @@ const Settings = ({navigation, route}) => {
   useEffect(() => {
     AppState.addEventListener('change', currentState => {
       if (currentState === 'background') {
-        exitApp();
+        // exitApp();
       }
     });
   }, []);

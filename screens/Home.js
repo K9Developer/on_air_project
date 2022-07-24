@@ -14,7 +14,7 @@ import {
   Dimensions,
 } from 'react-native';
 import {useState, useEffect, useRef} from 'react';
-
+import ValuePicker from 'react-native-picker-horizontal';
 import {check, PERMISSIONS} from 'react-native-permissions';
 import BluetoothStateManager from 'react-native-bluetooth-state-manager';
 
@@ -33,6 +33,9 @@ let DEVICE_CHARACTERISTICS_UUID = null;
 let MIN_FACTOR = 3;
 const MAX_PSI = 50;
 const MIN_PSI = 3;
+const PSI_OPTIONS = Array(48)
+  .fill(3)
+  .map((x, y) => x + y);
 const startChar = '~';
 const endChar = '^';
 const StatusIdMap = {
@@ -49,6 +52,24 @@ const winHeight = Dimensions.get('window').height;
 
 const Buffer = require('buffer').Buffer;
 Sound.setCategory('Playback');
+
+const renderItem = (item, index) => {
+  return (
+    <Text
+      adjustsFontSizeToFit
+      numberOfLines={1}
+      style={{
+        width: winWidth / 5.1,
+        fontSize: winWidth / 20,
+        textAlign: 'center',
+        justifyContent: 'center',
+        alignItems: 'center',
+        color: 'black',
+      }}>
+      {item}
+    </Text>
+  );
+};
 
 const playDoneSound = () => {
   let beep = new Sound('beep_long.mp3', Sound.MAIN_BUNDLE, error => {
@@ -111,12 +132,14 @@ const downPressPlus = (currentCounter, setCounter) => {
 };
 
 const upPressPlus = (currentCounter, setCounter) => {
-  if (currentCounter < MAX_PSI) {
+  if (currentCounter <= MAX_PSI) {
     clearInterval(timer);
     clearTimeout(waitTimer);
     timer = null;
     waitTimer = null;
-    setCounter(counter => counter + 1);
+    if (currentCounter < MAX_PSI) {
+      setCounter(counter => counter + 1);
+    }
   }
 };
 
@@ -133,11 +156,13 @@ const downPressMinus = (currentCounter, setCounter) => {
 };
 
 const upPressMinus = (currentCounter, setCounter) => {
-  if (currentCounter > MIN_PSI) {
+  if (currentCounter >= MIN_PSI) {
     clearInterval(timer);
     clearTimeout(waitTimer);
     timer = null;
-    setCounter(counter => counter - 1);
+    if (currentCounter > MIN_PSI) {
+      setCounter(counter => counter - 1);
+    }
     waitTimer = null;
   }
 };
@@ -341,6 +366,8 @@ const Home = ({navigation, route}) => {
   const [dropMessageButtonText, setDropMessageButtonText] =
     useState('Reconnect');
   const [allMessagesSentByDevice, setAllMessagesSentByDevice] = useState([]);
+  const [pickerModalVisible, setPickerModalVisible] = useState(false);
+  const [psiIndex, setPsiIndex] = useState(0);
   const dropAnim = useRef(new Animated.Value(0)).current;
 
   const onDeviceDisconnect = (error, device) => {
@@ -354,14 +381,21 @@ const Home = ({navigation, route}) => {
         disconnectMonitor.remove();
         setDisconnectMonitor(null);
       }
-
+      for (timer of timerList) {
+        clearInterval(timer);
+      }
+      setStatusText('Stand By');
       if (readMonitor) {
         readMonitor.remove();
         setReadMonitor(null);
       }
       console.log('Device disconnected: ' + device.id);
       setConnected(false);
-
+      if (Platform.OS === 'android') {
+        Vibration.vibrate([200, 200, 200, 500]);
+      } else {
+        Vibration.vibrate([200, 500]);
+      }
       removeSubscriptions();
       setDropMessageText('You have disconnected from the device.');
       setDropMessageButtonText('Reconnect');
@@ -371,6 +405,9 @@ const Home = ({navigation, route}) => {
 
   useEffect(() => {
     return navigation.addListener('focus', () => {
+      if (BT05_DEVICE && MANAGER) {
+        sendDeviceSignal('home');
+      }
       console.log('navigation focus');
       if (Platform.OS === 'android' && Platform.Version <= 19) {
         setModalError(true);
@@ -569,7 +606,7 @@ const Home = ({navigation, route}) => {
   useEffect(() => {
     AppState.addEventListener('change', currentState => {
       if (currentState === 'background') {
-        exitApp();
+        // exitApp();
       }
     });
     setInterval(() => {
@@ -640,6 +677,8 @@ const Home = ({navigation, route}) => {
   };
 
   const handleStatusId = async (startTime, statusId) => {
+    console.log('Called handleStatusId');
+    console.log(statusId, startTime);
     startTime -= 1;
     for (timer of timerList) {
       clearInterval(timer);
@@ -652,7 +691,9 @@ const Home = ({navigation, route}) => {
       return;
     }
     let x = 0;
-
+    setStatusText(
+      `${StatusIdMap[statusId]}: ${startTime - x >= 0 ? startTime - x : 0}s`,
+    );
     timerList.push(
       setInterval(() => {
         setStatusText(
@@ -682,25 +723,7 @@ const Home = ({navigation, route}) => {
     if (data != 'SUCCESS CONNECT') {
       data = data.substring(data.indexOf(startChar) + 1, data.indexOf(endChar));
     }
-    console.log(
-      data,
-      '- ' + !allMessagesSentByDevice.includes(data) &&
-        data != '~^' &&
-        data != '~DATA WAS READ^' &&
-        data[0] == '[' &&
-        isValidData(data),
-    );
-    console.log(
-      '[DATA CHECK] Is sent by device: ' +
-        allMessagesSentByDevice.includes(data),
-    );
-    console.log('[DATA CHECK] Is empty: ' + data == '~^');
-    console.log(
-      '[DATA CHECK] Is "Data Was Read": ' + data == '~DATA WAS READ^',
-    );
-    console.log('[DATA CHECK] Is first letter "[": ' + data[0] == '[');
-    console.log('[DATA CHECK] Is valid: ' + isValidData(data));
-
+    console.log(data);
     if (
       !allMessagesSentByDevice.includes(data) &&
       data != '~^' &&
@@ -755,6 +778,134 @@ const Home = ({navigation, route}) => {
     <SafeAreaView style={{flex: 1}}>
       <FocusedStatusBar backgroundColor={COLORS.primary} />
 
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalText == null ? false : pickerModalVisible}
+        onRequestClose={() => {
+          setPickerModalVisible(!pickerModalVisible);
+        }}>
+        <TouchableWithoutFeedback
+          onPress={() => setPickerModalVisible(!pickerModalVisible)}>
+          <View
+            style={{
+              width: '100%',
+              height: '100%',
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              flex: 1,
+              position: 'absolute',
+            }}></View>
+        </TouchableWithoutFeedback>
+        <View
+          style={{
+            width: '100%',
+            height: '100%',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}>
+          <View
+            style={{
+              backgroundColor: 'white',
+              borderRadius: 2 * (winWidth / 25),
+              flex: 1,
+              width: '80%',
+              maxHeight: '40%',
+              position: 'relative',
+            }}>
+            <View style={{alignItems: 'center'}}>
+              <Text
+                style={{
+                  color: 'black',
+                  fontSize: 2 * (winWidth / 25),
+                  fontWeight: 'bold',
+                  paddingVertical: '5%',
+                }}>
+                Set PSI
+              </Text>
+            </View>
+
+            <View style={{flex: 1}}>
+              <ValuePicker
+                style={{
+                  textAlign: 'center',
+                  flex: 1,
+                  width: '100%',
+                }}
+                data={PSI_OPTIONS}
+                renderItem={renderItem}
+                itemWidth={winWidth / 5.1}
+                mark={
+                  <View
+                    style={{
+                      aspectRatio: 1,
+                      width: '25%',
+                      paddingHorizontal: 25,
+                      borderWidth: winWidth / 270,
+                      borderLeftColor: '#6f7173',
+                      borderRightColor: '#6f7173',
+                      borderRadius: 2 * (winWidth / 50),
+                    }}></View>
+                }
+                onChange={index => {
+                  setPsiIndex(index);
+                }}
+              />
+            </View>
+            <View
+              style={{
+                marginTop: 30,
+              }}>
+              <View style={{flexDirection: 'row'}}>
+                <Pressable
+                  style={{
+                    borderBottomLeftRadius: 20,
+                    paddingVertical: '5%',
+                    width: '50%',
+                    padding: 20,
+                    elevation: 2,
+                    backgroundColor: '#ed5c5f',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    backgroundColor: 'red',
+                  }}
+                  onPress={() => setPickerModalVisible(!pickerModalVisible)}>
+                  <Text
+                    style={{
+                      color: 'white',
+                      fontSize: 2 * (winWidth / 30),
+                      textAlign: 'center',
+                    }}>
+                    Cancel
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={{
+                    borderBottomRightRadius: 20,
+                    width: '50%',
+                    padding: 20,
+                    elevation: 2,
+                    backgroundColor: '#2196F3',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                  }}
+                  onPress={() => {
+                    setPickerModalVisible(!pickerModalVisible);
+                    setWantedPsi(PSI_OPTIONS[psiIndex]);
+                  }}>
+                  <Text
+                    style={{
+                      color: 'white',
+                      fontSize: 2 * (winWidth / 30),
+                      textAlign: 'center',
+                    }}>
+                    Submit
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
       <Modal
         animationType="slide"
         transparent={true}
@@ -852,7 +1003,6 @@ const Home = ({navigation, route}) => {
           </View>
         </View>
       </Modal>
-
       <Animated.View
         style={[
           {
@@ -917,7 +1067,6 @@ const Home = ({navigation, route}) => {
           </Text>
         </View>
       </Animated.View>
-
       {/* Settings Button */}
       <View
         style={{
@@ -1102,21 +1251,26 @@ const Home = ({navigation, route}) => {
             <Text style={{fontSize: 2 * (winWidth / 30), color: 'white'}}>
               SET
             </Text>
-            <Text
-              style={{
-                fontSize: 2 * (winWidth / 30),
-                backgroundColor: '#1B1B1B',
-                alignContent: 'center',
-                justifyContent: 'center',
-                paddingLeft: '7%',
-                paddingRight: '7%',
-                paddingTop: '2%',
-                paddingBottom: '2%',
-                borderRadius: 2 * (winWidth / 25),
-                color: 'white',
+            <TouchableOpacity
+              onPress={() => {
+                setPickerModalVisible(true);
               }}>
-              {wantedPsi}
-            </Text>
+              <Text
+                style={{
+                  fontSize: 2 * (winWidth / 30),
+                  backgroundColor: '#1B1B1B',
+                  alignContent: 'center',
+                  justifyContent: 'center',
+                  paddingLeft: '7%',
+                  paddingRight: '7%',
+                  paddingTop: '2%',
+                  paddingBottom: '2%',
+                  borderRadius: 2 * (winWidth / 25),
+                  color: 'white',
+                }}>
+                {wantedPsi}
+              </Text>
+            </TouchableOpacity>
           </View>
 
           {/* SET BUTTONS */}

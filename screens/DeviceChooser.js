@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Dimensions,
   BackHandler,
+  SafeAreaView,
 } from 'react-native';
 import React, {useEffect, useState} from 'react';
 import {CircleButton} from '../components';
@@ -327,7 +328,7 @@ const DeviceChooser = ({navigation, route}) => {
   };
 
   const Item = ({title, id, data, index, length}) => (
-    <View
+    <SafeAreaView
       style={{
         marginBottom: 10,
       }}>
@@ -450,7 +451,7 @@ const DeviceChooser = ({navigation, route}) => {
           )}
         </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 
   let DATA = route.params.scannedDevices;
@@ -466,7 +467,7 @@ const DeviceChooser = ({navigation, route}) => {
   );
 
   return (
-    <View
+    <SafeAreaView
       style={{
         width: '100%',
         height: '100%',
@@ -550,7 +551,7 @@ const DeviceChooser = ({navigation, route}) => {
           />
         </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 export default DeviceChooser;
