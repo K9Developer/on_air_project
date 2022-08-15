@@ -9,15 +9,16 @@ import {
   Image,
   Animated,
   AppState,
+  Vibration,
   Dimensions,
   TouchableOpacity,
 } from 'react-native';
-import React, {useState, useRef, useEffect} from 'react';
-import {FocusedStatusBar, CircleButton} from '../components';
-import {COLORS, SHADOWS} from '../constants';
+import React, { useState, useRef, useEffect } from 'react';
+import { FocusedStatusBar, CircleButton } from '../components';
+import { COLORS, SHADOWS } from '../constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Sound from 'react-native-sound';
-import {BleManager} from 'react-native-ble-plx';
+import { BleManager } from 'react-native-ble-plx';
 import ValuePicker from 'react-native-picker-horizontal';
 
 const Buffer = require('buffer').Buffer;
@@ -62,15 +63,13 @@ const getErrorText = error => {
     return null;
   }
 
-  if (error.errorCode == 201) {
+  if (error.errorCode == 201 || error.errorCode == 0) {
     return null;
   }
 
   let errorMap = {
-    0:
-      'Unknown error occurred . (Please try again) info: ' +
-      JSON.stringify(error),
-    1: 'BleManager was destroyed',
+    0: null,
+    1: null,
     2: null,
     3: 'Operation timed out',
     4: 'Operation was rejected',
@@ -112,7 +111,7 @@ const getErrorText = error => {
   return (
     errorMap[error.errorCode] ??
     'Unknown error occurred [custom]. (Please try again) info: ' +
-      JSON.stringify(error)
+    JSON.stringify(error)
   );
 };
 
@@ -210,7 +209,7 @@ const storeData = async () => {
   }
 };
 
-const Settings = ({navigation, route}) => {
+const Settings = ({ navigation, route }) => {
   const [factor, setFactor] = useState(MIN_FACTOR);
   const [roadPreset, setRoadPreset] = useState(MIN_PRESET);
   const [trailPreset, setTrailPreset] = useState(MIN_PRESET);
@@ -272,6 +271,41 @@ const Settings = ({navigation, route}) => {
     }
   };
 
+  const goHome = () => {
+    console.log(
+      `\n-----------------------------------\n
+      Type of MANAGER: ${typeof MANAGER}
+      \nType of DEVICE: ${JSON.stringify(BT05_DEVICE)}
+      \nType of SERVICE_UUID: ${typeof DEVICE_SERVICE_UUID}
+      \nType of CHARACTERISTICS_UUID: ${typeof DEVICE_CHARACTERISTICS_UUID}
+      \n-----------------------------------\n`,
+    );
+    try {
+      removeSubscriptions();
+    } catch (error) {
+      console.log('Error removing subscriptions: ', error);
+    }
+    if (MANAGER) {
+      MANAGER.stopDeviceScan();
+    }
+    console.log('MANAGER: ' + typeof MANAGER);
+    if (readMonitor) {
+      readMonitor.remove();
+      readMonitor = null;
+    }
+
+    if (onDisconnectEvent) {
+      onDisconnectEvent.remove();
+      onDisconnectEvent = null;
+    }
+    navigation.navigate('Home', {
+      manager: MANAGER,
+      device: BT05_DEVICE,
+      serviceUUID: DEVICE_SERVICE_UUID,
+      characteristicUUID: DEVICE_CHARACTERISTICS_UUID,
+    });
+  }
+
   useEffect(() => {
     console.log('ROUTE: ' + JSON.stringify(route));
     console.log('ROUTE DEVICE: ' + JSON.stringify(route.params.device));
@@ -300,7 +334,7 @@ const Settings = ({navigation, route}) => {
           route.params.device != undefined &&
           route.params.device.hasOwnProperty('id')
         ) {
-          BT05_DEVICE = {...route.params.device};
+          BT05_DEVICE = { ...route.params.device };
           console.log('--->> DEVICE CHECK 1: ' + BT05_DEVICE);
           MANAGER = route.params.manager;
           console.log('--->> DEVICE CHECK 2: ' + BT05_DEVICE);
@@ -384,6 +418,7 @@ const Settings = ({navigation, route}) => {
                 );
               }
               setBluetoothImageId(2);
+              goHome();
             } else {
               console.log('=> DEVICE is not Connected');
               BT05_DEVICE = null;
@@ -433,13 +468,13 @@ const Settings = ({navigation, route}) => {
                         setBluetoothImageId(2);
                         console.log(
                           'onDisconnectEvent: ' +
-                            JSON.stringify(typeof onDisconnectEvent),
+                          JSON.stringify(typeof onDisconnectEvent),
                         );
                         console.log(!onDisconnectEvent);
                         console.log(typeof onDisconnectEvent == 'object');
                         console.log(
                           !onDisconnectEvent ||
-                            typeof onDisconnectEvent == 'object',
+                          typeof onDisconnectEvent == 'object',
                         );
                         if (
                           !onDisconnectEvent ||
@@ -469,9 +504,9 @@ const Settings = ({navigation, route}) => {
                 } catch (error) {
                   console.log(
                     "Couldn't get BT05_DEVICE.isConnected(): " +
-                      error +
-                      ' - ' +
-                      BT05_DEVICE,
+                    error +
+                    ' - ' +
+                    BT05_DEVICE,
                   );
                   setBluetoothImageId(1);
                 }
@@ -505,7 +540,7 @@ const Settings = ({navigation, route}) => {
   const dropAnim = useRef(new Animated.Value(0)).current;
 
   navigation.addListener('blur', e => {
-    exitApp();
+    // exitApp();
   });
 
   useEffect(() => {
@@ -544,7 +579,7 @@ const Settings = ({navigation, route}) => {
       if (scannedDevices.length == 0) {
         setModalError(false);
         setModalText(
-          "We have been scanning for 10 seconds and didn't find any devices! please try the following:\n\n- Restart OnAir device\n- Restart App\n- Get closer to device\n- Make sure the device is on",
+          "We have been scanning for 5 seconds and didn't find any devices! please try the following:\n\n- Restart OnAir device\n- Restart App\n- Get closer to device\n- Make sure the device is on",
         );
         setModalVisible(true);
         setStatusText('Please try again');
@@ -566,7 +601,7 @@ const Settings = ({navigation, route}) => {
         // Go to DeviceChooser screen
       }
       console.log('All Scanned Devices: ' + JSON.stringify(scannedDevices));
-    }, 7000);
+    }, 5000);
 
     await manager.startDeviceScan(
       null,
@@ -682,7 +717,7 @@ const Settings = ({navigation, route}) => {
       } catch {
         console.log(
           'Error subscribing to state change, manager: ' +
-            JSON.stringify(MANAGER),
+          JSON.stringify(MANAGER),
         );
       }
     }
@@ -700,7 +735,6 @@ const Settings = ({navigation, route}) => {
         numberOfLines={1}
         style={{
           width: winWidth / 5.1,
-          fontSize: winWidth / 20,
           textAlign: 'center',
           justifyContent: 'center',
           alignItems: 'center',
@@ -753,9 +787,9 @@ const Settings = ({navigation, route}) => {
   // useEffect(() => {
   //   AsyncStorage.setItem('@trailPreset', JSON.stringify(trailPreset));
   // }, [trailPreset]);
-
+  console.log(winWidth / 5.1);
   return (
-    <SafeAreaView style={{flex: 1}}>
+    <SafeAreaView style={{ flex: 1 }}>
       <FocusedStatusBar backgroundColor={COLORS.primary} />
       <Modal
         animationType="slide"
@@ -805,7 +839,7 @@ const Settings = ({navigation, route}) => {
                   ? require('../assets/icons/error.png')
                   : require('../assets/icons/info.png')
               }
-              style={{width: 90, height: 90, marginBottom: 20}}
+              style={{ width: 90, height: 90, marginBottom: 20 }}
             />
             <Text
               style={{
@@ -910,7 +944,7 @@ const Settings = ({navigation, route}) => {
                 <Text style={{lineHeight: 0}}></Text>
               </View>
             </View> */}
-            <View style={{alignItems: 'center'}}>
+            <View style={{ alignItems: 'center' }}>
               <Text
                 style={{
                   color: 'black',
@@ -922,7 +956,7 @@ const Settings = ({navigation, route}) => {
               </Text>
             </View>
 
-            <View style={{flex: 1}}>
+            <View style={{ flex: 1 }}>
               <ValuePicker
                 style={{
                   // justifyContent: 'center',
@@ -963,7 +997,7 @@ const Settings = ({navigation, route}) => {
               style={{
                 marginTop: 30,
               }}>
-              <View style={{flexDirection: 'row'}}>
+              <View style={{ flexDirection: 'row' }}>
                 <Pressable
                   style={{
                     borderBottomLeftRadius: 20,
@@ -1063,7 +1097,7 @@ const Settings = ({navigation, route}) => {
             height: dropAnim,
           },
         ]}>
-        <Text style={{color: 'white', fontSize: 2 * (winWidth / 50)}}>
+        <Text style={{ color: 'white', fontSize: 2 * (winWidth / 50) }}>
           {statusText}
         </Text>
       </Animated.View>
@@ -1075,32 +1109,8 @@ const Settings = ({navigation, route}) => {
         }}>
         <CircleButton
           imgUrl={require('../assets/icons/back.png')}
-          handlePressDown={() => {}}
-          handlePressUp={() => {
-            console.log(
-              `\n-----------------------------------\n
-              Type of MANAGER: ${typeof MANAGER}
-              \nType of DEVICE: ${JSON.stringify(BT05_DEVICE)}
-              \nType of SERVICE_UUID: ${typeof DEVICE_SERVICE_UUID}
-              \nType of CHARACTERISTICS_UUID: ${typeof DEVICE_CHARACTERISTICS_UUID}
-              \n-----------------------------------\n`,
-            );
-            try {
-              removeSubscriptions();
-            } catch (error) {
-              console.log('Error removing subscriptions: ', error);
-            }
-            if (MANAGER) {
-              MANAGER.stopDeviceScan();
-            }
-            console.log('MANAGER: ' + typeof MANAGER);
-            navigation.navigate('Home', {
-              manager: MANAGER,
-              device: BT05_DEVICE,
-              serviceUUID: DEVICE_SERVICE_UUID,
-              characteristicUUID: DEVICE_CHARACTERISTICS_UUID,
-            });
-          }}
+          handlePressDown={() => { }}
+          handlePressUp={goHome}
           size={[winWidth / 10, winWidth / 10]}
           {...{
             marginLeft: winWidth / 15,
@@ -1114,12 +1124,12 @@ const Settings = ({navigation, route}) => {
             bluetoothImageId == 1
               ? require('../assets/icons/bluetooth.png')
               : bluetoothImageId == 2
-              ? require('../assets/icons/bluetooth_connected.png')
-              : bluetoothImageId == 3
-              ? require('../assets/icons/bluetooth_disconnected.png')
-              : require('../assets/icons/bluetooth_scanning.png')
+                ? require('../assets/icons/bluetooth_connected.png')
+                : bluetoothImageId == 3
+                  ? require('../assets/icons/bluetooth_disconnected.png')
+                  : require('../assets/icons/bluetooth_scanning.png')
           }
-          handlePressDown={() => {}}
+          handlePressDown={() => { }}
           handlePressUp={() => {
             if (bluetoothImageId != 4) {
               startConnection();
@@ -1141,7 +1151,7 @@ const Settings = ({navigation, route}) => {
           alignContent: 'center',
           alignItems: 'center',
         }}>
-        <Text style={{fontSize: 2 * (winWidth / 30), color: 'white'}}>
+        <Text style={{ fontSize: 2 * (winWidth / 30), color: 'white' }}>
           Settings
         </Text>
       </View>
@@ -1169,6 +1179,13 @@ const Settings = ({navigation, route}) => {
             setPickerModalText('Factor');
             setPickerModalVisible(true);
             setFactorIndex(0);
+            // setModalError(false);
+            // setModalText(
+            //   `${Dimensions.get('window').width}, ${
+            //     Dimensions.get('window').height
+            //   }`,
+            // );
+            // setModalVisible(true);
           }}
           style={{
             paddingVertical: '2%',
@@ -1214,6 +1231,9 @@ const Settings = ({navigation, route}) => {
             setPickerModalText('Road Preset');
             setPickerModalVisible(true);
             setRoadPresetIndex(0);
+            // setModalVisible(true);
+            // setModalText(PRESET_OPTIONS);
+            // setModalError(false);
           }}
           style={{
             paddingVertical: '2%',
@@ -1261,6 +1281,9 @@ const Settings = ({navigation, route}) => {
             setPickerModalText('Trail Preset');
             setPickerModalVisible(true);
             setTrailPresetIndex(0);
+            // setModalVisible(true);
+            // setModalText(Platform.constants['Release'], Platform.OS);
+            // setModalError(false);
           }}
           style={{
             paddingVertical: '2%',
@@ -1290,10 +1313,10 @@ const Settings = ({navigation, route}) => {
           justifyContent: 'center',
           marginTop: '15%',
         }}>
-        <Text style={{fontSize: 2 * (winWidth / 40), color: 'white'}}>
+        <Text style={{ fontSize: 2 * (winWidth / 40), color: 'white' }}>
           All units are measured in PSI
         </Text>
-        <Text style={{fontSize: 2 * (winWidth / 40), color: 'white'}}>
+        <Text style={{ fontSize: 2 * (winWidth / 40), color: 'white' }}>
           On Air Version 4.4
         </Text>
         <Text

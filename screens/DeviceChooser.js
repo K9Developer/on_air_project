@@ -10,10 +10,10 @@ import {
   BackHandler,
   SafeAreaView,
 } from 'react-native';
-import React, {useEffect, useState} from 'react';
-import {CircleButton} from '../components';
-import {BleManager} from 'react-native-ble-plx';
-import Toast, {SuccessToast, ErrorToast} from 'react-native-toast-message';
+import React, { useEffect, useState } from 'react';
+import { CircleButton } from '../components';
+import { BleManager } from 'react-native-ble-plx';
+import Toast, { SuccessToast, ErrorToast } from 'react-native-toast-message';
 const Buffer = require('buffer').Buffer;
 
 let MANAGER = null;
@@ -22,6 +22,8 @@ let timeoutTimer = null;
 let connectedDevice = null;
 let pingCounter = 0;
 const winWidth = Dimensions.get('window').width;
+let readMonitor = null;
+let meantToDisconnect = false;
 
 const toastConfig = {
   error: props => (
@@ -48,7 +50,7 @@ const toastConfig = {
   ),
 };
 
-const DeviceChooser = ({navigation, route}) => {
+const DeviceChooser = ({ navigation, route }) => {
   // 0: Bell
   // 1: Checkmark
   // 2: X
@@ -83,9 +85,9 @@ const DeviceChooser = ({navigation, route}) => {
     // monitorSub.remove();
     clearTimeout(timeoutTimer);
     try {
-      let tmp = {...connectedDevice};
+      let tmp = { ...connectedDevice };
       tmp.cancelConnection();
-    } catch (error) {}
+    } catch (error) { }
     // try {
     //   console.log('MAN: ' + MANAGER != null);
     //   if (MANAGER != null) {
@@ -107,7 +109,7 @@ const DeviceChooser = ({navigation, route}) => {
     } catch (error) {
       console.log('ERROR SENDING Ok:', error);
     }
-    navigation.navigate('Settings', {connectToDevice: false, device: null});
+    navigation.navigate('Settings', { connectToDevice: false, device: null });
   };
 
   useEffect(() => {
@@ -162,6 +164,7 @@ const DeviceChooser = ({navigation, route}) => {
       connectToDevice: true,
       device: connectedDevice,
       manager: MANAGER,
+      goHome: true,
     });
   };
 
@@ -192,6 +195,10 @@ const DeviceChooser = ({navigation, route}) => {
 
   const failed = () => {
     // Icon change
+    if (readMonitor) {
+      readMonitor.remove();
+      readMonitor = null;
+    }
     pingCounter = 0;
     setLoadingPing([false, null]);
 
@@ -216,13 +223,18 @@ const DeviceChooser = ({navigation, route}) => {
         'FFE1',
         base64Signal,
       );
-    } catch {}
+    } catch { }
   };
 
   const startPing = async device => {
     // Create bluetooth manager
     console.log(device.id);
     pingCounter++;
+
+    if (readMonitor) {
+      readMonitor.remove();
+      readMonitor = null;
+    }
 
     if (pingCounter > 3) {
       failed();
@@ -240,7 +252,7 @@ const DeviceChooser = ({navigation, route}) => {
         await connectedDevice.cancelConnection();
         connectedDevice = null;
       }
-    } catch {}
+    } catch { }
 
     try {
       if (
@@ -265,53 +277,87 @@ const DeviceChooser = ({navigation, route}) => {
     } catch (error) {
       console.log('ERROR CONNECTING TO DEVICE:', error);
     }
-    try {
-      sendDeviceSignal(connectedDevice, 'ping');
-    } catch (error) {
-      console.log('ERROR SENDING PING:', error);
-    }
+
     let x = 0;
     timeoutTimer = setInterval(async () => {
       x++;
       if (x > 30) {
         clearInterval(timeoutTimer);
         failed();
+        connectedDevice.cancelConnection();
         return;
       }
+
       try {
-        let readData = await connectedDevice.readCharacteristicForService(
-          'FFE0',
-          'FFE1',
-        );
-        readData = Buffer.from(readData.value, 'base64').toString();
-        console.log('read timeout - ' + JSON.stringify(readData));
-        if (readData.includes('pong')) {
-          console.log('RESPONSE RECEIVED - ' + readData);
+        sendDeviceSignal(connectedDevice, 'ping');
+      } catch (error) {
+        console.log('ERROR SENDING PING:', error);
+      }
 
-          pingCounter = 0;
-          setLoadingPing(false);
-          Toast.show({
-            type: 'success',
-            text1: 'Ping Successful',
-          });
+      try {
+        if (!readMonitor) {
+          readMonitor = MANAGER.monitorCharacteristicForDevice(
+            connectedDevice.id,
+            'FFE0',
+            'FFE1',
+            (error, readData) => {
+              if (error && !meantToDisconnect) {
+                Toast.show({
+                  type: 'error',
+                  text1: 'Connection Error',
+                  text2: "We couldn't connect to the device",
+                });
+                setLoadingPing([false, null]);
+                console.log('ERR', error);
+                return null;
+              }
+              if (!readData) {
+                return;
+              }
+              readData = Buffer.from(readData.value, 'base64').toString();
+              console.log('read timeout - ' + JSON.stringify(readData));
+              if (readData.includes('pong')) {
+                console.log('RESPONSE RECEIVED - ' + readData);
 
-          clearTimeout(timeoutTimer);
-          try {
-            for (let i = 0; i < 10; i++) {
-              sendDeviceSignal(connectedDevice, 'Ok');
-            }
-            console.log('SENT OK SIGNAL');
-          } catch (error) {
-            console.log('ERROR SENDING Ok:', error);
-          }
-          return true;
-        } else {
-          console.log('NO RESPONSE... TRYING AGAIN [manual read]');
+                pingCounter = 0;
+                setLoadingPing(false);
+                Toast.show({
+                  type: 'success',
+                  text1: 'Ping Successful',
+                });
+                if (readMonitor) {
+                  readMonitor.remove();
+                  readMonitor = null;
+                }
+                connectedDevice.cancelConnection();
+                connectedDevice = null;
+                meantToDisconnect = true;
+                clearTimeout(timeoutTimer);
+                try {
+                  for (let i = 0; i < 10; i++) {
+                    sendDeviceSignal(connectedDevice, 'Ok');
+                  }
+                  console.log('SENT OK SIGNAL');
+                } catch (error) {
+                  console.log('ERROR SENDING Ok:', error);
+                }
+                return true;
+              } else {
+                console.log(
+                  'NO RESPONSE... TRYING AGAIN [manual read] - ' + readData,
+                );
 
-          // monitorSub.remove();
+                // monitorSub.remove();
 
-          // connectedDevice.cancelConnection();
+                // connectedDevice.cancelConnection();
+              }
+            },
+          );
         }
+        // let readData = await connectedDevice.readCharacteristicForService(
+        //   'FFE0',
+        //   'FFE1',
+        // );
       } catch (error) {
         if (error.errorCode == 205) {
           Toast.show({
@@ -324,10 +370,10 @@ const DeviceChooser = ({navigation, route}) => {
         }
         console.log('ERROR READING DATA:', JSON.stringify(error)); // ISOLATE PONG MESSAGE, IF DOESNT WORK THEN ADD TO STATUS
       }
-    }, 300);
+    }, 500);
   };
 
-  const Item = ({title, id, data, index, length}) => (
+  const Item = ({ title, id, data, index, length }) => (
     <SafeAreaView
       style={{
         marginBottom: 10,
@@ -456,7 +502,7 @@ const DeviceChooser = ({navigation, route}) => {
 
   let DATA = route.params.scannedDevices;
 
-  const renderItem = ({item, index}) => (
+  const renderItem = ({ item, index }) => (
     <Item
       title={item.name}
       id={item.id}
@@ -506,7 +552,7 @@ const DeviceChooser = ({navigation, route}) => {
             }}>
             <CircleButton
               imgUrl={require('../assets/icons/back.png')}
-              handlePressDown={() => {}}
+              handlePressDown={() => { }}
               handlePressUp={async () => {
                 await exit();
               }}

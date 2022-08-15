@@ -116,8 +116,9 @@ const Permissions = ({navigation, route}) => {
       if (
         locationPermission == 'granted' &&
         bluetoothStatus == 'PoweredOn' &&
-        bluetoothConnectPermission == 'granted' &&
-        bluetoothScanPermission == 'granted'
+        ((bluetoothConnectPermission == 'granted' &&
+          bluetoothScanPermission == 'granted') ||
+          (Platform.OS == 'android' && Platform.constants['Release'] <= 11))
       ) {
         clearInterval(permissionTimer);
         navigation.dispatch(StackActions.replace('Home'));
@@ -354,15 +355,19 @@ const Permissions = ({navigation, route}) => {
             }}
             style={{
               backgroundColor:
-                bluetoothScanPermission != 'granted' &&
-                bluetoothConnectPermission != 'granted'
-                  ? 'white'
-                  : 'gray',
+                (bluetoothScanPermission == 'granted' &&
+                  bluetoothConnectPermission == 'granted') ||
+                (Platform.OS == 'android' &&
+                  Platform.constants['Release'] <= 11)
+                  ? 'gray'
+                  : 'white',
               borderRadius: 2 * (winWidth / 10),
               borderColor: 'black',
               borderWidth:
-                bluetoothScanPermission == 'granted' &&
-                bluetoothConnectPermission == 'granted'
+                (bluetoothScanPermission == 'granted' &&
+                  bluetoothConnectPermission == 'granted') ||
+                (Platform.OS == 'android' &&
+                  Platform.constants['Release'] <= 11)
                   ? 0
                   : 2,
               shadowColor: '#000',
@@ -375,16 +380,20 @@ const Permissions = ({navigation, route}) => {
               alignItems: 'center',
               marginBottom: '5%',
               elevation:
-                bluetoothScanPermission == 'granted' &&
-                bluetoothConnectPermission == 'granted'
+                (bluetoothScanPermission == 'granted' &&
+                  bluetoothConnectPermission == 'granted') ||
+                (Platform.OS == 'android' &&
+                  Platform.constants['Release'] <= 11)
                   ? 0
                   : 2,
             }}>
             <Text
               style={{
                 color:
-                  bluetoothScanPermission == 'granted' &&
-                  bluetoothConnectPermission == 'granted'
+                  (bluetoothScanPermission == 'granted' &&
+                    bluetoothConnectPermission == 'granted') ||
+                  (Platform.OS == 'android' &&
+                    Platform.constants['Release'] <= 11)
                     ? 'darkgrey'
                     : 'black',
 
@@ -398,8 +407,10 @@ const Permissions = ({navigation, route}) => {
             onPress={() => {
               if (bluetoothStatus != 'granted') {
                 if (
-                  bluetoothConnectPermission == 'granted' &&
-                  bluetoothScanPermission == 'granted'
+                  (bluetoothScanPermission == 'granted' &&
+                    bluetoothConnectPermission == 'granted') ||
+                  (Platform.OS == 'android' &&
+                    Platform.constants['Release'] <= 11)
                 ) {
                   BluetoothStateManager.requestToEnable().catch(e => {
                     console.log('error turning on bluetooth:', e);

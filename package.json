@@ -24,6 +24,7 @@
     "react-native-device-info": "^10.0.1",
     "react-native-email": "^2.1.0",
     "react-native-gesture-handler": "^2.4.2",
+    "react-native-layout-tester": "^1.0.6",
     "react-native-permissions": "^3.3.1",
     "react-native-picker-horizontal": "^0.1.2",
     "react-native-reanimated": "^2.8.0",

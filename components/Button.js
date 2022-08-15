@@ -1,7 +1,7 @@
 import React from 'react';
-import {TouchableOpacity, Text, Image,Dimensions} from 'react-native';
+import { TouchableOpacity, Text, Image, Dimensions } from 'react-native';
 
-import {COLORS, SIZES, FONTS, SHADOWS} from '../constants';
+import { COLORS, SIZES, FONTS, SHADOWS } from '../constants';
 const winWidth = Dimensions.get('window').width;
 
 export const CircleButton = ({
@@ -28,7 +28,7 @@ export const CircleButton = ({
         key={new Date()}
         source={imgUrl}
         resizeMode="contain"
-        style={{width: size[0], height: size[1]}}
+        style={{ width: size[0], height: size[1] }}
       />
     </TouchableOpacity>
   );
@@ -48,13 +48,14 @@ export const RectButton = ({
         backgroundColor: COLORS.primary,
         borderRadius: 2 * (winWidth / 25),
         width: width,
-        height: 'auto',
         justifyContent: 'center',
         ...props,
       }}
       onPressIn={handlePressDown}
       onPressOut={handlePressUp}>
       <Text
+        adjustsFontSizeToFit
+        numberOfLines={1}
         style={{
           fontFamily: FONTS.regular,
           fontSize: fontSize,
@@ -90,7 +91,7 @@ export const ImageRectButton = ({
       <Image
         source={img}
         resizeMode="center"
-        // style={{width: size[0], height: size[1]}}
+      // style={{width: size[0], height: size[1]}}
       />
     </TouchableOpacity>
   );

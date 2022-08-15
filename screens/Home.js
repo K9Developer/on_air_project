@@ -12,6 +12,7 @@ import {
   AppState,
   Vibration,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import {useState, useEffect, useRef} from 'react';
 import ValuePicker from 'react-native-picker-horizontal';
@@ -193,14 +194,12 @@ const getErrorText = error => {
     return null;
   }
 
-  if (error.errorCode == 201) {
+  if (error.errorCode == 201 || error.errorCode == 0) {
     return null;
   }
 
   let errorMap = {
-    0:
-      'Unknown error occurred . (Please try again) info: ' +
-      JSON.stringify(error),
+    0: null,
     1: 'BleManager was destroyed',
     2: null,
     3: 'Operation timed out',
@@ -359,6 +358,7 @@ const Home = ({navigation, route}) => {
   const [disconnectMonitor, setDisconnectMonitor] = useState(null);
   const [readMonitor, setReadMonitor] = useState(null);
   const [tirePressure, setTirePressure] = useState(0);
+  const [showStatusLoading, setShowStatusLoading] = useState(false);
   const [isDone, setIsDone] = useState(false);
   const [dropMessageText, setDropMessageText] = useState(
     'You have disconnected from the device.',
@@ -377,6 +377,7 @@ const Home = ({navigation, route}) => {
       setModalText(getErrorText(error));
       setModalVisible(true);
     } else {
+      setShowStatusLoading(false);
       if (disconnectMonitor) {
         disconnectMonitor.remove();
         setDisconnectMonitor(null);
@@ -528,7 +529,11 @@ const Home = ({navigation, route}) => {
     if (Platform.OS === 'android') {
       check(PERMISSIONS.ANDROID.BLUETOOTH_CONNECT)
         .then(data => {
-          if (data != 'granted') {
+          if (
+            data != 'granted' &&
+            Platform.OS == 'android' &&
+            Platform.constants['Release'] > 11
+          ) {
             navigation.navigate('Permissions');
           }
         })
@@ -536,7 +541,11 @@ const Home = ({navigation, route}) => {
 
       check(PERMISSIONS.ANDROID.BLUETOOTH_SCAN)
         .then(data => {
-          if (data != 'granted') {
+          if (
+            data != 'granted' &&
+            Platform.OS == 'android' &&
+            Platform.constants['Release'] > 11
+          ) {
             navigation.navigate('Permissions');
           }
         })
@@ -588,15 +597,16 @@ const Home = ({navigation, route}) => {
     // console.log('Wanted PSI: ' + wantedPsi);
     // setData('@wantedPsi', wantedPsi.toString());
     console.log('exit APp');
-    if (disconnectMonitor) {
-      disconnectMonitor.remove();
-      setDisconnectMonitor(null);
-    }
+    setShowStatusLoading(false);
+    // if (disconnectMonitor) {
+    //   disconnectMonitor.remove();
+    //   setDisconnectMonitor(null);
+    // }
 
-    if (readMonitor) {
-      readMonitor.remove();
-      setReadMonitor(null);
-    }
+    // if (readMonitor) {
+    //   readMonitor.remove();
+    //   setReadMonitor(null);
+    // }
   };
 
   navigation.addListener('blur', e => {
@@ -606,7 +616,7 @@ const Home = ({navigation, route}) => {
   useEffect(() => {
     AppState.addEventListener('change', currentState => {
       if (currentState === 'background') {
-        // exitApp();
+        exitApp();
       }
     });
     setInterval(() => {
@@ -685,8 +695,15 @@ const Home = ({navigation, route}) => {
     }
     if (startTime == -2) {
       setStatusText(StatusIdMap[statusId]);
+      setShowStatusLoading(false);
       if (statusId == 3) {
+        setStatusText('DONE');
+        for (timer of timerList) {
+          clearInterval(timer);
+        }
         doneStatus();
+      } else {
+        setStatusText('Stand By');
       }
       return;
     }
@@ -694,6 +711,7 @@ const Home = ({navigation, route}) => {
     setStatusText(
       `${StatusIdMap[statusId]}: ${startTime - x >= 0 ? startTime - x : 0}s`,
     );
+    setShowStatusLoading(true);
     timerList.push(
       setInterval(() => {
         setStatusText(
@@ -732,7 +750,7 @@ const Home = ({navigation, route}) => {
       isValidData(data)
     ) {
       if (data.includes('alive')) {
-        console.log('Asking for connection status');
+        // console.log('Asking for connection status');
         let x = 0;
         let timer = setInterval(() => {
           x++;
@@ -1162,11 +1180,11 @@ const Home = ({navigation, route}) => {
                 }
 
                 if (connected) {
+                  console.log('Sending all data to the device');
+                  sendAllData(wantedPsi, factor);
                   if (isDone) {
                     setIsDone(false);
                   }
-                  console.log('Sending all data to the device');
-                  sendAllData(wantedPsi, factor);
                 } else {
                   if (!JSON.parse(JSON.stringify(dropAnim))) {
                     dropIn();
@@ -1221,7 +1239,7 @@ const Home = ({navigation, route}) => {
               borderRadius: 2 * (winWidth / 25),
               color: 'white',
             }}>
-            {tirePressure}
+            {Math.round(tirePressure * 2) / 2}
           </Text>
         </View>
 
@@ -1375,22 +1393,43 @@ const Home = ({navigation, route}) => {
             style={{fontSize: 2 * (winWidth / 30), color: 'white'}}>
             STATUS
           </Text>
-          <Text
-            adjustsFontSizeToFit
-            numberOfLines={1}
+          <View
             style={{
-              fontSize: 2 * (winWidth / 35),
-              backgroundColor: '#1B1B1B',
-
-              paddingHorizontal: '6%',
-              paddingVertical: '2%',
-              borderRadius: 2 * (winWidth / 25),
-              textAlign: 'center',
-              maxWidth: '70%',
-              color: 'white',
+              alignItems: 'center',
+              flexDirection: 'row',
+              justifyContent: 'flex-end',
+              width: '60%',
+              height: '100%',
             }}>
-            {statusText}
-          </Text>
+            {showStatusLoading ? (
+              <ActivityIndicator
+                size="large"
+                color="#fff"
+                style={{
+                  width: 30,
+                  height: 30,
+                  marginRight: 20,
+                }}
+              />
+            ) : null}
+
+            <Text
+              adjustsFontSizeToFit
+              numberOfLines={1}
+              style={{
+                fontSize: 2 * (winWidth / 35),
+                backgroundColor: '#1B1B1B',
+
+                paddingHorizontal: '6%',
+                paddingVertical: '2%',
+                borderRadius: 2 * (winWidth / 25),
+                textAlign: 'center',
+                maxWidth: '100%',
+                color: 'white',
+              }}>
+              {statusText}
+            </Text>
+          </View>
         </View>
 
         <View

@@ -7,6 +7,14 @@ import Details from './screens/Settings';
 import Permissions from './screens/Permissions';
 import AboutMe from './screens/AboutMe';
 import DeviceChooser from './screens/DeviceChooser';
+import {I18nManager} from 'react-native';
+
+try {
+  I18nManager.allowRTL(false);
+  
+} catch (e) {
+  console.log('I18nManager Error:', e);
+}
 
 const theme = {
   ...DefaultTheme,
