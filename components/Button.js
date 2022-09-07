@@ -14,10 +14,8 @@ export const CircleButton = ({
   return (
     <TouchableOpacity
       style={{
-        width: 60,
-        height: 60,
         backgroundColor: '#427ef5',
-        borderRadius: 2 * (winWidth / 5),
+        borderRadius: 50,
         alignItems: 'center',
         justifyContent: 'center',
         ...props,

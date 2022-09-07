@@ -7,30 +7,34 @@ import {
   Dimensions,
   Platform,
 } from 'react-native';
-import {CircleButton} from '../components';
-import {Linking} from 'react-native';
+import { CircleButton } from '../components';
+import { Linking } from 'react-native';
 import DeviceInfo from 'react-native-device-info';
 import email from 'react-native-email';
 
 const winWidth = Dimensions.get('window').width;
 
-const AboutMe = ({navigation}) => {
+const AboutMe = ({ navigation }) => {
   return (
     <SafeAreaView>
       <ScrollView>
-        <CircleButton
-          imgUrl={require('../assets/icons/back.png')}
-          handlePressDown={() => {}}
-          handlePressUp={() => {
-            navigation.navigate('Home');
-          }}
-          size={[winWidth / 15, winWidth / 15]}
-          {...{
-            marginLeft: winWidth / 15,
-            marginTop: winWidth / 15,
-            backgroundColor: 'transparent',
-          }}
-        />
+        <View style={{
+          width: "100%",
+          alignItems: "flex-start"
+        }}>
+          <CircleButton
+            imgUrl={require('../assets/icons/back.png')}
+            handlePressDown={() => { }}
+            handlePressUp={() => {
+              navigation.navigate('Home');
+            }}
+            size={[winWidth / 10, winWidth / 10]}
+            {...{
+              marginLeft: winWidth / 15,
+              marginTop: winWidth / 15,
+              backgroundColor: 'transparent',
+            }}
+          /></View>
         <View
           style={{
             width: '100%',
@@ -47,8 +51,8 @@ const AboutMe = ({navigation}) => {
             }}>
             <Text
               style={{
-                fontSize: 2 * (winWidth / 40),
-                lineHeight: 2 * (winWidth / 20),
+                fontSize: 2 * (winWidth / 60),
+                lineHeight: 2 * (winWidth / 30),
                 color: 'white',
                 textAlign: 'center',
               }}>
@@ -57,8 +61,8 @@ const AboutMe = ({navigation}) => {
             </Text>
             <Text
               style={{
-                fontSize: 2 * (winWidth / 40),
-                lineHeight: 2 * (winWidth / 20),
+                fontSize: 2 * (winWidth / 60),
+                lineHeight: 2 * (winWidth / 30),
                 marginTop: 50,
                 textAlign: 'center',
                 color: 'white',
@@ -71,8 +75,8 @@ const AboutMe = ({navigation}) => {
 
             <Text
               style={{
-                fontSize: 2 * (winWidth / 40),
-                lineHeight: 2 * (winWidth / 20),
+                fontSize: 2 * (winWidth / 60),
+                lineHeight: 2 * (winWidth / 30),
                 marginTop: 50,
                 color: 'white',
                 textAlign: 'center',
@@ -86,7 +90,7 @@ const AboutMe = ({navigation}) => {
               }}>
               <CircleButton
                 imgUrl={require('../assets/icons/github.png')}
-                handlePressDown={() => {}}
+                handlePressDown={() => { }}
                 handlePressUp={() => {
                   Linking.openURL('https://github.com/KingOfTNT10');
                 }}
@@ -99,7 +103,7 @@ const AboutMe = ({navigation}) => {
               />
               <CircleButton
                 imgUrl={require('../assets/icons/email.png')}
-                handlePressDown={() => {}}
+                handlePressDown={() => { }}
                 handlePressUp={() => {
                   let os = Platform.OS;
                   let osVersion = Platform.Version;
@@ -115,8 +119,8 @@ const AboutMe = ({navigation}) => {
                 }}
                 size={[2 * (winWidth / 10), 2 * (winWidth / 10)]}
                 {...{
+                  marginLeft: '25%',
                   marginTop: 100,
-                  marginBottom: 100,
                   backgroundColor: 'transparent',
                 }}
               />

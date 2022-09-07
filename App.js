@@ -1,17 +1,28 @@
 import React from 'react';
-import {createStackNavigator} from '@react-navigation/stack';
-import {NavigationContainer, DefaultTheme} from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Home from './screens/Home';
 import Details from './screens/Settings';
 import Permissions from './screens/Permissions';
 import AboutMe from './screens/AboutMe';
 import DeviceChooser from './screens/DeviceChooser';
-import {I18nManager} from 'react-native';
+import { I18nManager } from 'react-native';
+import RNRestart from 'react-native-restart';
 
 try {
-  I18nManager.allowRTL(false);
-  
+  console.log("IS RTL: " + I18nManager.isRTL)
+
+  AsyncStorage.getItem('@restarted').then(d => {
+    console.log(d)
+    if (d != "true") {
+      I18nManager.allowRTL(false);
+      I18nManager.forceRTL(false);
+      AsyncStorage.setItem('@restarted', "true").then(RNRestart.Restart());
+
+    }
+  })
+
 } catch (e) {
   console.log('I18nManager Error:', e);
 }
@@ -72,7 +83,7 @@ const App = () => {
   return (
     <NavigationContainer theme={theme}>
       <Stack.Navigator
-        screenOptions={{headerShown: false}}
+        screenOptions={{ headerShown: false }}
         initialRouteName="Home">
         <Stack.Screen name="Permissions" component={Permissions} />
         <Stack.Screen name="Home" component={Home} />

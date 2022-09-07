@@ -113,6 +113,7 @@ const DeviceChooser = ({ navigation, route }) => {
   };
 
   useEffect(() => {
+
     AppState.addEventListener('change', currentState => {
       if (currentState === 'background') {
         exitApp();
@@ -385,15 +386,12 @@ const DeviceChooser = ({ navigation, route }) => {
           borderLeftWidth: 5,
           borderRightWidth: 1,
           borderTopWidth: 1,
-          borderBottomLeftRadius: index == length - 1 ? 2 * (winWidth / 25) : 5,
+          borderBottomLeftRadius: index == length - 1 ? 2 * (winWidth / 35) : 5,
           borderBottomRightRadius:
-            index == length - 1 ? 2 * (winWidth / 25) : 5,
-          borderTopLeftRadius: index == 0 ? 2 * (winWidth / 25) : 5,
-          borderTopRightRadius: index == 0 ? 2 * (winWidth / 25) : 5,
+            index == length - 1 ? 2 * (winWidth / 35) : 5,
+
           backgroundColor: '#1B1B1B',
-          borderBottomLeftRadius: index == length - 1 ? 2 * (winWidth / 35) : 0,
-          borderBottomRightRadius:
-            index == length - 1 ? 2 * (winWidth / 35) : 0,
+
           borderTopLeftRadius: index == 0 ? 2 * (winWidth / 35) : 0,
           borderTopRightRadius: index == 0 ? 2 * (winWidth / 35) : 0,
           flexDirection: 'row',
@@ -417,18 +415,18 @@ const DeviceChooser = ({ navigation, route }) => {
             }}>
             <Text
               style={{
-                fontSize: 2 * (winWidth / 40),
+                fontSize: 2 * (winWidth / 60),
                 fontWeight: 'bold',
                 color: 'white',
                 marginTop: 2 * (winWidth / 50),
               }}>
-              {title}
+              OnAir-{id.replace(/:/g, "").slice(-4)}
             </Text>
             <Text
               style={{
-                fontSize: 2 * (winWidth / 50),
+                fontSize: 2 * (winWidth / 70),
                 color: 'gray',
-                marginBottom: 2 * (winWidth / 50),
+                marginBottom: 2 * (winWidth / 70),
               }}>
               {id}
             </Text>
@@ -437,8 +435,7 @@ const DeviceChooser = ({ navigation, route }) => {
         <View
           style={{
             flexDirection: 'row',
-            marginRight: 10,
-            justifyContent: 'center',
+            justifyContent: 'space-around',
             alignItems: 'center',
           }}>
           {loadingPing[0] && loadingPing[1] == id ? (
@@ -461,8 +458,8 @@ const DeviceChooser = ({ navigation, route }) => {
               <Image
                 source={require('../assets/icons/bell.png')}
                 style={{
-                  width: winWidth / 10,
-                  height: winWidth / 10,
+                  width: winWidth / 15,
+                  height: winWidth / 15,
                   marginRight: 10,
                 }}
               />
@@ -488,9 +485,8 @@ const DeviceChooser = ({ navigation, route }) => {
               <Image
                 source={require('../assets/icons/bluetooth_connected2.png')}
                 style={{
-                  width: winWidth / 9,
-                  height: winWidth / 9,
-                  marginRight: 10,
+                  width: winWidth / 13,
+                  height: winWidth / 13,
                 }}
               />
             </TouchableOpacity>
@@ -558,7 +554,6 @@ const DeviceChooser = ({ navigation, route }) => {
               }}
               size={[winWidth / 15, winWidth / 15]}
               {...{
-                top: '-50%',
                 backgroundColor: 'transparent',
                 position: 'absolute',
                 zIndex: 1,
@@ -574,6 +569,7 @@ const DeviceChooser = ({ navigation, route }) => {
                 style={{
                   fontSize: 2 * (winWidth / 30),
                   fontWeight: 'bold',
+                  color: "white"
                 }}>
                 Choose your device
               </Text>

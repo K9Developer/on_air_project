@@ -9,8 +9,7 @@ import {
   Image,
   Animated,
   AppState,
-  Vibration,
-  Dimensions,
+  Dimensions, ScrollView,
   TouchableOpacity,
 } from 'react-native';
 import React, { useState, useRef, useEffect } from 'react';
@@ -56,6 +55,11 @@ const getData = async key => {
   } catch (error) {
     console.log('getData error:', error);
   }
+};
+
+const isPortrait = () => {
+  const dim = Dimensions.get('screen');
+  return dim.height >= dim.width;
 };
 
 const getErrorText = error => {
@@ -223,6 +227,7 @@ const Settings = ({ navigation, route }) => {
   const [factorIndex, setFactorIndex] = useState(0);
   const [roadPresetIndex, setRoadPresetIndex] = useState(0);
   const [trailPresetIndex, setTrailPresetIndex] = useState(0);
+  const [isPortraitOrientation, setIsPortraitOrientation] = useState(isPortrait());
 
   const onDeviceDisconnect = (error, device) => {
     console.log('REACHED DISCONNECT');
@@ -735,10 +740,12 @@ const Settings = ({ navigation, route }) => {
         numberOfLines={1}
         style={{
           width: winWidth / 5.1,
+          fontSize: winWidth / 40,
           textAlign: 'center',
           justifyContent: 'center',
           alignItems: 'center',
           color: 'black',
+
         }}>
         {item}
       </Text>
@@ -813,13 +820,14 @@ const Settings = ({ navigation, route }) => {
           style={{
             flex: 1,
             justifyContent: 'center',
-            alignItems: 'center',
-            marginTop: 22,
+            alignItems: 'center', display: "flex",
+            flexDirection: "column"
           }}>
           <View
             style={{
               width: '80%',
-              margin: 20,
+              maxHeight: '90%',
+              minHeight: "30%",
               backgroundColor: 'white',
               borderRadius: 2 * (winWidth / 25),
               alignItems: 'center',
@@ -832,15 +840,9 @@ const Settings = ({ navigation, route }) => {
               shadowRadius: 4,
               elevation: 5,
               paddingTop: '5%',
+              position: 'relative'
             }}>
-            <Image
-              source={
-                modalError
-                  ? require('../assets/icons/error.png')
-                  : require('../assets/icons/info.png')
-              }
-              style={{ width: 90, height: 90, marginBottom: 20 }}
-            />
+
             <Text
               style={{
                 color: '#6f7173',
@@ -853,13 +855,22 @@ const Settings = ({ navigation, route }) => {
               }}>
               {modalError ? 'Oh Snap!' : 'Info'}
             </Text>
+            <Image
+              source={
+                modalError
+                  ? require('../assets/icons/error.png')
+                  : require('../assets/icons/info.png')
+              }
+              style={{ width: winWidth / 7, height: winWidth / 7, marginBottom: 20 }}
+            />
+
             <Text
               style={{
                 color: '#6f7173',
                 paddingRight: 40,
                 paddingLeft: 40,
-                fontSize: 2 * (winWidth / 50),
-                textAlign: 'center',
+                fontSize: 2 * (winWidth / 60),
+                textAlign: 'center'
               }}>
               {modalText}
             </Text>
@@ -869,18 +880,19 @@ const Settings = ({ navigation, route }) => {
                 borderBottomRightRadius: 20,
                 borderBottomLeftRadius: 20,
                 width: '100%',
-                padding: 20,
                 elevation: 2,
+                height: '20%', marginTop: "auto",
                 backgroundColor: modalError ? '#db4d4d' : '#2196F3',
-                marginTop: 30,
-                bottom: 0,
+
               }}
               onPress={() => setModalVisible(!modalVisible)}>
               <Text
+
                 style={{
                   color: 'white',
-                  fontSize: 2 * (winWidth / 30),
-                  textAlign: 'center',
+                  fontSize: 2 * (winWidth / 60),
+                  textAlign: 'center', height: '100%',
+                  textAlignVertical: 'center'
                 }}>
                 {modalError ? 'Dismiss' : 'Ok'}
               </Text>
@@ -917,10 +929,10 @@ const Settings = ({ navigation, route }) => {
           <View
             style={{
               backgroundColor: 'white',
-              borderRadius: 2 * (winWidth / 25),
+              borderRadius: 25,
               flex: 1,
-              width: '80%',
-              maxHeight: '40%',
+              width: isPortraitOrientation ? '80%' : "60%",
+              maxHeight: isPortraitOrientation ? '30%' : "60%",
               position: 'relative',
             }}>
             {/* <View
@@ -947,8 +959,8 @@ const Settings = ({ navigation, route }) => {
             <View style={{ alignItems: 'center' }}>
               <Text
                 style={{
+                  fontSize: 20,
                   color: 'black',
-                  fontSize: 2 * (winWidth / 25),
                   fontWeight: 'bold',
                   paddingVertical: '5%',
                 }}>
@@ -964,6 +976,7 @@ const Settings = ({ navigation, route }) => {
                   textAlign: 'center',
                   flex: 1,
                   width: '100%',
+                  height: '100%',
                 }}
                 data={
                   pickerModalText == 'Factor' ? FACTOR_OPTIONS : PRESET_OPTIONS
@@ -974,12 +987,10 @@ const Settings = ({ navigation, route }) => {
                   <View
                     style={{
                       aspectRatio: 1,
-                      width: '25%',
-                      paddingHorizontal: 25,
-                      borderWidth: winWidth / 270,
-                      borderLeftColor: '#6f7173',
-                      borderRightColor: '#6f7173',
-                      borderRadius: 2 * (winWidth / 50),
+                      width: isPortraitOrientation ? '20%' : "15%",
+                      borderWidth: 1,
+                      borderColor: '#6f7173',
+                      borderRadius: 20,
                     }}></View>
                 }
                 onChange={index => {
@@ -1005,16 +1016,16 @@ const Settings = ({ navigation, route }) => {
                     width: '50%',
                     padding: 20,
                     elevation: 2,
-                    backgroundColor: '#ed5c5f',
                     justifyContent: 'center',
                     alignItems: 'center',
                     backgroundColor: 'red',
                   }}
                   onPress={() => setPickerModalVisible(!pickerModalVisible)}>
                   <Text
+                    adjustsFontSizeToFit
+                    numberOfLines={1}
                     style={{
                       color: 'white',
-                      fontSize: 2 * (winWidth / 30),
                       textAlign: 'center',
                     }}>
                     Cancel
@@ -1024,13 +1035,14 @@ const Settings = ({ navigation, route }) => {
                   style={{
                     borderBottomRightRadius: 20,
                     width: '50%',
-                    padding: 20,
+                    // padding: 20,
                     elevation: 2,
                     backgroundColor: '#2196F3',
                     justifyContent: 'center',
                     alignItems: 'center',
                   }}
                   onPress={() => {
+                    setPickerModalVisible(!pickerModalVisible);
                     setPickerModalVisible(!pickerModalVisible);
 
                     if (pickerModalText == 'Road Preset') {
@@ -1063,9 +1075,10 @@ const Settings = ({ navigation, route }) => {
                     }
                   }}>
                   <Text
+                    adjustsFontSizeToFit
+                    numberOfLines={1}
                     style={{
                       color: 'white',
-                      fontSize: 2 * (winWidth / 30),
                       textAlign: 'center',
                     }}>
                     Submit
@@ -1097,7 +1110,7 @@ const Settings = ({ navigation, route }) => {
             height: dropAnim,
           },
         ]}>
-        <Text style={{ color: 'white', fontSize: 2 * (winWidth / 50) }}>
+        <Text style={{ color: 'white', fontSize: isPortraitOrientation ? 2 * (winWidth / 60) : 2 * (winWidth / 80) }}>
           {statusText}
         </Text>
       </Animated.View>
@@ -1106,19 +1119,27 @@ const Settings = ({ navigation, route }) => {
         style={{
           flexDirection: 'row',
           justifyContent: 'space-between',
+          marginBottom: isPortraitOrientation ? "10%" : '1%'
         }}>
         <CircleButton
           imgUrl={require('../assets/icons/back.png')}
           handlePressDown={() => { }}
           handlePressUp={goHome}
-          size={[winWidth / 10, winWidth / 10]}
+          size={isPortraitOrientation ? [winWidth / 10, winWidth / 10] : [winWidth / 20, winWidth / 20]}
           {...{
             marginLeft: winWidth / 15,
             marginTop: winWidth / 15,
             backgroundColor: 'transparent',
           }}
         />
+        <Text style={{
+          fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 50),
+          color: 'white',
+          marginTop: winWidth / 15,
 
+        }}>
+          SETTINGS
+        </Text>
         <CircleButton
           imgUrl={
             bluetoothImageId == 1
@@ -1135,7 +1156,7 @@ const Settings = ({ navigation, route }) => {
               startConnection();
             }
           }}
-          size={[winWidth / 7, winWidth / 7]}
+          size={isPortraitOrientation ? [winWidth / 7, winWidth / 7] : [winWidth / 20, winWidth / 20]}
           {...{
             marginRight: winWidth / 15,
             marginTop: winWidth / 15,
@@ -1143,18 +1164,7 @@ const Settings = ({ navigation, route }) => {
           }}
         />
       </View>
-      <View
-        style={{
-          marginBottom: 20,
-          marginTop: 10,
-          width: '100%',
-          alignContent: 'center',
-          alignItems: 'center',
-        }}>
-        <Text style={{ fontSize: 2 * (winWidth / 30), color: 'white' }}>
-          Settings
-        </Text>
-      </View>
+
       <View
         style={{
           backgroundColor: '#242424',
@@ -1168,7 +1178,7 @@ const Settings = ({ navigation, route }) => {
         }}>
         <Text
           style={{
-            fontSize: 2 * (winWidth / 30),
+            fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 40),
             marginLeft: 50,
             color: 'white',
           }}>
@@ -1198,11 +1208,11 @@ const Settings = ({ navigation, route }) => {
           }}>
           <Text
             style={{
-              fontSize: 2 * (winWidth / 30),
-              width: 'auto',
-              height: 'auto',
+              textAlign: 'center',
+              textAlignVertical: 'center',
+              paddingHorizontal: '7%',
               color: 'white',
-              ...SHADOWS.extraDark,
+              fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60)
             }}>
             {JSON.stringify(factor)}
           </Text>
@@ -1220,7 +1230,7 @@ const Settings = ({ navigation, route }) => {
         }}>
         <Text
           style={{
-            fontSize: 2 * (winWidth / 30),
+            fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 40),
             marginLeft: 50,
             color: 'white',
           }}>
@@ -1246,11 +1256,11 @@ const Settings = ({ navigation, route }) => {
           }}>
           <Text
             style={{
-              fontSize: 2 * (winWidth / 30),
-              width: 'auto',
-              height: 'auto',
+              textAlign: 'center',
+              textAlignVertical: 'center',
+              paddingHorizontal: '7%',
               color: 'white',
-              ...SHADOWS.extraDark,
+              fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60)
             }}>
             {JSON.stringify(roadPreset)}
           </Text>
@@ -1270,7 +1280,7 @@ const Settings = ({ navigation, route }) => {
         }}>
         <Text
           style={{
-            fontSize: 2 * (winWidth / 30),
+            fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 40),
             marginLeft: 50,
             color: 'white',
           }}>
@@ -1296,11 +1306,11 @@ const Settings = ({ navigation, route }) => {
           }}>
           <Text
             style={{
-              fontSize: 2 * (winWidth / 30),
-              width: 'auto',
-              height: 'auto',
+              textAlign: 'center',
+              textAlignVertical: 'center',
+              paddingHorizontal: '7%',
               color: 'white',
-              ...SHADOWS.extraDark,
+              fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60)
             }}>
             {JSON.stringify(trailPreset)}
           </Text>
@@ -1311,12 +1321,12 @@ const Settings = ({ navigation, route }) => {
           width: '100%',
           alignItems: 'center',
           justifyContent: 'center',
-          marginTop: '15%',
+          marginTop: isPortraitOrientation ? '15%' : 0,
         }}>
-        <Text style={{ fontSize: 2 * (winWidth / 40), color: 'white' }}>
+        <Text style={{ fontSize: isPortraitOrientation ? 2 * (winWidth / 40) : 2 * (winWidth / 60), color: 'white' }}>
           All units are measured in PSI
         </Text>
-        <Text style={{ fontSize: 2 * (winWidth / 40), color: 'white' }}>
+        <Text style={{ fontSize: isPortraitOrientation ? 2 * (winWidth / 40) : 2 * (winWidth / 60), color: 'white' }}>
           On Air Version 4.4
         </Text>
         <Text
@@ -1325,12 +1335,12 @@ const Settings = ({ navigation, route }) => {
           }
           style={{
             color: '#2269B2',
-            fontSize: 2 * (winWidth / 40),
+            fontSize: isPortraitOrientation ? 2 * (winWidth / 40) : 2 * (winWidth / 60),
           }}>
           Code On Github
         </Text>
       </View>
-    </SafeAreaView>
+    </SafeAreaView >
   );
 };
 
