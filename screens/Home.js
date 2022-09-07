@@ -14,13 +14,13 @@ import {
   Dimensions,
   ActivityIndicator,
 } from 'react-native';
-import {useState, useEffect, useRef} from 'react';
+import { useState, useEffect, useRef } from 'react';
 import ValuePicker from 'react-native-picker-horizontal';
-import {check, PERMISSIONS} from 'react-native-permissions';
+import { check, PERMISSIONS } from 'react-native-permissions';
 import BluetoothStateManager from 'react-native-bluetooth-state-manager';
 
-import {FocusedStatusBar, CircleButton, RectButton} from '../components';
-import {COLORS, SHADOWS} from '../constants';
+import { FocusedStatusBar, CircleButton, RectButton } from '../components';
+import { COLORS, SHADOWS } from '../constants';
 import React from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Sound from 'react-native-sound';
@@ -49,10 +49,14 @@ const StatusIdMap = {
 const timerList = [];
 
 const winWidth = Dimensions.get('window').width;
-const winHeight = Dimensions.get('window').height;
 
 const Buffer = require('buffer').Buffer;
 Sound.setCategory('Playback');
+
+const isPortrait = () => {
+  const dim = Dimensions.get('screen');
+  return dim.height >= dim.width;
+};
 
 const renderItem = (item, index) => {
   return (
@@ -61,11 +65,12 @@ const renderItem = (item, index) => {
       numberOfLines={1}
       style={{
         width: winWidth / 5.1,
-        fontSize: winWidth / 20,
+        fontSize: winWidth / 40,
         textAlign: 'center',
         justifyContent: 'center',
         alignItems: 'center',
         color: 'black',
+
       }}>
       {item}
     </Text>
@@ -242,7 +247,7 @@ const getErrorText = error => {
   return (
     errorMap[error.errorCode] ??
     'Unknown error occurred [custom]. (Please try again) info: ' +
-      JSON.stringify(error)
+    JSON.stringify(error)
   );
 };
 
@@ -347,19 +352,21 @@ const storeData = async () => {
   }
 };
 
-const Home = ({navigation, route}) => {
+const Home = ({ navigation, route }) => {
+
   const [wantedPsi, setWantedPsi] = useState(MIN_PSI);
   const [factor, setFactor] = useState(MIN_FACTOR);
   const [modalVisible, setModalVisible] = useState(false);
   const [modalError, setModalError] = useState(false);
   const [modalText, setModalText] = useState('N/A');
   const [connected, setConnected] = useState(false);
-  const [statusText, setStatusText] = useState('Stand By');
+  const [statusText, setStatusText] = useState('Disconnected');
   const [disconnectMonitor, setDisconnectMonitor] = useState(null);
   const [readMonitor, setReadMonitor] = useState(null);
   const [tirePressure, setTirePressure] = useState(0);
   const [showStatusLoading, setShowStatusLoading] = useState(false);
   const [isDone, setIsDone] = useState(false);
+  const [lowBattery, setLowBattery] = useState(false);
   const [dropMessageText, setDropMessageText] = useState(
     'You have disconnected from the device.',
   );
@@ -368,7 +375,12 @@ const Home = ({navigation, route}) => {
   const [allMessagesSentByDevice, setAllMessagesSentByDevice] = useState([]);
   const [pickerModalVisible, setPickerModalVisible] = useState(false);
   const [psiIndex, setPsiIndex] = useState(0);
+  const [isPortraitOrientation, setIsPortraitOrientation] = useState(isPortrait());
   const dropAnim = useRef(new Animated.Value(0)).current;
+
+  Dimensions.addEventListener('change', () => {
+    setIsPortraitOrientation(isPortrait())
+  });
 
   const onDeviceDisconnect = (error, device) => {
     if (error) {
@@ -385,7 +397,7 @@ const Home = ({navigation, route}) => {
       for (timer of timerList) {
         clearInterval(timer);
       }
-      setStatusText('Stand By');
+      setStatusText('Disconnected');
       if (readMonitor) {
         readMonitor.remove();
         setReadMonitor(null);
@@ -662,7 +674,7 @@ const Home = ({navigation, route}) => {
       for (const [_key, val] of Object.entries(MANAGER._activeSubscriptions)) {
         try {
           MANAGER._activeSubscriptions[val].remove();
-        } catch (error) {}
+        } catch (error) { }
       }
       try {
         for (const [_key, val] of Object.entries(
@@ -670,9 +682,9 @@ const Home = ({navigation, route}) => {
         )) {
           try {
             BT05_DEVICE._manager._activeSubscriptions[val].remove();
-          } catch (error) {}
+          } catch (error) { }
         }
-      } catch (error) {}
+      } catch (error) { }
     }
   };
 
@@ -703,7 +715,7 @@ const Home = ({navigation, route}) => {
         }
         doneStatus();
       } else {
-        setStatusText('Stand By');
+        setStatusText('Connected');
       }
       return;
     }
@@ -715,8 +727,7 @@ const Home = ({navigation, route}) => {
     timerList.push(
       setInterval(() => {
         setStatusText(
-          `${StatusIdMap[statusId]}: ${
-            startTime - x >= 0 ? startTime - x : 0
+          `${StatusIdMap[statusId]}: ${startTime - x >= 0 ? startTime - x : 0
           }s`,
         );
 
@@ -764,6 +775,7 @@ const Home = ({navigation, route}) => {
         console.log(dataArray);
         handleStatusId(dataArray[1], dataArray[0]);
         setTirePressure(dataArray[2]);
+        setLowBattery(dataArray[4])
       }
     }
   };
@@ -793,13 +805,14 @@ const Home = ({navigation, route}) => {
   }, [wantedPsi]);
 
   return (
-    <SafeAreaView style={{flex: 1}}>
+    <SafeAreaView style={{ flex: 1 }}>
       <FocusedStatusBar backgroundColor={COLORS.primary} />
 
       <Modal
         animationType="slide"
         transparent={true}
         visible={modalText == null ? false : pickerModalVisible}
+        // visible
         onRequestClose={() => {
           setPickerModalVisible(!pickerModalVisible);
         }}>
@@ -824,17 +837,19 @@ const Home = ({navigation, route}) => {
           <View
             style={{
               backgroundColor: 'white',
-              borderRadius: 2 * (winWidth / 25),
+              borderRadius: 25,
               flex: 1,
-              width: '80%',
-              maxHeight: '40%',
+              width: isPortraitOrientation ? '80%' : "60%",
+              maxHeight: isPortraitOrientation ? '30%' : "60%",
               position: 'relative',
             }}>
-            <View style={{alignItems: 'center'}}>
+            <View style={{ alignItems: 'center' }}>
               <Text
+                adjustsFontSizeToFit
+                numberOfLines={1}
                 style={{
+                  fontSize: 20,
                   color: 'black',
-                  fontSize: 2 * (winWidth / 25),
                   fontWeight: 'bold',
                   paddingVertical: '5%',
                 }}>
@@ -842,12 +857,13 @@ const Home = ({navigation, route}) => {
               </Text>
             </View>
 
-            <View style={{flex: 1}}>
+            <View style={{ flex: 1 }}>
               <ValuePicker
                 style={{
                   textAlign: 'center',
                   flex: 1,
                   width: '100%',
+                  height: '100%',
                 }}
                 data={PSI_OPTIONS}
                 renderItem={renderItem}
@@ -856,12 +872,10 @@ const Home = ({navigation, route}) => {
                   <View
                     style={{
                       aspectRatio: 1,
-                      width: '25%',
-                      paddingHorizontal: 25,
-                      borderWidth: winWidth / 270,
-                      borderLeftColor: '#6f7173',
-                      borderRightColor: '#6f7173',
-                      borderRadius: 2 * (winWidth / 50),
+                      width: isPortraitOrientation ? '20%' : "15%",
+                      borderWidth: 1,
+                      borderColor: '#6f7173',
+                      borderRadius: 20,
                     }}></View>
                 }
                 onChange={index => {
@@ -871,9 +885,9 @@ const Home = ({navigation, route}) => {
             </View>
             <View
               style={{
-                marginTop: 30,
+                marginTop: 10
               }}>
-              <View style={{flexDirection: 'row'}}>
+              <View style={{ flexDirection: 'row' }}>
                 <Pressable
                   style={{
                     borderBottomLeftRadius: 20,
@@ -881,16 +895,16 @@ const Home = ({navigation, route}) => {
                     width: '50%',
                     padding: 20,
                     elevation: 2,
-                    backgroundColor: '#ed5c5f',
                     justifyContent: 'center',
                     alignItems: 'center',
                     backgroundColor: 'red',
                   }}
                   onPress={() => setPickerModalVisible(!pickerModalVisible)}>
                   <Text
+                    adjustsFontSizeToFit
+                    numberOfLines={1}
                     style={{
                       color: 'white',
-                      fontSize: 2 * (winWidth / 30),
                       textAlign: 'center',
                     }}>
                     Cancel
@@ -900,7 +914,7 @@ const Home = ({navigation, route}) => {
                   style={{
                     borderBottomRightRadius: 20,
                     width: '50%',
-                    padding: 20,
+                    // padding: 20,
                     elevation: 2,
                     backgroundColor: '#2196F3',
                     justifyContent: 'center',
@@ -911,9 +925,10 @@ const Home = ({navigation, route}) => {
                     setWantedPsi(PSI_OPTIONS[psiIndex]);
                   }}>
                   <Text
+                    adjustsFontSizeToFit
+                    numberOfLines={1}
                     style={{
                       color: 'white',
-                      fontSize: 2 * (winWidth / 30),
                       textAlign: 'center',
                     }}>
                     Submit
@@ -946,13 +961,14 @@ const Home = ({navigation, route}) => {
           style={{
             flex: 1,
             justifyContent: 'center',
-            alignItems: 'center',
-            marginTop: 22,
+            alignItems: 'center', display: "flex",
+            flexDirection: "column"
           }}>
           <View
             style={{
               width: '80%',
-              margin: 20,
+              maxHeight: '90%',
+              minHeight: "30%",
               backgroundColor: 'white',
               borderRadius: 2 * (winWidth / 25),
               alignItems: 'center',
@@ -965,15 +981,9 @@ const Home = ({navigation, route}) => {
               shadowRadius: 4,
               elevation: 5,
               paddingTop: '5%',
+              position: 'relative'
             }}>
-            <Image
-              source={
-                modalError
-                  ? require('../assets/icons/error.png')
-                  : require('../assets/icons/info.png')
-              }
-              style={{width: 90, height: 90, marginBottom: 20}}
-            />
+
             <Text
               style={{
                 color: '#6f7173',
@@ -986,13 +996,22 @@ const Home = ({navigation, route}) => {
               }}>
               {modalError ? 'Oh Snap!' : 'Info'}
             </Text>
+            <Image
+              source={
+                modalError
+                  ? require('../assets/icons/error.png')
+                  : require('../assets/icons/info.png')
+              }
+              style={{ width: winWidth / 7, height: winWidth / 7, marginBottom: 20 }}
+            />
+
             <Text
               style={{
                 color: '#6f7173',
                 paddingRight: 40,
                 paddingLeft: 40,
-                fontSize: 2 * (winWidth / 50),
-                textAlign: 'center',
+                fontSize: 2 * (winWidth / 60),
+                textAlign: 'center'
               }}>
               {modalText}
             </Text>
@@ -1002,18 +1021,19 @@ const Home = ({navigation, route}) => {
                 borderBottomRightRadius: 20,
                 borderBottomLeftRadius: 20,
                 width: '100%',
-                padding: 20,
                 elevation: 2,
+                height: '20%', marginTop: "auto",
                 backgroundColor: modalError ? '#db4d4d' : '#2196F3',
-                marginTop: 30,
-                bottom: 0,
+
               }}
               onPress={() => setModalVisible(!modalVisible)}>
               <Text
+
                 style={{
                   color: 'white',
-                  fontSize: 2 * (winWidth / 30),
-                  textAlign: 'center',
+                  fontSize: 2 * (winWidth / 60),
+                  textAlign: 'center', height: '100%',
+                  textAlignVertical: 'center'
                 }}>
                 {modalError ? 'Dismiss' : 'Ok'}
               </Text>
@@ -1090,11 +1110,24 @@ const Home = ({navigation, route}) => {
         style={{
           flexDirection: 'row',
           justifyContent: 'space-between',
+          paddingHorizontal: "5%",
+          paddingTop: "2%",
+          position: 'relative',
+          width: '100%',
+          height: "20%",
+          marginBottom: '1%'
         }}>
-        <CircleButton
-          imgUrl={require('../assets/icons/cog.png')}
-          handlePressDown={() => {}}
-          handlePressUp={() => {
+
+
+        <TouchableOpacity
+          style={{
+            borderRadius: 50,
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: isPortraitOrientation ? "15%" : "7%",
+            aspectRatio: 1,
+          }}
+          onPressOut={() => {
             try {
               MANAGER.isDeviceConnected(BT05_DEVICE.id).then(d => {
                 console.log('BEFORE LEAVE, CONNECTED 1 - ' + d);
@@ -1122,338 +1155,411 @@ const Home = ({navigation, route}) => {
               connectToDevice: false,
               manager: MANAGER,
             });
-          }}
-          size={[2 * (winWidth / 15), 2 * (winHeight / 15)]}
-          {...{
-            marginLeft: winWidth / 15,
-            marginTop: winWidth / 15,
-            backgroundColor: 'transparent',
-          }}
-        />
-        <CircleButton
-          imgUrl={require('../assets/icons/aboutme.png')}
-          handlePressDown={() => {}}
-          handlePressUp={() => {
-            removeSubscriptions();
-            navigation.navigate('AboutMe');
-          }}
-          size={[2 * (winWidth / 15), 2 * (winWidth / 15)]}
-          {...{
-            marginRight: winWidth / 15,
-            marginTop: winWidth / 15,
-            backgroundColor: 'transparent',
-          }}
-        />
-      </View>
-      <View
-        style={{
-          flex: 1,
-          alignItems: 'center',
-        }}>
+          }}>
+          <Image
+            key={new Date()}
+            source={require('../assets/icons/cog.png')}
+            resizeMode="contain"
+            style={{
+              width: '100%',
+              height: undefined,
+              aspectRatio: 1,
+            }}
+          />
+        </TouchableOpacity>
+
+
         {/* Logo */}
-        <View
+
+        <TouchableOpacity
           style={{
-            width: '100%',
-            height: '10%',
+            width: isPortraitOrientation ? "50%" : "30%",
+            height: isPortraitOrientation ? '50%' : "100%",
             justifyContent: 'center',
             alignItems: 'center',
-            marginBottom: '10%',
-            marginTop: '2%',
-          }}>
-          <TouchableOpacity
-            style={{
-              width: '50%',
-              height: '100%',
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}
-            onPress={async () => {
-              if (BT05_DEVICE != null) {
-                try {
-                  let d = await MANAGER.isDeviceConnected(BT05_DEVICE.id);
-                  if (!d) {
-                    console.log('BT05_DEVICE is not connected');
-                    setConnected(false);
-                  }
-                } catch (err) {
-                  console.log('Error checking connected - ' + err);
-                }
+            top: isPortraitOrientation ? "10%" : 0,
 
-                if (connected) {
-                  console.log('Sending all data to the device');
-                  sendAllData(wantedPsi, factor);
-                  if (isDone) {
-                    setIsDone(false);
-                  }
-                } else {
-                  if (!JSON.parse(JSON.stringify(dropAnim))) {
-                    dropIn();
-                    setDropMessageText('You are not connected to the device.');
-                    setDropMessageButtonText('Connect');
-                  }
+          }}
+          onPress={async () => {
+            if (BT05_DEVICE != null) {
+              try {
+                let d = await MANAGER.isDeviceConnected(BT05_DEVICE.id);
+                if (!d) {
+                  console.log('BT05_DEVICE is not connected');
+                  setConnected(false);
+                }
+              } catch (err) {
+                console.log('Error checking connected - ' + err);
+              }
+
+              if (connected) {
+                console.log('Sending all data to the device');
+                sendAllData(wantedPsi, factor);
+                if (isDone) {
+                  setIsDone(false);
                 }
               } else {
                 if (!JSON.parse(JSON.stringify(dropAnim))) {
+                  dropIn();
                   setDropMessageText('You are not connected to the device.');
                   setDropMessageButtonText('Connect');
-                  dropIn();
                 }
               }
-            }}>
-            <Image
-              source={require('../assets/icons/logo.png')}
-              resizeMode="center"
-              style={{width: winWidth / 1.7, height: winWidth / 5}}
-            />
-          </TouchableOpacity>
-        </View>
-
-        {/* BODY */}
-
-        {/* TIRE TEXT */}
-
-        <View
-          style={{
-            backgroundColor: '#242424',
-            width: '100%',
-            height: '12%',
-            borderTopLeftRadius: 20,
-            borderTopRightRadius: 20,
-            alignItems: 'center',
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            paddingHorizontal: '5%',
-            ...SHADOWS.extraDark,
+            } else {
+              if (!JSON.parse(JSON.stringify(dropAnim))) {
+                setDropMessageText('You are not connected to the device.');
+                setDropMessageButtonText('Connect');
+                dropIn();
+              }
+            }
           }}>
-          <Text style={{fontSize: 2 * (winWidth / 30), color: 'white'}}>
-            TIRE
-          </Text>
-          <Text
-            style={{
-              fontSize: 2 * (winWidth / 30),
-              backgroundColor: '#1B1B1B',
-              paddingLeft: '7%',
-              paddingRight: '7%',
-              paddingTop: '2%',
-              paddingBottom: '2%',
-              borderRadius: 2 * (winWidth / 25),
-              color: 'white',
-            }}>
-            {Math.round(tirePressure * 2) / 2}
-          </Text>
-        </View>
-
-        {/* SET GROUP */}
-        <View
-          style={{
-            marginTop: '2%',
-            backgroundColor: '#242424',
-            width: '100%',
-            height: '25%',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            paddingHorizontal: '5%',
-            ...SHADOWS.extraDark,
-          }}>
-          {/* SET TEXT */}
-          <View
+          <Image
+            source={require('../assets/icons/logo.png')}
+            resizeMode="center"
             style={{
               width: '100%',
+              height: "100%",
+            }}
+          />
+        </TouchableOpacity>
 
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexDirection: 'row',
-              height: '50%',
-              color: 'white',
-            }}>
-            <Text style={{fontSize: 2 * (winWidth / 30), color: 'white'}}>
-              SET
-            </Text>
-            <TouchableOpacity
-              onPress={() => {
-                setPickerModalVisible(true);
-              }}>
-              <Text
-                style={{
-                  fontSize: 2 * (winWidth / 30),
-                  backgroundColor: '#1B1B1B',
-                  alignContent: 'center',
-                  justifyContent: 'center',
-                  paddingLeft: '7%',
-                  paddingRight: '7%',
-                  paddingTop: '2%',
-                  paddingBottom: '2%',
-                  borderRadius: 2 * (winWidth / 25),
-                  color: 'white',
-                }}>
-                {wantedPsi}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* SET BUTTONS */}
-          <View
-            style={{
-              position: 'relative',
-              flexDirection: 'row',
-              marginTop: '2%',
-            }}>
-            <RectButton
-              width={'20%'}
-              fontSize={2 * (winWidth / 30)}
-              handlePressDown={() => {
-                downPressPlus(wantedPsi, setWantedPsi);
-              }}
-              handlePressUp={() => {
-                upPressPlus(wantedPsi, setWantedPsi);
-              }}
-              text={'+'}
-              {...{
-                backgroundColor: '#116AC1',
-                ...SHADOWS.dark,
-                paddingBottom: 5,
-                marginRight: '2%',
-              }}
-            />
-            <RectButton
-              width={'20%'}
-              fontSize={2 * (winWidth / 30)}
-              handlePressDown={() => {
-                downPressMinus(wantedPsi, setWantedPsi);
-              }}
-              handlePressUp={() => {
-                upPressMinus(wantedPsi, setWantedPsi);
-              }}
-              text={'-'}
-              {...{
-                backgroundColor: '#116AC1',
-                ...SHADOWS.dark,
-                paddingBottom: 5,
-                marginRight: '5%',
-              }}
-            />
-            <RectButton
-              width={'25%'}
-              fontSize={2 * (winWidth / 40)}
-              handlePressUp={() => {
-                getData('@roadPreset')
-                  .then(data => data)
-                  .then(value => {
-                    setWantedPsi(parseInt(JSON.parse(value)));
-                  })
-                  .catch(err => console.log(err));
-              }}
-              text={'Road'}
-              {...{
-                backgroundColor: '#489143',
-                ...SHADOWS.dark,
-                paddingBottom: 5,
-                marginRight: '2%',
-              }}
-            />
-            <RectButton
-              width={'25%'}
-              fontSize={2 * (winWidth / 40)}
-              handlePressUp={() => {
-                getData('@trailPreset')
-                  .then(data => data)
-                  .then(value => {
-                    setWantedPsi(parseInt(value));
-                  })
-                  .catch(err => console.log(err));
-              }}
-              text={'Trail'}
-              {...{
-                backgroundColor: '#489143',
-                ...SHADOWS.dark,
-                paddingBottom: 5,
-              }}
-            />
-          </View>
-        </View>
-
-        {/* STATUS TEXT */}
-        <View
+        <TouchableOpacity
           style={{
-            backgroundColor: '#242424',
-            width: '100%',
-            height: '12%',
-            borderBottomLeftRadius: 20,
-            borderBottomRightRadius: 20,
             alignItems: 'center',
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            marginTop: '2%',
-            paddingHorizontal: '5%',
-            ...SHADOWS.extraDark,
+            width: isPortraitOrientation ? "15%" : "7%",
+            aspectRatio: 1,
+            position: "relative",
+          }}
+          onPressOut={() => {
+            removeSubscriptions();
+            navigation.navigate('AboutMe');
           }}>
+          <View style={{
+            flexDirection: 'row',
+          }}>
+
+
+
+            <Image
+              key={new Date()}
+              source={require('../assets/icons/aboutme.png')}
+              resizeMode="contain"
+              style={{
+                width: '100%',
+                height: undefined,
+                aspectRatio: 1,
+
+              }}
+            />
+
+            <Image
+              key={1233464567}
+              source={require('../assets/icons/low_battery.png')}
+              resizeMode="contain"
+              style={{
+                width: lowBattery ? '70%' : 0,
+                height: undefined,
+                aspectRatio: 1,
+                position: "absolute",
+                left: "-100%"
+              }}
+            />
+
+          </View>
+        </TouchableOpacity>
+      </View>
+
+
+      {/* BODY */}
+
+      {/* TIRE TEXT */}
+
+      <View
+        style={{
+          backgroundColor: '#242424',
+          width: '100%',
+          height: '12%',
+          borderTopLeftRadius: 20,
+          borderTopRightRadius: 20,
+          alignItems: 'center',
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          paddingHorizontal: '5%',
+          ...SHADOWS.extraDark,
+        }}>
+        <Text
+          adjustsFontSizeToFit
+          numberOfLines={1}
+          style={{ fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60), color: 'white' }}>
+          TIRE
+        </Text>
+        <View>
           <Text
             adjustsFontSizeToFit
             numberOfLines={1}
-            style={{fontSize: 2 * (winWidth / 30), color: 'white'}}>
-            STATUS
-          </Text>
-          <View
             style={{
-              alignItems: 'center',
-              flexDirection: 'row',
-              justifyContent: 'flex-end',
-              width: '60%',
-              height: '100%',
+              backgroundColor: '#1B1B1B',
+              textAlign: 'center',
+              textAlignVertical: 'center',
+              paddingHorizontal: '7%',
+              paddingVertical: '2%',
+              borderRadius: 2 * (winWidth / 25),
+              color: 'white',
+              fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60)
             }}>
-            {showStatusLoading ? (
-              <ActivityIndicator
-                size="large"
-                color="#fff"
-                style={{
-                  width: 30,
-                  height: 30,
-                  marginRight: 20,
-                }}
-              />
-            ) : null}
+            {Math.round(tirePressure * 2) / 2}
+          </Text></View>
+      </View>
 
+      {/* SET GROUP */}
+      <View
+        style={{
+          marginTop: isPortraitOrientation ? '2%' : '1%',
+          backgroundColor: '#242424',
+          width: '100%',
+          height: isPortraitOrientation ? '20%' : "25%",
+          flexDirection: 'column',
+          justifyContent: 'center',
+          paddingHorizontal: '5%',
+          ...SHADOWS.extraDark,
+        }}>
+        {/* SET TEXT */}
+        <View style={{
+          width: '100%',
+          height: '100%',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexDirection: 'row'
+        }}>
+          <Text style={{
+            color: 'white',
+            fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60)
+          }}>SET</Text>
+          <View style={{
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '50%',
+            height: '70%'
+          }}>
+            <View style={{
+              flexDirection: 'row',
+              width: '100%',
+              height: '50%',
+              marginBottom: '5%',
+              justifyContent: 'space-between'
+            }}>
+
+
+
+              <TouchableOpacity
+                onPressIn={() => downPressPlus(wantedPsi, setWantedPsi)}
+                onPressOut={() => upPressPlus(wantedPsi, setWantedPsi)}
+
+                style={{
+                  width: "45%",
+                  backgroundColor: '#116AC1',
+                  borderRadius: 10
+                }}>
+                <Text style={{
+                  width: "100%",
+                  height: "100%",
+                  borderRadius: 10, textAlign: 'center',
+                  textAlignVertical: 'center',
+                }}>+</Text>
+              </TouchableOpacity>
+
+
+
+              <TouchableOpacity
+                onPressIn={() => downPressMinus(wantedPsi, setWantedPsi)}
+                onPressOut={() => upPressMinus(wantedPsi, setWantedPsi)}
+                style={{
+                  width: "45%",
+                  backgroundColor: '#116AC1',
+                  borderRadius: 10
+                }}>
+                <Text style={{
+                  textAlignVertical: 'center',
+                  height: "100%", color: 'white',
+                  textAlign: 'center'
+                }}>-</Text>
+              </TouchableOpacity>
+            </View>
+
+
+            <View style={{
+              flexDirection: 'row',
+              width: '100%',
+              height: '50%',
+              justifyContent: 'space-between'
+            }}>
+              <TouchableOpacity
+                onPressOut={
+                  () => {
+                    getData('@roadPreset')
+                      .then(data => data)
+                      .then(value => {
+                        setWantedPsi(parseInt(value));
+                      })
+                      .catch(err => console.log(err));
+                  }
+                }
+                style={{
+                  width: "45%",
+                  height: "100%",
+                  backgroundColor: '#489143',
+                  borderRadius: 10
+                }}>
+                <Text
+                  adjustsFontSizeToFit
+                  numberOfLines={1}
+                  style={{
+                    textAlignVertical: 'center',
+                    textAlign: 'center',
+                    height: "100%",
+                    color: 'white'
+                  }}>ROAD</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPressOut={
+                  () => {
+                    getData('@trailPreset')
+                      .then(data => data)
+                      .then(value => {
+                        setWantedPsi(parseInt(value));
+                      })
+                      .catch(err => console.log(err));
+                  }
+                }
+                style={{
+                  width: "45%",
+                  height: "100%",
+                  backgroundColor: '#489143',
+                  borderRadius: 10
+                }}>
+                <Text
+                  adjustsFontSizeToFit
+                  numberOfLines={1}
+                  style={{
+                    textAlignVertical: 'center',
+                    textAlign: 'center',
+                    height: "100%", color: 'white'
+                  }}>TRAIL</Text>
+              </TouchableOpacity>
+            </View>
+
+          </View><TouchableOpacity
+            onPress={() => {
+              setPickerModalVisible(true);
+            }}>
             <Text
               adjustsFontSizeToFit
               numberOfLines={1}
               style={{
-                fontSize: 2 * (winWidth / 35),
                 backgroundColor: '#1B1B1B',
-
-                paddingHorizontal: '6%',
+                textAlign: 'center',
+                textAlignVertical: 'center',
+                paddingHorizontal: '7%',
                 paddingVertical: '2%',
                 borderRadius: 2 * (winWidth / 25),
-                textAlign: 'center',
-                maxWidth: '100%',
                 color: 'white',
+                fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60)
               }}>
-              {statusText}
-            </Text>
-          </View>
+              {wantedPsi}
+            </Text></TouchableOpacity>
         </View>
+      </View>
 
+      {/* STATUS TEXT */}
+      <View
+        style={{
+          backgroundColor: '#242424',
+          width: '100%',
+          height: '12%',
+          borderBottomLeftRadius: 20,
+          borderBottomRightRadius: 20,
+          alignItems: 'center',
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          marginTop: isPortraitOrientation ? '2%' : '1%',
+          paddingHorizontal: '5%',
+          ...SHADOWS.extraDark,
+        }}>
+        <Text
+          adjustsFontSizeToFit
+          numberOfLines={1}
+          style={{ fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60), color: 'white' }}>
+          STATUS
+        </Text>
+        <View
+          style={{
+            alignItems: 'center',
+            flexDirection: 'row',
+            justifyContent: 'flex-end',
+            width: '60%',
+            height: '100%',
+          }}>
+          {showStatusLoading ? (
+            <ActivityIndicator
+              size="large"
+              color="#fff"
+              style={{
+                width: 30,
+                height: 30,
+                marginRight: 20,
+              }}
+            />
+          ) : null}
+
+          <Text
+            adjustsFontSizeToFit
+            numberOfLines={1}
+            style={{
+              backgroundColor: '#1B1B1B',
+              textAlign: 'center',
+              textAlignVertical: 'center',
+              paddingHorizontal: '7%',
+              paddingVertical: '2%',
+              borderRadius: 2 * (winWidth / 25),
+              color: 'white',
+              fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60)
+            }}>
+            {statusText != "Disconnected" || statusText != "Connected" ? statusText : connected ? "Connected" : "Disconnected"}
+          </Text>
+        </View>
+      </View>
+      <View style={{
+        width: '100%',
+        height: '15%',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: isPortraitOrientation ? '5%' : "-2%",
+      }}>
         <View
           style={{
             width: '75%',
-            height: '15%',
+            height: '100%',
             borderRadius: 2 * (winWidth / 16.666),
             borderColor: isDone ? '#2D9626' : '#545454',
-            borderWidth: 2 * (winWidth / 80),
+            borderWidth: 1,
             marginTop: '10%',
             alignItems: 'center',
             justifyContent: 'center',
           }}>
           <Text
             style={{
-              fontSize: 2 * (winWidth / 20),
+              fontSize: isPortraitOrientation ? 2 * (winWidth / 20) : 2 * (winWidth / 40),
               color: isDone ? '#2D9626' : '#545454',
               fontWeight: 'bold',
+              textAlign: 'center',
+              textAlignVertical: 'center',
             }}>
             DONE
           </Text>
         </View>
       </View>
-    </SafeAreaView>
+    </SafeAreaView >
   );
 };
 

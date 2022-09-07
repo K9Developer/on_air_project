@@ -9,8 +9,9 @@ import {
   Image,
   SafeAreaView,
   Dimensions,
+  ScrollView
 } from 'react-native';
-import React, {useEffect, useState} from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   check,
   PERMISSIONS,
@@ -18,8 +19,10 @@ import {
   openSettings,
 } from 'react-native-permissions';
 import BluetoothStateManager from 'react-native-bluetooth-state-manager';
-import {LogBox} from 'react-native';
-import {StackActions} from '@react-navigation/native';
+import { LogBox } from 'react-native';
+import { StackActions } from '@react-navigation/native';
+import { I18nManager } from 'react-native';
+
 
 LogBox.ignoreLogs(['new NativeEventEmitter']);
 LogBox.ignoreLogs([
@@ -29,7 +32,7 @@ LogBox.ignoreLogs([
 const winWidth = Dimensions.get('window').width;
 let permissionTimer = null;
 
-const Permissions = ({navigation, route}) => {
+const Permissions = ({ navigation, route }) => {
   const [locationPermission, setLocationPermission] = useState(null);
   const [bluetoothConnectPermission, setBluetoothConnectPermission] =
     useState(null);
@@ -121,6 +124,8 @@ const Permissions = ({navigation, route}) => {
           (Platform.OS == 'android' && Platform.constants['Release'] <= 11))
       ) {
         clearInterval(permissionTimer);
+
+
         navigation.dispatch(StackActions.replace('Home'));
       }
     }, 500);
@@ -128,7 +133,7 @@ const Permissions = ({navigation, route}) => {
 
   return (
     <SafeAreaView
-      style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+      style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
       <View
         style={{
           width: '75%',
@@ -182,7 +187,7 @@ const Permissions = ({navigation, route}) => {
                     ? require('../assets/icons/error.png')
                     : require('../assets/icons/info.png')
                 }
-                style={{width: 90, height: 90, marginBottom: 20}}
+                style={{ width: 90, height: 90, marginBottom: 20 }}
               />
               <Text
                 style={{
@@ -238,217 +243,224 @@ const Permissions = ({navigation, route}) => {
             </View>
           </View>
         </Modal>
+        <View style={{
 
-        <View
-          style={{
+          height: '100%',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          <ScrollView contentContainerStyle={{
             height: '100%',
             alignItems: 'center',
             justifyContent: 'center',
           }}>
-          <Text
-            style={{
-              fontFamily: 'Inter-Bold',
-              marginBottom: '10%',
-              color: 'white',
-              fontSize: 2 * (winWidth / 60),
-            }}>
-            WE NEED SOME ACCESS
-          </Text>
-          <Text
-            style={{
-              textAlign: 'center',
-              lineHeight: 2 * (winWidth / 60),
-              marginBottom: 30,
-              color: 'gray',
-              fontSize: 2 * (winWidth / 80),
-            }}>
-            Our app is using BLE (bluetooth low energy). Apps using that,
-            require location and bluetooth permission. Don't worry we dont share
-            or store your information.
-          </Text>
-
-          <TouchableOpacity
-            onPress={() => {
-              if (locationPermission != 'granted') {
-                if (locationPermission != 'blocked') {
-                  if (Platform.OS == 'android') {
-                    requestMultiple([
-                      PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION,
-                    ]).then(() => {
-                      checkAllPermissions();
-                    });
-                  } else {
-                    requestMultiple([
-                      PERMISSIONS.IOS.LOCATION_WHEN_IN_USE,
-                    ]).then(() => {
-                      checkAllPermissions();
-                    });
-                  }
-                } else {
-                  setModalError(false);
-                  setModalText(
-                    "You've blocked this permission. we are going to open this app's settings and allow location permission from the permissions tab.",
-                  );
-                  setModalVisible(true);
-                }
-              }
-            }}
-            style={{
-              backgroundColor:
-                locationPermission != 'granted' ? 'white' : 'gray',
-              borderRadius: 2 * (winWidth / 10),
-              borderColor: 'black',
-              borderWidth: locationPermission == 'granted' ? 0 : 2,
-              shadowColor: '#000',
-              shadowOffset: {width: -4, height: 4},
-              shadowOpacity: 1,
-              shadowRadius: 1,
-              width: '100%',
-              height: '8%',
-              justifyContent: 'center',
-              alignItems: 'center',
-              marginBottom: '5%',
-              elevation: locationPermission == 'granted' ? 0 : 2,
-            }}>
             <Text
               style={{
-                color: locationPermission == 'granted' ? 'darkgrey' : 'black',
                 fontFamily: 'Inter-Bold',
+                marginBottom: '10%',
+                color: 'white',
+                fontSize: 2 * (winWidth / 40),
+                width: "100%",
+                textAlign: 'center'
+              }}>
+              WE NEED SOME ACCESS
+            </Text>
+            <Text
+              style={{
+                textAlign: 'center',
+                lineHeight: 2 * (winWidth / 40),
+                marginBottom: "5%",
+                color: 'gray',
                 fontSize: 2 * (winWidth / 60),
               }}>
-              GRANT LOCATION ACCESS
+              Our app is using BLE (bluetooth low energy). Apps using that,
+              require location and bluetooth permission. Don't worry we dont share
+              or store your information.
             </Text>
-          </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={() => {
-              if (
-                bluetoothConnectPermission != 'granted' ||
-                bluetoothScanPermission != 'granted'
-              ) {
-                if (
-                  bluetoothScanPermission != 'blocked' ||
-                  bluetoothConnectPermission != 'blocked'
-                ) {
-                  if (Platform.OS == 'android') {
-                    requestMultiple([
-                      PERMISSIONS.ANDROID.BLUETOOTH_CONNECT,
-                      PERMISSIONS.ANDROID.BLUETOOTH_SCAN,
-                    ]).then(s => {
-                      checkAllPermissions();
-                    });
+            <TouchableOpacity
+              onPress={() => {
+                if (locationPermission != 'granted') {
+                  if (locationPermission != 'blocked') {
+                    if (Platform.OS == 'android') {
+                      requestMultiple([
+                        PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION,
+                      ]).then(() => {
+                        checkAllPermissions();
+                      });
+                    } else {
+                      requestMultiple([
+                        PERMISSIONS.IOS.LOCATION_WHEN_IN_USE,
+                      ]).then(() => {
+                        checkAllPermissions();
+                      });
+                    }
                   } else {
-                    requestMultiple([
-                      PERMISSIONS.IOS.BLUETOOTH_PERIPHERAL,
-                    ]).then(() => {
-                      checkAllPermissions();
-                    });
+                    setModalError(false);
+                    setModalText(
+                      "You've blocked this permission. we are going to open this app's settings and allow location permission from the permissions tab.",
+                    );
+                    setModalVisible(true);
                   }
-                } else {
-                  setModalError(false);
-                  setModalText(
-                    "You've blocked this permission. we are going to open this app's settings and allow location permission from the permissions tab.",
-                  );
-                  setModalVisible(true);
                 }
-              }
-            }}
-            style={{
-              backgroundColor:
-                (bluetoothScanPermission == 'granted' &&
-                  bluetoothConnectPermission == 'granted') ||
-                (Platform.OS == 'android' &&
-                  Platform.constants['Release'] <= 11)
-                  ? 'gray'
-                  : 'white',
-              borderRadius: 2 * (winWidth / 10),
-              borderColor: 'black',
-              borderWidth:
-                (bluetoothScanPermission == 'granted' &&
-                  bluetoothConnectPermission == 'granted') ||
-                (Platform.OS == 'android' &&
-                  Platform.constants['Release'] <= 11)
-                  ? 0
-                  : 2,
-              shadowColor: '#000',
-              shadowOffset: {width: -4, height: 4},
-              shadowOpacity: 1,
-              shadowRadius: 1,
-              width: '100%',
-              height: '8%',
-              justifyContent: 'center',
-              alignItems: 'center',
-              marginBottom: '5%',
-              elevation:
-                (bluetoothScanPermission == 'granted' &&
-                  bluetoothConnectPermission == 'granted') ||
-                (Platform.OS == 'android' &&
-                  Platform.constants['Release'] <= 11)
-                  ? 0
-                  : 2,
-            }}>
-            <Text
+              }}
               style={{
-                color:
+                backgroundColor:
+                  locationPermission != 'granted' ? 'white' : 'gray',
+                borderRadius: 10,
+                borderColor: 'black',
+                borderWidth: locationPermission == 'granted' ? 0 : 2,
+                shadowColor: '#000',
+                shadowOffset: { width: -4, height: 4 },
+                shadowOpacity: 1,
+                shadowRadius: 1,
+                width: '100%',
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginBottom: '5%',
+                paddingVertical: '1%',
+                elevation: locationPermission == 'granted' ? 0 : 2,
+              }}>
+              <Text
+                style={{
+                  color: locationPermission == 'granted' ? 'darkgrey' : 'black',
+                  fontFamily: 'Inter-Bold',
+                  fontSize: 2 * (winWidth / 60),
+                }}>
+                GRANT LOCATION ACCESS
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => {
+                if (
+                  bluetoothConnectPermission != 'granted' ||
+                  bluetoothScanPermission != 'granted'
+                ) {
+                  if (
+                    bluetoothScanPermission != 'blocked' ||
+                    bluetoothConnectPermission != 'blocked'
+                  ) {
+                    if (Platform.OS == 'android') {
+                      requestMultiple([
+                        PERMISSIONS.ANDROID.BLUETOOTH_CONNECT,
+                        PERMISSIONS.ANDROID.BLUETOOTH_SCAN,
+                      ]).then(s => {
+                        checkAllPermissions();
+                      });
+                    } else {
+                      requestMultiple([
+                        PERMISSIONS.IOS.BLUETOOTH_PERIPHERAL,
+                      ]).then(() => {
+                        checkAllPermissions();
+                      });
+                    }
+                  } else {
+                    setModalError(false);
+                    setModalText(
+                      "You've blocked this permission. we are going to open this app's settings and allow location permission from the permissions tab.",
+                    );
+                    setModalVisible(true);
+                  }
+                }
+              }}
+              style={{
+                backgroundColor:
                   (bluetoothScanPermission == 'granted' &&
                     bluetoothConnectPermission == 'granted') ||
-                  (Platform.OS == 'android' &&
-                    Platform.constants['Release'] <= 11)
-                    ? 'darkgrey'
-                    : 'black',
-
-                fontFamily: 'Inter-Bold',
-                fontSize: 2 * (winWidth / 60),
-              }}>
-              GRANT BLUETOOTH ACCESS
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => {
-              if (bluetoothStatus != 'granted') {
-                if (
+                    (Platform.OS == 'android' &&
+                      Platform.constants['Release'] <= 11)
+                    ? 'gray'
+                    : 'white',
+                borderRadius: 10,
+                borderColor: 'black',
+                borderWidth:
                   (bluetoothScanPermission == 'granted' &&
                     bluetoothConnectPermission == 'granted') ||
-                  (Platform.OS == 'android' &&
-                    Platform.constants['Release'] <= 11)
-                ) {
-                  BluetoothStateManager.requestToEnable().catch(e => {
-                    console.log('error turning on bluetooth:', e);
-                  });
-                } else {
-                  setModalError(true);
-                  setModalText(
-                    'You have to allow bluetooth permission before trying to turn on bluetooth!',
-                  );
-                  setModalVisible(true);
-                }
-              }
-            }}
-            style={{
-              backgroundColor:
-                bluetoothStatus == 'PoweredOn' ? 'grey' : 'white',
-              borderRadius: 2 * (winWidth / 10),
-              borderColor: 'black',
-              borderWidth: bluetoothStatus == 'PoweredOn' ? 0 : 2,
-              shadowColor: '#000',
-              shadowOffset: {width: -4, height: 4},
-              shadowOpacity: 1,
-              shadowRadius: 1,
-              width: '100%',
-              height: '8%',
-              justifyContent: 'center',
-              alignItems: 'center',
-              elevation: bluetoothStatus == 'PoweredOn' ? 0 : 2,
-            }}>
-            <Text
-              style={{
-                color: bluetoothStatus == 'PoweredOn' ? 'darkgrey' : 'black',
-                fontFamily: 'Inter-Bold',
-                fontSize: 2 * (winWidth / 60),
+                    (Platform.OS == 'android' &&
+                      Platform.constants['Release'] <= 11)
+                    ? 0
+                    : 2,
+                shadowColor: '#000',
+                shadowOffset: { width: -4, height: 4 },
+                shadowOpacity: 1,
+                shadowRadius: 1,
+                width: '100%',
+                paddingVertical: '1%',
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginBottom: '5%',
+                elevation:
+                  (bluetoothScanPermission == 'granted' &&
+                    bluetoothConnectPermission == 'granted') ||
+                    (Platform.OS == 'android' &&
+                      Platform.constants['Release'] <= 11)
+                    ? 0
+                    : 2,
               }}>
-              TURN ON BLUETOOTH
-            </Text>
-          </TouchableOpacity>
+              <Text
+                style={{
+                  color:
+                    (bluetoothScanPermission == 'granted' &&
+                      bluetoothConnectPermission == 'granted') ||
+                      (Platform.OS == 'android' &&
+                        Platform.constants['Release'] <= 11)
+                      ? 'darkgrey'
+                      : 'black',
+
+                  fontFamily: 'Inter-Bold',
+                  fontSize: 2 * (winWidth / 60),
+                }}>
+                GRANT BLUETOOTH ACCESS
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                if (bluetoothStatus != 'granted') {
+                  if (
+                    (bluetoothScanPermission == 'granted' &&
+                      bluetoothConnectPermission == 'granted') ||
+                    (Platform.OS == 'android' &&
+                      Platform.constants['Release'] <= 11)
+                  ) {
+                    BluetoothStateManager.requestToEnable().catch(e => {
+                      console.log('error turning on bluetooth:', e);
+                    });
+                  } else {
+                    setModalError(true);
+                    setModalText(
+                      'You have to allow bluetooth permission before trying to turn on bluetooth!',
+                    );
+                    setModalVisible(true);
+                  }
+                }
+              }}
+              style={{
+                backgroundColor:
+                  bluetoothStatus == 'PoweredOn' ? 'grey' : 'white',
+                borderRadius: 10,
+                borderColor: 'black',
+                borderWidth: bluetoothStatus == 'PoweredOn' ? 0 : 2,
+                shadowColor: '#000',
+                shadowOffset: { width: -4, height: 4 },
+                shadowOpacity: 1,
+                shadowRadius: 1,
+                width: '100%',
+                paddingVertical: '1%',
+                justifyContent: 'center',
+                alignItems: 'center',
+                elevation: bluetoothStatus == 'PoweredOn' ? 0 : 2,
+              }}>
+              <Text
+                style={{
+                  color: bluetoothStatus == 'PoweredOn' ? 'darkgrey' : 'black',
+                  fontFamily: 'Inter-Bold',
+                  fontSize: 2 * (winWidth / 60),
+                }}>
+                TURN ON BLUETOOTH
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
         </View>
       </View>
     </SafeAreaView>
