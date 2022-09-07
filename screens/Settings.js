@@ -19,6 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Sound from 'react-native-sound';
 import { BleManager } from 'react-native-ble-plx';
 import ValuePicker from 'react-native-picker-horizontal';
+import DeviceInfo from 'react-native-device-info';
 
 const Buffer = require('buffer').Buffer;
 
@@ -59,7 +60,11 @@ const getData = async key => {
 
 const isPortrait = () => {
   const dim = Dimensions.get('screen');
-  return dim.height >= dim.width;
+  if (DeviceInfo.isTablet) {
+    return dim.height >= dim.width;
+  } else {
+    return true;
+  }
 };
 
 const getErrorText = error => {
@@ -228,6 +233,10 @@ const Settings = ({ navigation, route }) => {
   const [roadPresetIndex, setRoadPresetIndex] = useState(0);
   const [trailPresetIndex, setTrailPresetIndex] = useState(0);
   const [isPortraitOrientation, setIsPortraitOrientation] = useState(isPortrait());
+
+  Dimensions.addEventListener('change', () => {
+    setIsPortraitOrientation(isPortrait())
+  });
 
   const onDeviceDisconnect = (error, device) => {
     console.log('REACHED DISCONNECT');
@@ -559,7 +568,7 @@ const Settings = ({ navigation, route }) => {
   const dropIn = () => {
     // Will change fadeAnim value to 1 in 5 seconds
     Animated.timing(dropAnim, {
-      toValue: winWidth / 10,
+      toValue: winWidth / 15,
       duration: 200,
       useNativeDriver: false,
       // useNativeDriver: true,
@@ -1110,7 +1119,7 @@ const Settings = ({ navigation, route }) => {
             height: dropAnim,
           },
         ]}>
-        <Text style={{ color: 'white', fontSize: isPortraitOrientation ? 2 * (winWidth / 60) : 2 * (winWidth / 80) }}>
+        <Text style={{ color: 'white', fontSize: isPortraitOrientation ? 2 * (winWidth / 60) : 2 * (winWidth / 100) }}>
           {statusText}
         </Text>
       </Animated.View>
@@ -1178,8 +1187,8 @@ const Settings = ({ navigation, route }) => {
         }}>
         <Text
           style={{
-            fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 40),
-            marginLeft: 50,
+            fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60),
+            marginLeft: isPortraitOrientation ? 50 : "25%",
             color: 'white',
           }}>
           Factor
@@ -1198,13 +1207,13 @@ const Settings = ({ navigation, route }) => {
             // setModalVisible(true);
           }}
           style={{
-            paddingVertical: '2%',
+            paddingVertical: isPortraitOrientation ? "2%" : "1%",
             width: '15%',
             backgroundColor: '#424242',
             borderRadius: 2 * (winWidth / 10),
             alignItems: 'center',
             justifyContent: 'center',
-            marginRight: 50,
+            marginRight: isPortraitOrientation ? 50 : "25%",
           }}>
           <Text
             style={{
@@ -1212,7 +1221,7 @@ const Settings = ({ navigation, route }) => {
               textAlignVertical: 'center',
               paddingHorizontal: '7%',
               color: 'white',
-              fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60)
+              fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60),
             }}>
             {JSON.stringify(factor)}
           </Text>
@@ -1230,8 +1239,8 @@ const Settings = ({ navigation, route }) => {
         }}>
         <Text
           style={{
-            fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 40),
-            marginLeft: 50,
+            fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60),
+            marginLeft: isPortraitOrientation ? 50 : "25%",
             color: 'white',
           }}>
           Road Preset
@@ -1246,13 +1255,13 @@ const Settings = ({ navigation, route }) => {
             // setModalError(false);
           }}
           style={{
-            paddingVertical: '2%',
+            paddingVertical: isPortraitOrientation ? "2%" : "1%",
             width: '15%',
             backgroundColor: '#424242',
             borderRadius: 2 * (winWidth / 10),
             alignItems: 'center',
             justifyContent: 'center',
-            marginRight: 50,
+            marginRight: isPortraitOrientation ? 50 : "25%",
           }}>
           <Text
             style={{
@@ -1280,8 +1289,8 @@ const Settings = ({ navigation, route }) => {
         }}>
         <Text
           style={{
-            fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 40),
-            marginLeft: 50,
+            fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60),
+            marginLeft: isPortraitOrientation ? 50 : "25%",
             color: 'white',
           }}>
           Trail Preset
@@ -1296,13 +1305,13 @@ const Settings = ({ navigation, route }) => {
             // setModalError(false);
           }}
           style={{
-            paddingVertical: '2%',
+            paddingVertical: isPortraitOrientation ? "2%" : "1%",
             width: '15%',
             backgroundColor: '#424242',
             borderRadius: 2 * (winWidth / 10),
             alignItems: 'center',
             justifyContent: 'center',
-            marginRight: 50,
+            marginRight: isPortraitOrientation ? 50 : "25%",
           }}>
           <Text
             style={{

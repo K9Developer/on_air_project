@@ -19,11 +19,12 @@ import ValuePicker from 'react-native-picker-horizontal';
 import { check, PERMISSIONS } from 'react-native-permissions';
 import BluetoothStateManager from 'react-native-bluetooth-state-manager';
 
-import { FocusedStatusBar, CircleButton, RectButton } from '../components';
+import { FocusedStatusBar } from '../components';
 import { COLORS, SHADOWS } from '../constants';
 import React from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Sound from 'react-native-sound';
+import DeviceInfo from 'react-native-device-info';
 
 let timer = null;
 let waitTimer = null;
@@ -55,7 +56,11 @@ Sound.setCategory('Playback');
 
 const isPortrait = () => {
   const dim = Dimensions.get('screen');
-  return dim.height >= dim.width;
+  if (DeviceInfo.isTablet) {
+    return dim.height >= dim.width;
+  } else {
+    return true;
+  }
 };
 
 const renderItem = (item, index) => {
@@ -1177,7 +1182,7 @@ const Home = ({ navigation, route }) => {
             height: isPortraitOrientation ? '50%' : "100%",
             justifyContent: 'center',
             alignItems: 'center',
-            top: isPortraitOrientation ? "10%" : 0,
+            top: isPortraitOrientation ? "18%" : "2%",
 
           }}
           onPress={async () => {
@@ -1283,17 +1288,19 @@ const Home = ({ navigation, route }) => {
           borderTopRightRadius: 20,
           alignItems: 'center',
           flexDirection: 'row',
-          justifyContent: 'space-between',
+          justifyContent: 'space-around',
           paddingHorizontal: '5%',
           ...SHADOWS.extraDark,
         }}>
         <Text
           adjustsFontSizeToFit
           numberOfLines={1}
-          style={{ fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60), color: 'white' }}>
+          style={{ fontSize: isPortraitOrientation ? 2 * (winWidth / 18) : 2 * (winWidth / 30), color: 'white', marginLeft: isPortraitOrientation ? 0 : '25%', }}>
           TIRE
         </Text>
-        <View>
+        <View style={{
+          marginRight: isPortraitOrientation ? 0 : '25%',
+        }}>
           <Text
             adjustsFontSizeToFit
             numberOfLines={1}
@@ -1305,7 +1312,8 @@ const Home = ({ navigation, route }) => {
               paddingVertical: '2%',
               borderRadius: 2 * (winWidth / 25),
               color: 'white',
-              fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60)
+              fontSize: isPortraitOrientation ? 2 * (winWidth / 18) : 2 * (winWidth / 60),
+
             }}>
             {Math.round(tirePressure * 2) / 2}
           </Text></View>
@@ -1324,152 +1332,162 @@ const Home = ({ navigation, route }) => {
           ...SHADOWS.extraDark,
         }}>
         {/* SET TEXT */}
+
         <View style={{
-          width: '100%',
-          height: '100%',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexDirection: 'row'
+          flexDirection: 'column',
+          justifyContent: 'center'
         }}>
-          <Text style={{
-            color: 'white',
-            fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60)
-          }}>SET</Text>
           <View style={{
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '50%',
-            height: '70%'
+            flexDirection: 'row', height: '50%',
+            justifyContent: isPortraitOrientation ? 'space-around' : 'space-between',
+            alignItems: 'flex-end'
           }}>
-            <View style={{
-              flexDirection: 'row',
-              width: '100%',
-              height: '50%',
-              marginBottom: '5%',
-              justifyContent: 'space-between'
-            }}>
-
-
-
-              <TouchableOpacity
-                onPressIn={() => downPressPlus(wantedPsi, setWantedPsi)}
-                onPressOut={() => upPressPlus(wantedPsi, setWantedPsi)}
-
-                style={{
-                  width: "45%",
-                  backgroundColor: '#116AC1',
-                  borderRadius: 10
-                }}>
-                <Text style={{
-                  width: "100%",
-                  height: "100%",
-                  borderRadius: 10, textAlign: 'center',
-                  textAlignVertical: 'center',
-                }}>+</Text>
-              </TouchableOpacity>
-
-
-
-              <TouchableOpacity
-                onPressIn={() => downPressMinus(wantedPsi, setWantedPsi)}
-                onPressOut={() => upPressMinus(wantedPsi, setWantedPsi)}
-                style={{
-                  width: "45%",
-                  backgroundColor: '#116AC1',
-                  borderRadius: 10
-                }}>
-                <Text style={{
-                  textAlignVertical: 'center',
-                  height: "100%", color: 'white',
-                  textAlign: 'center'
-                }}>-</Text>
-              </TouchableOpacity>
-            </View>
-
-
-            <View style={{
-              flexDirection: 'row',
-              width: '100%',
-              height: '50%',
-              justifyContent: 'space-between'
-            }}>
-              <TouchableOpacity
-                onPressOut={
-                  () => {
-                    getData('@roadPreset')
-                      .then(data => data)
-                      .then(value => {
-                        setWantedPsi(parseInt(value));
-                      })
-                      .catch(err => console.log(err));
-                  }
-                }
-                style={{
-                  width: "45%",
-                  height: "100%",
-                  backgroundColor: '#489143',
-                  borderRadius: 10
-                }}>
-                <Text
-                  adjustsFontSizeToFit
-                  numberOfLines={1}
-                  style={{
-                    textAlignVertical: 'center',
-                    textAlign: 'center',
-                    height: "100%",
-                    color: 'white'
-                  }}>ROAD</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPressOut={
-                  () => {
-                    getData('@trailPreset')
-                      .then(data => data)
-                      .then(value => {
-                        setWantedPsi(parseInt(value));
-                      })
-                      .catch(err => console.log(err));
-                  }
-                }
-                style={{
-                  width: "45%",
-                  height: "100%",
-                  backgroundColor: '#489143',
-                  borderRadius: 10
-                }}>
-                <Text
-                  adjustsFontSizeToFit
-                  numberOfLines={1}
-                  style={{
-                    textAlignVertical: 'center',
-                    textAlign: 'center',
-                    height: "100%", color: 'white'
-                  }}>TRAIL</Text>
-              </TouchableOpacity>
-            </View>
-
-          </View><TouchableOpacity
-            onPress={() => {
-              setPickerModalVisible(true);
-            }}>
-            <Text
-              adjustsFontSizeToFit
-              numberOfLines={1}
+            <Text style={{
+              color: 'white',
+              height: '100%',
+              textAlignVertical: 'center',
+              marginLeft: isPortraitOrientation ? 0 : '30%',
+              fontSize: isPortraitOrientation ? 2 * (winWidth / 18) : 2 * (winWidth / 30)
+            }}>SET</Text>
+            <TouchableOpacity
+              onPress={() => {
+                setPickerModalVisible(true);
+              }}
               style={{
-                backgroundColor: '#1B1B1B',
-                textAlign: 'center',
-                textAlignVertical: 'center',
-                paddingHorizontal: '7%',
-                paddingVertical: '2%',
-                borderRadius: 2 * (winWidth / 25),
-                color: 'white',
-                fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60)
+                height: '100%',
+                justifyContent: 'center',
+                marginRight: isPortraitOrientation ? 0 : '30%',
+
               }}>
-              {wantedPsi}
-            </Text></TouchableOpacity>
+
+
+              <Text
+                adjustsFontSizeToFit
+                numberOfLines={1}
+                style={{
+                  backgroundColor: '#1B1B1B',
+                  borderRadius: 2 * (winWidth / 25),
+                  height: '100%',
+                  textAlign: 'center',
+                  textAlignVertical: 'center',
+                  paddingHorizontal: '7%',
+                  paddingVertical: '2%',
+                  color: 'white',
+                  fontSize: 2 * (winWidth / 18)
+                }}>
+                {wantedPsi}
+              </Text></TouchableOpacity>
+          </View>
+          <View style={{
+            flexDirection: 'row',
+            height: '45%',
+            justifyContent: 'space-around',
+            alignItems: 'flex-end'
+          }}>
+            <TouchableOpacity
+              onPressOut={
+                () => {
+                  getData('@roadPreset')
+                    .then(data => data)
+                    .then(value => {
+                      setWantedPsi(parseInt(value));
+                    })
+                    .catch(err => console.log(err));
+                }
+              }
+              style={{
+                width: "20%",
+                height: "60%",
+                backgroundColor: '#489143',
+                borderRadius: 10
+              }}>
+              <Text
+                adjustsFontSizeToFit
+                numberOfLines={1}
+                style={[{
+                  textAlignVertical: 'center',
+                  textAlign: 'center',
+                  height: "100%",
+                  color: 'white',
+                }, !isPortraitOrientation && {
+                  fontSize: 2 * (winWidth / 65)
+                }]
+                }>ROAD</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPressOut={
+                () => {
+                  getData('@trailPreset')
+                    .then(data => data)
+                    .then(value => {
+                      setWantedPsi(parseInt(value));
+                    })
+                    .catch(err => console.log(err));
+                }
+              }
+              style={{
+                width: "20%",
+                height: "60%",
+                backgroundColor: '#489143',
+                borderRadius: 10
+              }}>
+              <Text
+                adjustsFontSizeToFit
+                numberOfLines={1}
+                style={[{
+                  textAlignVertical: 'center',
+                  textAlign: 'center',
+                  height: "100%",
+                  color: 'white',
+                }, !isPortraitOrientation && {
+                  fontSize: 2 * (winWidth / 65)
+                }]} > TRAIL</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPressIn={() => downPressPlus(wantedPsi, setWantedPsi)}
+              onPressOut={() => upPressPlus(wantedPsi, setWantedPsi)}
+
+              style={{
+                width: "20%",
+                height: '60%',
+                backgroundColor: '#116AC1',
+                borderRadius: 10
+              }}>
+              <Text style={{
+                width: "100%",
+                height: "100%",
+                fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 65),
+                fontWeight: "bold",
+                borderRadius: 10, textAlign: 'center',
+                textAlignVertical: 'center',
+                color: 'white'
+              }}>+</Text>
+            </TouchableOpacity><TouchableOpacity
+              onPressIn={() => downPressMinus(wantedPsi, setWantedPsi)}
+              onPressOut={() => upPressMinus(wantedPsi, setWantedPsi)}
+              style={{
+                width: "20%",
+                height: '60%',
+                backgroundColor: '#116AC1',
+                borderRadius: 10,
+                justifyContent: 'center'
+              }}>
+              <Text style={{
+                fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 65),
+                textAlignVertical: 'center',
+                height: "100%",
+                color: 'white',
+                textAlign: 'center',
+                width: "100%", fontWeight: "bold",
+              }}>-</Text>
+            </TouchableOpacity>
+
+
+          </View>
         </View>
       </View>
+
+
 
       {/* STATUS TEXT */}
       <View
@@ -1481,7 +1499,7 @@ const Home = ({ navigation, route }) => {
           borderBottomRightRadius: 20,
           alignItems: 'center',
           flexDirection: 'row',
-          justifyContent: 'space-between',
+          justifyContent: 'space-around',
           marginTop: isPortraitOrientation ? '2%' : '1%',
           paddingHorizontal: '5%',
           ...SHADOWS.extraDark,
@@ -1489,7 +1507,7 @@ const Home = ({ navigation, route }) => {
         <Text
           adjustsFontSizeToFit
           numberOfLines={1}
-          style={{ fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60), color: 'white' }}>
+          style={{ fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60), color: 'white', marginLeft: isPortraitOrientation ? 0 : "32%" }}>
           STATUS
         </Text>
         <View
@@ -1523,7 +1541,8 @@ const Home = ({ navigation, route }) => {
               paddingVertical: '2%',
               borderRadius: 2 * (winWidth / 25),
               color: 'white',
-              fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60)
+              fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60),
+              marginRight: isPortraitOrientation ? 0 : "32%"
             }}>
             {statusText != "Disconnected" || statusText != "Connected" ? statusText : connected ? "Connected" : "Disconnected"}
           </Text>

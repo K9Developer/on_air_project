@@ -21,8 +21,7 @@ import {
 import BluetoothStateManager from 'react-native-bluetooth-state-manager';
 import { LogBox } from 'react-native';
 import { StackActions } from '@react-navigation/native';
-import { I18nManager } from 'react-native';
-
+import DeviceInfo from 'react-native-device-info';
 
 LogBox.ignoreLogs(['new NativeEventEmitter']);
 LogBox.ignoreLogs([
@@ -31,6 +30,16 @@ LogBox.ignoreLogs([
 
 const winWidth = Dimensions.get('window').width;
 let permissionTimer = null;
+
+
+const isPortrait = () => {
+  const dim = Dimensions.get('screen');
+  if (DeviceInfo.isTablet) {
+    return dim.height >= dim.width;
+  } else {
+    return true;
+  }
+};
 
 const Permissions = ({ navigation, route }) => {
   const [locationPermission, setLocationPermission] = useState(null);
@@ -41,6 +50,12 @@ const Permissions = ({ navigation, route }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [modalError, setModalError] = useState(false);
   const [modalText, setModalText] = useState('N/A');
+  const [isPortraitOrientation, setIsPortraitOrientation] = useState(isPortrait());
+
+  Dimensions.addEventListener('change', () => {
+    setIsPortraitOrientation(isPortrait())
+  });
+
 
   const checkPermission = async (perm, setter) => {
     try {
@@ -259,7 +274,7 @@ const Permissions = ({ navigation, route }) => {
                 fontFamily: 'Inter-Bold',
                 marginBottom: '10%',
                 color: 'white',
-                fontSize: 2 * (winWidth / 40),
+                fontSize: isPortraitOrientation ? 2 * (winWidth / 40) : 2 * (winWidth / 60),
                 width: "100%",
                 textAlign: 'center'
               }}>
@@ -271,7 +286,7 @@ const Permissions = ({ navigation, route }) => {
                 lineHeight: 2 * (winWidth / 40),
                 marginBottom: "5%",
                 color: 'gray',
-                fontSize: 2 * (winWidth / 60),
+                fontSize: isPortraitOrientation ? 2 * (winWidth / 60) : 2 * (winWidth / 80),
               }}>
               Our app is using BLE (bluetooth low energy). Apps using that,
               require location and bluetooth permission. Don't worry we dont share
@@ -317,7 +332,7 @@ const Permissions = ({ navigation, route }) => {
                 width: '100%',
                 justifyContent: 'center',
                 alignItems: 'center',
-                marginBottom: '5%',
+                marginBottom: isPortraitOrientation ? '5%' : '2%',
                 paddingVertical: '1%',
                 elevation: locationPermission == 'granted' ? 0 : 2,
               }}>
@@ -325,7 +340,7 @@ const Permissions = ({ navigation, route }) => {
                 style={{
                   color: locationPermission == 'granted' ? 'darkgrey' : 'black',
                   fontFamily: 'Inter-Bold',
-                  fontSize: 2 * (winWidth / 60),
+                  fontSize: isPortraitOrientation ? 2 * (winWidth / 60) : 2 * (winWidth / 80),
                 }}>
                 GRANT LOCATION ACCESS
               </Text>
@@ -389,7 +404,7 @@ const Permissions = ({ navigation, route }) => {
                 paddingVertical: '1%',
                 justifyContent: 'center',
                 alignItems: 'center',
-                marginBottom: '5%',
+                marginBottom: isPortraitOrientation ? '5%' : '2%',
                 elevation:
                   (bluetoothScanPermission == 'granted' &&
                     bluetoothConnectPermission == 'granted') ||
@@ -409,7 +424,7 @@ const Permissions = ({ navigation, route }) => {
                       : 'black',
 
                   fontFamily: 'Inter-Bold',
-                  fontSize: 2 * (winWidth / 60),
+                  fontSize: isPortraitOrientation ? 2 * (winWidth / 60) : 2 * (winWidth / 80),
                 }}>
                 GRANT BLUETOOTH ACCESS
               </Text>
@@ -455,7 +470,7 @@ const Permissions = ({ navigation, route }) => {
                 style={{
                   color: bluetoothStatus == 'PoweredOn' ? 'darkgrey' : 'black',
                   fontFamily: 'Inter-Bold',
-                  fontSize: 2 * (winWidth / 60),
+                  fontSize: isPortraitOrientation ? 2 * (winWidth / 60) : 2 * (winWidth / 80),
                 }}>
                 TURN ON BLUETOOTH
               </Text>

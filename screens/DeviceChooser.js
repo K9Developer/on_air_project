@@ -14,6 +14,8 @@ import React, { useEffect, useState } from 'react';
 import { CircleButton } from '../components';
 import { BleManager } from 'react-native-ble-plx';
 import Toast, { SuccessToast, ErrorToast } from 'react-native-toast-message';
+import DeviceInfo from 'react-native-device-info';
+
 const Buffer = require('buffer').Buffer;
 
 let MANAGER = null;
@@ -50,6 +52,15 @@ const toastConfig = {
   ),
 };
 
+const isPortrait = () => {
+  const dim = Dimensions.get('screen');
+  if (DeviceInfo.isTablet) {
+    return dim.height >= dim.width;
+  } else {
+    return true;
+  }
+};
+
 const DeviceChooser = ({ navigation, route }) => {
   // 0: Bell
   // 1: Checkmark
@@ -80,6 +91,11 @@ const DeviceChooser = ({ navigation, route }) => {
 
   const [loadingPing, setLoadingPing] = useState([false, null]);
   const [loadingConnection, setLoadingConnection] = useState(false);
+  const [isPortraitOrientation, setIsPortraitOrientation] = useState(isPortrait());
+
+  Dimensions.addEventListener('change', () => {
+    setIsPortraitOrientation(isPortrait())
+  });
 
   const exitApp = () => {
     // monitorSub.remove();
@@ -567,7 +583,7 @@ const DeviceChooser = ({ navigation, route }) => {
               }}>
               <Text
                 style={{
-                  fontSize: 2 * (winWidth / 30),
+                  fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60),
                   fontWeight: 'bold',
                   color: "white"
                 }}>
