@@ -60,7 +60,7 @@ const getData = async key => {
 
 const isPortrait = () => {
   const dim = Dimensions.get('screen');
-  if (DeviceInfo.isTablet) {
+  if (DeviceInfo.getDeviceType() == "Handset") {
     return dim.height >= dim.width;
   } else {
     return true;
@@ -806,6 +806,7 @@ const Settings = ({ navigation, route }) => {
   console.log(winWidth / 5.1);
   return (
     <SafeAreaView style={{ flex: 1 }}>
+
       <FocusedStatusBar backgroundColor={COLORS.primary} />
       <Modal
         animationType="slide"
@@ -825,8 +826,8 @@ const Settings = ({ navigation, route }) => {
               position: 'absolute',
             }}></View>
         </TouchableWithoutFeedback>
-        <View
-          style={{
+        <ScrollView
+          contentContainerStyle={{
             flex: 1,
             justifyContent: 'center',
             alignItems: 'center', display: "flex",
@@ -858,28 +859,31 @@ const Settings = ({ navigation, route }) => {
                 paddingRight: 40,
                 paddingLeft: 40,
                 marginBottom: 20,
-                fontSize: 2 * (winWidth / 30),
+                fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60),
                 fontWeight: 'bold',
                 textAlign: 'center',
               }}>
               {modalError ? 'Oh Snap!' : 'Info'}
             </Text>
-            <Image
+            {isPortraitOrientation && <Image
               source={
                 modalError
                   ? require('../assets/icons/error.png')
                   : require('../assets/icons/info.png')
               }
               style={{ width: winWidth / 7, height: winWidth / 7, marginBottom: 20 }}
-            />
+            />}
 
             <Text
+              adjustsFontSizeToFit
               style={{
                 color: '#6f7173',
-                paddingRight: 40,
-                paddingLeft: 40,
-                fontSize: 2 * (winWidth / 60),
-                textAlign: 'center'
+                paddingRight: "5%",
+                paddingLeft: "5%",
+                fontSize: isPortraitOrientation ? 2 * (winWidth / 40) : 2 * (winWidth / 90),
+                height: '50%',
+                textAlign: 'center',
+                marginBottom: isPortraitOrientation ? "2%" : 0
               }}>
               {modalText}
             </Text>
@@ -907,7 +911,7 @@ const Settings = ({ navigation, route }) => {
               </Text>
             </Pressable>
           </View>
-        </View>
+        </ScrollView>
       </Modal>
       <Modal
         animationType="slide"
@@ -1136,15 +1140,15 @@ const Settings = ({ navigation, route }) => {
           handlePressUp={goHome}
           size={isPortraitOrientation ? [winWidth / 10, winWidth / 10] : [winWidth / 20, winWidth / 20]}
           {...{
-            marginLeft: winWidth / 15,
-            marginTop: winWidth / 15,
+            marginLeft: "2%",
+            marginTop: "2%",
             backgroundColor: 'transparent',
           }}
         />
         <Text style={{
           fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 50),
           color: 'white',
-          marginTop: winWidth / 15,
+          marginTop: "2%",
 
         }}>
           SETTINGS
@@ -1167,8 +1171,8 @@ const Settings = ({ navigation, route }) => {
           }}
           size={isPortraitOrientation ? [winWidth / 7, winWidth / 7] : [winWidth / 20, winWidth / 20]}
           {...{
-            marginRight: winWidth / 15,
-            marginTop: winWidth / 15,
+            marginRight: "2%",
+            marginTop: "2%",
             backgroundColor: 'transparent',
           }}
         />
@@ -1332,10 +1336,11 @@ const Settings = ({ navigation, route }) => {
           justifyContent: 'center',
           marginTop: isPortraitOrientation ? '15%' : 0,
         }}>
-        <Text style={{ fontSize: isPortraitOrientation ? 2 * (winWidth / 40) : 2 * (winWidth / 60), color: 'white' }}>
+        <Text style={{ fontSize: isPortraitOrientation ? 2 * (winWidth / 40) : 2 * (winWidth / 70), color: 'white' }}>
           All units are measured in PSI
+
         </Text>
-        <Text style={{ fontSize: isPortraitOrientation ? 2 * (winWidth / 40) : 2 * (winWidth / 60), color: 'white' }}>
+        <Text style={{ fontSize: isPortraitOrientation ? 2 * (winWidth / 40) : 2 * (winWidth / 70), color: 'white' }}>
           On Air Version 4.4
         </Text>
         <Text
@@ -1344,7 +1349,7 @@ const Settings = ({ navigation, route }) => {
           }
           style={{
             color: '#2269B2',
-            fontSize: isPortraitOrientation ? 2 * (winWidth / 40) : 2 * (winWidth / 60),
+            fontSize: isPortraitOrientation ? 2 * (winWidth / 40) : 2 * (winWidth / 70),
           }}>
           Code On Github
         </Text>

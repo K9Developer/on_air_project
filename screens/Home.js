@@ -10,7 +10,7 @@ import {
   Platform,
   Animated,
   AppState,
-  Vibration,
+  Vibration, ScrollView,
   Dimensions,
   ActivityIndicator,
 } from 'react-native';
@@ -18,7 +18,7 @@ import { useState, useEffect, useRef } from 'react';
 import ValuePicker from 'react-native-picker-horizontal';
 import { check, PERMISSIONS } from 'react-native-permissions';
 import BluetoothStateManager from 'react-native-bluetooth-state-manager';
-
+import { LocalNotification } from '../services/LocalPushController'
 import { FocusedStatusBar } from '../components';
 import { COLORS, SHADOWS } from '../constants';
 import React from 'react';
@@ -56,10 +56,10 @@ Sound.setCategory('Playback');
 
 const isPortrait = () => {
   const dim = Dimensions.get('screen');
-  if (DeviceInfo.isTablet) {
+  if (DeviceInfo.getDeviceType() == "Handset") {
     return dim.height >= dim.width;
   } else {
-    return true;
+    return false;
   }
 };
 
@@ -259,50 +259,7 @@ const getErrorText = error => {
 const isValidData = data => {
   for (let char of data) {
     if (
-      [
-        'a',
-        'b',
-        'c',
-        'd',
-        'e',
-        'f',
-        'g',
-        'h',
-        'i',
-        'j',
-        'k',
-        'l',
-        'm',
-        'n',
-        'o',
-        'p',
-        'q',
-        'r',
-        's',
-        't',
-        'u',
-        'v',
-        'w',
-        'x',
-        'y',
-        'z',
-        '1',
-        '2',
-        '3',
-        '4',
-        '5',
-        '6',
-        '7',
-        '8',
-        '9',
-        '0',
-        '"',
-        '[',
-        ']',
-        '.',
-        ',',
-        '-',
-      ].includes(char)
+      'abcdefghijklmnopqrstuvwxyz1234567890"[].,-'.includes(char)
     ) {
       continue;
     } else {
@@ -364,6 +321,7 @@ const Home = ({ navigation, route }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [modalError, setModalError] = useState(false);
   const [modalText, setModalText] = useState('N/A');
+  // const [modalText, setModalText] = useState("");
   const [connected, setConnected] = useState(false);
   const [statusText, setStatusText] = useState('Disconnected');
   const [disconnectMonitor, setDisconnectMonitor] = useState(null);
@@ -386,6 +344,8 @@ const Home = ({ navigation, route }) => {
   Dimensions.addEventListener('change', () => {
     setIsPortraitOrientation(isPortrait())
   });
+
+
 
   const onDeviceDisconnect = (error, device) => {
     if (error) {
@@ -430,7 +390,7 @@ const Home = ({ navigation, route }) => {
       if (Platform.OS === 'android' && Platform.Version <= 19) {
         setModalError(true);
         setModalText(
-          "You have to update your Android version to use this app. It's not supported on Android versions below 19.",
+          "You have to update your Android version to use this app. It's not supported on Android API versions below 19. You have API version " + Platform.Version,
         );
         setModalVisible(true);
       } else if (Platform.OS === 'ios' && Platform.Version <= 9) {
@@ -551,7 +511,7 @@ const Home = ({ navigation, route }) => {
             Platform.OS == 'android' &&
             Platform.constants['Release'] > 11
           ) {
-            navigation.navigate('Permissions');
+            // navigation.navigate('Permissions');
           }
         })
         .catch(err => console.log('error checking perm1:', err));
@@ -563,7 +523,7 @@ const Home = ({ navigation, route }) => {
             Platform.OS == 'android' &&
             Platform.constants['Release'] > 11
           ) {
-            navigation.navigate('Permissions');
+            // navigation.navigate('Permissions');
           }
         })
         .catch(err => console.log('error checking perm1:', err));
@@ -571,7 +531,7 @@ const Home = ({ navigation, route }) => {
       check(PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION)
         .then(data => {
           if (data != 'granted') {
-            navigation.navigate('Permissions');
+            // navigation.navigate('Permissions');
           }
         })
         .catch(err => console.log('error checking perm1:', err));
@@ -579,7 +539,7 @@ const Home = ({ navigation, route }) => {
       BluetoothStateManager.getState()
         .then(data => {
           if (data != 'PoweredOn') {
-            navigation.navigate('Permissions');
+            // navigation.navigate('Permissions');
           }
         })
         .catch(err => console.log('error checking perm1:', err));
@@ -587,7 +547,7 @@ const Home = ({ navigation, route }) => {
       check(PERMISSIONS.IOS.BLUETOOTH_PERIPHERAL)
         .then(data => {
           if (data != 'granted') {
-            navigation.navigate('Permissions');
+            // navigation.navigate('Permissions');
           }
         })
         .catch(err => console.log('error checking perm1:', err));
@@ -595,7 +555,7 @@ const Home = ({ navigation, route }) => {
       check(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE)
         .then(data => {
           if (data != 'granted') {
-            navigation.navigate('Permissions');
+            // navigation.navigate('Permissions');
           }
         })
         .catch(err => console.log('error checking perm1:', err));
@@ -603,7 +563,7 @@ const Home = ({ navigation, route }) => {
       BluetoothStateManager.getState()
         .then(data => {
           if (data != 'PoweredOn') {
-            navigation.navigate('Permissions');
+            // navigation.navigate('Permissions');
           }
         })
         .catch(err => console.log('error checking perm1:', err));
@@ -695,13 +655,18 @@ const Home = ({ navigation, route }) => {
 
   const doneStatus = async () => {
     setIsDone(true);
-    if (Platform.OS === 'android') {
-      Vibration.vibrate([200, 1000, 1450, 1000, 1450, 1000, 1450, 1000]);
-    } else {
-      Vibration.vibrate([200, 1450, 1450, 1450]);
-    }
-    playDoneSound();
+
   };
+
+  useEffect(() => {
+    console.log("START")
+    setTimeout(async () => {
+
+      LocalNotification()
+      doneStatus()
+    }, 1000);
+  }, [])
+
 
   const handleStatusId = async (startTime, statusId) => {
     console.log('Called handleStatusId');
@@ -810,7 +775,18 @@ const Home = ({ navigation, route }) => {
   }, [wantedPsi]);
 
   return (
+
     <SafeAreaView style={{ flex: 1 }}>
+      <Text style={{
+        marginTop: 10,
+        marginLeft: 10
+      }}>
+        Platform: {Platform.OS}{'\n'}
+        Version: {Platform.constants['Release']}{'\n'}
+        API version: {Platform.Version}{'\n'}
+        Should go to perms for bt: {Platform.OS == 'android' &&
+          Platform.constants['Release'] > 11 ? 'yes' : 'no'}{'\n'}
+      </Text>
       <FocusedStatusBar backgroundColor={COLORS.primary} />
 
       <Modal
@@ -962,8 +938,8 @@ const Home = ({ navigation, route }) => {
               position: 'absolute',
             }}></View>
         </TouchableWithoutFeedback>
-        <View
-          style={{
+        <ScrollView
+          contentContainerStyle={{
             flex: 1,
             justifyContent: 'center',
             alignItems: 'center', display: "flex",
@@ -995,28 +971,31 @@ const Home = ({ navigation, route }) => {
                 paddingRight: 40,
                 paddingLeft: 40,
                 marginBottom: 20,
-                fontSize: 2 * (winWidth / 30),
+                fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60),
                 fontWeight: 'bold',
                 textAlign: 'center',
               }}>
               {modalError ? 'Oh Snap!' : 'Info'}
             </Text>
-            <Image
+            {isPortraitOrientation && <Image
               source={
                 modalError
                   ? require('../assets/icons/error.png')
                   : require('../assets/icons/info.png')
               }
               style={{ width: winWidth / 7, height: winWidth / 7, marginBottom: 20 }}
-            />
+            />}
 
             <Text
+              adjustsFontSizeToFit
               style={{
                 color: '#6f7173',
-                paddingRight: 40,
-                paddingLeft: 40,
-                fontSize: 2 * (winWidth / 60),
-                textAlign: 'center'
+                paddingRight: "5%",
+                paddingLeft: "5%",
+                fontSize: isPortraitOrientation ? 2 * (winWidth / 40) : 2 * (winWidth / 90),
+                height: '50%',
+                textAlign: 'center',
+                marginBottom: isPortraitOrientation ? "2%" : 0
               }}>
               {modalText}
             </Text>
@@ -1044,7 +1023,7 @@ const Home = ({ navigation, route }) => {
               </Text>
             </Pressable>
           </View>
-        </View>
+        </ScrollView>
       </Modal>
       <Animated.View
         style={[
@@ -1342,13 +1321,16 @@ const Home = ({ navigation, route }) => {
             justifyContent: isPortraitOrientation ? 'space-around' : 'space-between',
             alignItems: 'flex-end'
           }}>
-            <Text style={{
-              color: 'white',
-              height: '100%',
-              textAlignVertical: 'center',
-              marginLeft: isPortraitOrientation ? 0 : '30%',
-              fontSize: isPortraitOrientation ? 2 * (winWidth / 18) : 2 * (winWidth / 30)
-            }}>SET</Text>
+            <Text
+              adjustsFontSizeToFit
+              numberOfLines={1}
+              style={{
+                color: 'white',
+                height: '100%',
+                textAlignVertical: 'center',
+                marginLeft: isPortraitOrientation ? 0 : '32%',
+                fontSize: isPortraitOrientation ? 2 * (winWidth / 18) : 2 * (winWidth / 30)
+              }}>SET</Text>
             <TouchableOpacity
               onPress={() => {
                 setPickerModalVisible(true);
@@ -1356,7 +1338,7 @@ const Home = ({ navigation, route }) => {
               style={{
                 height: '100%',
                 justifyContent: 'center',
-                marginRight: isPortraitOrientation ? 0 : '30%',
+                marginRight: isPortraitOrientation ? 0 : '32%',
 
               }}>
 
@@ -1385,6 +1367,7 @@ const Home = ({ navigation, route }) => {
             alignItems: 'flex-end'
           }}>
             <TouchableOpacity
+              disabled={showStatusLoading}
               onPressOut={
                 () => {
                   getData('@roadPreset')
@@ -1398,7 +1381,7 @@ const Home = ({ navigation, route }) => {
               style={{
                 width: "20%",
                 height: "60%",
-                backgroundColor: '#489143',
+                backgroundColor: showStatusLoading ? '#656769' : '#489143',
                 borderRadius: 10
               }}>
               <Text
@@ -1410,11 +1393,12 @@ const Home = ({ navigation, route }) => {
                   height: "100%",
                   color: 'white',
                 }, !isPortraitOrientation && {
-                  fontSize: 2 * (winWidth / 65)
+                  fontSize: 2 * (winWidth / 90)
                 }]
                 }>ROAD</Text>
             </TouchableOpacity>
             <TouchableOpacity
+              disabled={showStatusLoading}
               onPressOut={
                 () => {
                   getData('@trailPreset')
@@ -1428,7 +1412,7 @@ const Home = ({ navigation, route }) => {
               style={{
                 width: "20%",
                 height: "60%",
-                backgroundColor: '#489143',
+                backgroundColor: showStatusLoading ? '#656769' : '#489143',
                 borderRadius: 10
               }}>
               <Text
@@ -1440,46 +1424,56 @@ const Home = ({ navigation, route }) => {
                   height: "100%",
                   color: 'white',
                 }, !isPortraitOrientation && {
-                  fontSize: 2 * (winWidth / 65)
+                  fontSize: 2 * (winWidth / 90)
                 }]} > TRAIL</Text>
             </TouchableOpacity>
             <TouchableOpacity
+              disabled={showStatusLoading}
+
               onPressIn={() => downPressPlus(wantedPsi, setWantedPsi)}
               onPressOut={() => upPressPlus(wantedPsi, setWantedPsi)}
 
               style={{
                 width: "20%",
                 height: '60%',
-                backgroundColor: '#116AC1',
+                backgroundColor: showStatusLoading ? '#656769' : '#116AC1',
                 borderRadius: 10
               }}>
-              <Text style={{
-                width: "100%",
-                height: "100%",
-                fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 65),
-                fontWeight: "bold",
-                borderRadius: 10, textAlign: 'center',
-                textAlignVertical: 'center',
-                color: 'white'
-              }}>+</Text>
-            </TouchableOpacity><TouchableOpacity
+              <Text
+                adjustsFontSizeToFit
+                numberOfLines={1}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 90),
+                  fontWeight: "bold",
+                  borderRadius: 10, textAlign: 'center',
+                  textAlignVertical: 'center',
+                  color: 'white'
+                }}>+</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              disabled={showStatusLoading}
               onPressIn={() => downPressMinus(wantedPsi, setWantedPsi)}
               onPressOut={() => upPressMinus(wantedPsi, setWantedPsi)}
               style={{
                 width: "20%",
                 height: '60%',
-                backgroundColor: '#116AC1',
+                backgroundColor: showStatusLoading ? '#656769' : '#116AC1',
                 borderRadius: 10,
                 justifyContent: 'center'
               }}>
-              <Text style={{
-                fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 65),
-                textAlignVertical: 'center',
-                height: "100%",
-                color: 'white',
-                textAlign: 'center',
-                width: "100%", fontWeight: "bold",
-              }}>-</Text>
+              <Text
+                adjustsFontSizeToFit
+                numberOfLines={1}
+                style={{
+                  fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 90),
+                  textAlignVertical: 'center',
+                  height: "100%",
+                  color: 'white',
+                  textAlign: 'center',
+                  width: "100%", fontWeight: "bold",
+                }}>-</Text>
             </TouchableOpacity>
 
 
@@ -1501,7 +1495,7 @@ const Home = ({ navigation, route }) => {
           flexDirection: 'row',
           justifyContent: 'space-around',
           marginTop: isPortraitOrientation ? '2%' : '1%',
-          paddingHorizontal: '5%',
+          // paddingHorizontal: '5%',
           ...SHADOWS.extraDark,
         }}>
         <Text

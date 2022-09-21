@@ -25,6 +25,8 @@ target 'on_air_project' do
 
   pod 'RNSound', :path => '../node_modules/react-native-sound'
 
+  pod 'react-native-notifications', :path => '../node_modules/react-native-notifications'
+
   target 'on_air_projectTests' do
     inherit! :complete
     # Pods for testing

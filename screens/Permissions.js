@@ -33,8 +33,7 @@ let permissionTimer = null;
 
 
 const isPortrait = () => {
-  const dim = Dimensions.get('screen');
-  if (DeviceInfo.isTablet) {
+  if (DeviceInfo.getDeviceType() == "Handset") {
     return dim.height >= dim.width;
   } else {
     return true;
@@ -119,17 +118,31 @@ const Permissions = ({ navigation, route }) => {
 
   // Run every update
   useEffect(() => {
-    // checkAllPermissions();
-    // if (
-    //   locationPermission == 'granted' &&
-    //   bluetoothStatus == 'PoweredOn' &&
-    //   bluetoothConnectPermission == 'granted' &&
-    //   bluetoothScanPermission == 'granted'
-    // ) {
-    //   clearInterval(permissionTimer);
-    //   navigation.dispatch(StackActions.replace('Home'));
-    // }
-    permissionTimer = setInterval(() => {
+
+    permissionTimer = setInterval(async () => {
+
+      if (Platform.OS === 'android' && Platform.Version <= 19) {
+        setModalError(true);
+        setModalText(
+          "You have to update your Android version to use this app. It's not supported on Android API versions below 19. You have API version " + Platform.Version,
+        );
+        setModalVisible(true);
+      } else if (Platform.OS === 'ios' && Platform.Version <= 9) {
+        setModalError(true);
+        setModalText(
+          "You have to update your iOS version to use this app. It's not supported on iOS versions below 9.",
+        );
+        setModalVisible(true);
+      }
+
+      if (await BluetoothStateManager.getState() == "Unsupported") {
+        setModalError(true);
+        setModalText(
+          "Bluetooth is not supported on this device!",
+        );
+        setModalVisible(true);
+      }
+
       checkAllPermissions();
       if (
         locationPermission == 'granted' &&
@@ -149,8 +162,9 @@ const Permissions = ({ navigation, route }) => {
   return (
     <SafeAreaView
       style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <View
+      <ScrollView
         style={{
+          marginVertical: "7%",
           width: '75%',
           height: '75%',
         }}>
@@ -172,17 +186,19 @@ const Permissions = ({ navigation, route }) => {
                 position: 'absolute',
               }}></View>
           </TouchableWithoutFeedback>
-          <View
-            style={{
+          <ScrollView
+            contentContainerStyle={{
               flex: 1,
               justifyContent: 'center',
               alignItems: 'center',
-              marginTop: 22,
+              display: "flex",
+              flexDirection: "column"
             }}>
             <View
               style={{
                 width: '80%',
-                margin: 20,
+                maxHeight: '90%',
+                minHeight: "30%",
                 backgroundColor: 'white',
                 borderRadius: 2 * (winWidth / 25),
                 alignItems: 'center',
@@ -195,34 +211,40 @@ const Permissions = ({ navigation, route }) => {
                 shadowRadius: 4,
                 elevation: 5,
                 paddingTop: '5%',
+                position: 'relative'
               }}>
-              <Image
-                source={
-                  modalError
-                    ? require('../assets/icons/error.png')
-                    : require('../assets/icons/info.png')
-                }
-                style={{ width: 90, height: 90, marginBottom: 20 }}
-              />
+
               <Text
                 style={{
                   color: '#6f7173',
                   paddingRight: 40,
                   paddingLeft: 40,
                   marginBottom: 20,
-                  fontSize: 2 * (winWidth / 30),
+                  fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60),
                   fontWeight: 'bold',
                   textAlign: 'center',
                 }}>
                 {modalError ? 'Oh Snap!' : 'Info'}
               </Text>
+              {isPortraitOrientation && <Image
+                source={
+                  modalError
+                    ? require('../assets/icons/error.png')
+                    : require('../assets/icons/info.png')
+                }
+                style={{ width: winWidth / 7, height: winWidth / 7, marginBottom: 20 }}
+              />}
+
               <Text
+                adjustsFontSizeToFit
                 style={{
                   color: '#6f7173',
-                  paddingRight: 40,
-                  paddingLeft: 40,
-                  fontSize: 2 * (winWidth / 50),
+                  paddingRight: "5%",
+                  paddingLeft: "5%",
+                  fontSize: isPortraitOrientation ? 2 * (winWidth / 40) : 2 * (winWidth / 90),
+                  height: '50%',
                   textAlign: 'center',
+                  marginBottom: isPortraitOrientation ? "2%" : 0
                 }}>
                 {modalText}
               </Text>
@@ -232,14 +254,13 @@ const Permissions = ({ navigation, route }) => {
                   borderBottomRightRadius: 20,
                   borderBottomLeftRadius: 20,
                   width: '100%',
-                  padding: 20,
                   elevation: 2,
+                  height: '20%', marginTop: "auto",
                   backgroundColor: modalError ? '#db4d4d' : '#2196F3',
-                  marginTop: 30,
-                  bottom: 0,
+
                 }}
                 onPress={() => {
-                  setModalVisible(!modalVisible);
+                  setModalVisible(!modalVisible)
                   if (!modalError) {
                     openSettings().catch(() =>
                       console.warn('cannot open settings'),
@@ -247,28 +268,32 @@ const Permissions = ({ navigation, route }) => {
                   }
                 }}>
                 <Text
+
                   style={{
                     color: 'white',
-                    fontSize: 2 * (winWidth / 30),
-                    textAlign: 'center',
+                    fontSize: 2 * (winWidth / 60),
+                    textAlign: 'center', height: '100%',
+                    textAlignVertical: 'center'
                   }}>
                   {modalError ? 'Dismiss' : 'Ok'}
                 </Text>
               </Pressable>
             </View>
-          </View>
+          </ScrollView>
         </Modal>
-        <View style={{
 
-          height: '100%',
-          alignItems: 'center',
-          justifyContent: 'center',
+        <View style={{
+          flex: 1,
         }}>
-          <ScrollView contentContainerStyle={{
-            height: '100%',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
+          <View
+            contentContainerStyle={{
+              flexGrow: 1,
+              backgroundColor: 'green',
+              height: '100%',
+              width: "100%",
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
             <Text
               style={{
                 fontFamily: 'Inter-Bold',
@@ -283,7 +308,7 @@ const Permissions = ({ navigation, route }) => {
             <Text
               style={{
                 textAlign: 'center',
-                lineHeight: 2 * (winWidth / 40),
+                lineHeight: isPortraitOrientation ? 2 * (winWidth / 40) : 2 * (winWidth / 60),
                 marginBottom: "5%",
                 color: 'gray',
                 fontSize: isPortraitOrientation ? 2 * (winWidth / 60) : 2 * (winWidth / 80),
@@ -475,9 +500,9 @@ const Permissions = ({ navigation, route }) => {
                 TURN ON BLUETOOTH
               </Text>
             </TouchableOpacity>
-          </ScrollView>
-        </View>
-      </View>
+          </View>
+        </View></ScrollView>
+
     </SafeAreaView>
   );
 };
