@@ -23,6 +23,7 @@ try {
     }
   })
 
+
 } catch (e) {
   console.log('I18nManager Error:', e);
 }

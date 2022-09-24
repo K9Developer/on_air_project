@@ -662,7 +662,7 @@ const Home = ({ navigation, route }) => {
     console.log("START")
     setTimeout(async () => {
 
-      LocalNotification()
+      LocalNotification(wantedPsi)
       doneStatus()
     }, 1000);
   }, [])
