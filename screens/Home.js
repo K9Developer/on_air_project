@@ -25,7 +25,6 @@ import { COLORS, SHADOWS } from '../constants';
 import React from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Sound from 'react-native-sound';
-import DeviceInfo from 'react-native-device-info';
 import BackgroundTimer from 'react-native-background-timer';
 import { log } from '../services/logs'
 import { StackActions } from '@react-navigation/native';
@@ -34,7 +33,7 @@ import { StackActions } from '@react-navigation/native';
 let permTimer = null;
 let timer = null;
 let waitTimer = null;
-let BT05_DEVICE = null;
+let BluetoothDevice = null;
 let MANAGER = null;
 let DEVICE_SERVICE_UUID = null;
 let DEVICE_CHARACTERISTICS_UUID = null;
@@ -87,10 +86,10 @@ const renderItem = (item, index) => {
 const playDoneSound = () => {
   let beep = new Sound('beep_long.mp3', Sound.MAIN_BUNDLE, error => {
     if (error) {
-      log("HOME", 'failed to load the sound', error);
+      log("HOME", `Failed to load beep_long.mp3 sound. error: ${error}`);
       return;
     }
-    // loaded successfully
+
     beep.play(success => {
       if (success) {
         log("HOME", 'successfully finished playing');
@@ -134,7 +133,7 @@ const playDoneSound = () => {
 const downPressPlus = (currentCounter, setCounter) => {
   if (currentCounter < MAX_PSI) {
     waitTimer = setTimeout(() => {
-      log("HOME", 'WAIT TIME OVER');
+      log("HOME", 'Long press activated, starting plus loop');
       if (timer === null) {
         timer = setInterval(() => {
           setCounter(counter => counter + (counter < MAX_PSI ? 1 : 0));
@@ -146,6 +145,9 @@ const downPressPlus = (currentCounter, setCounter) => {
 
 const upPressPlus = (currentCounter, setCounter) => {
   if (currentCounter <= MAX_PSI) {
+    if (timer) {
+      log("HOME", `Set PSI to ${currentCounter + 1}. operation: +`);
+    }
     clearInterval(timer);
     clearTimeout(waitTimer);
     timer = null;
@@ -159,6 +161,7 @@ const upPressPlus = (currentCounter, setCounter) => {
 const downPressMinus = (currentCounter, setCounter) => {
   if (currentCounter > MIN_PSI) {
     waitTimer = setTimeout(() => {
+      log("HOME", 'Long press activated, starting minus loop');
       if (timer === null) {
         timer = setInterval(() => {
           setCounter(counter => counter - (counter > MIN_PSI ? 1 : 0));
@@ -170,6 +173,9 @@ const downPressMinus = (currentCounter, setCounter) => {
 
 const upPressMinus = (currentCounter, setCounter) => {
   if (currentCounter >= MIN_PSI) {
+    if (timer) {
+      log("HOME", `Set PSI to ${currentCounter - 1}. operation: -`);
+    }
     clearInterval(timer);
     clearTimeout(waitTimer);
     timer = null;
@@ -182,22 +188,22 @@ const upPressMinus = (currentCounter, setCounter) => {
 
 const getData = async key => {
   try {
+    log("HOME", `Getting data for key: ${key}`);
     const data = await AsyncStorage.getItem(key);
     if (data !== null) {
-      // log("HOME", 'data: ' + data);
-      // log("HOME", 'type data:', typeof data);
       return data;
     }
   } catch (error) {
-    log("HOME", error);
+    log("HOME", `ERROR when tried getting data for key: ${key}. error: ${error}`);
   }
 };
 
 const setData = async (key, value) => {
   try {
-    let t = await AsyncStorage.setItem(key, value);
+    log("HOME", `Setting data for key: ${key}, with value: ${value}`);
+    await AsyncStorage.setItem(key, value);
   } catch (error) {
-    log("HOME", error);
+    log("HOME", `ERROR when tried setting data for key: ${key}, with value: ${value}. error: ${error}`);
   }
 };
 
@@ -251,11 +257,16 @@ const getErrorText = error => {
     600: "Please allow all requested permissions to this app, if that doesn't work try restarting it.",
     601: 'Location services are disabled',
   };
-  return (
-    errorMap[error.errorCode] ??
+
+  let err = errorMap[error.errorCode] ??
     'Unknown error occurred [custom]. (Please try again) info: ' +
     JSON.stringify(error)
-  );
+
+  log("HOME", `Getting error code ${error.errorCode}. error text: ${err}`);
+
+  return err;
+
+
 };
 
 const isValidData = data => {
@@ -265,53 +276,57 @@ const isValidData = data => {
     ) {
       continue;
     } else {
+      log("HOME", `Data: "${data}" is not valid. (char: ${char})`);
       return false;
     }
   }
+  log("HOME", `Data: "${data}" is valid.`);
   return true;
 };
 
 const storeData = async () => {
   if (!JSON.parse(await AsyncStorage.getItem('@factor'))) {
+    log("HOME", `Factor is not set! setting to default: 3.5`);
     try {
       await AsyncStorage.setItem('@factor', JSON.stringify(3.5));
     } catch (error) {
-      log("HOME", 'ERROR SAVING FACTOR', error);
+      log("HOME", `ERROR when tried to save default data for factor. error: ${error}`);
     }
   }
 
   if (!JSON.parse(await AsyncStorage.getItem('@wantedPsi'))) {
+    log("HOME", `Wanted PSI is not set! setting to default: 3`);
     try {
       await AsyncStorage.setItem('@wantedPsi', JSON.stringify(3));
     } catch (error) {
-      log("HOME", 'ERROR SAVING WANTED PSI', error);
+      log("HOME", `ERROR when tried to save default data for Wanted PSI. error: ${error}`);
     }
   }
 
-  log("HOME", 'road:', JSON.parse(await AsyncStorage.getItem('@roadPreset')));
-
   if (!JSON.parse(await AsyncStorage.getItem('@roadPreset'))) {
+    log("HOME", `Road Preset is not set! setting to default: 32`);
     try {
       await AsyncStorage.setItem('@roadPreset', JSON.stringify(32));
     } catch (error) {
-      log("HOME", 'ERROR SAVING ROAD PRESET', error);
+      log("HOME", `ERROR when tried to save default data for Road Preset. error: ${error}`);
     }
   }
-  log("HOME", !(await AsyncStorage.getItem('@trailPreset')));
+
   if (!JSON.parse(await AsyncStorage.getItem('@trailPreset'))) {
+    log("HOME", `Trail Preset is not set! setting to default: 16`);
     try {
-      log("HOME", 'Storing data - trailPreset');
       await AsyncStorage.setItem('@trailPreset', JSON.stringify(16));
     } catch (error) {
-      log("HOME", 'ERROR SAVING TRAIL PRESET', error);
+      log("HOME", `ERROR when tried to save default data for Trail Preset. error: ${error}`);
     }
   }
 
   if (!JSON.parse(await AsyncStorage.getItem('@btImage'))) {
+    log("HOME", `BT Image is not set! setting to default: null`);
     try {
       await AsyncStorage.setItem('@BtImage', JSON.stringify(null));
     } catch (error) {
-      log("HOME", 'ERROR SAVING BtImage', error);
+      log("HOME", `ERROR when tried to save default data for BT Image. error: ${error}`);
     }
   }
 };
@@ -323,7 +338,6 @@ const Home = ({ navigation, route }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [modalError, setModalError] = useState(false);
   const [modalText, setModalText] = useState('N/A');
-  // const [modalText, setModalText] = useState("");
   const [connected, setConnected] = useState(false);
   const [statusText, setStatusText] = useState('Disconnected');
   const [disconnectMonitor, setDisconnectMonitor] = useState(null);
@@ -332,11 +346,8 @@ const Home = ({ navigation, route }) => {
   const [showStatusLoading, setShowStatusLoading] = useState(false);
   const [isDone, setIsDone] = useState(false);
   const [lowBattery, setLowBattery] = useState(false);
-  const [dropMessageText, setDropMessageText] = useState(
-    'You have disconnected from the device.',
-  );
-  const [dropMessageButtonText, setDropMessageButtonText] =
-    useState('Reconnect');
+  const [dropMessageText, setDropMessageText] = useState('You have disconnected from the device.');
+  const [dropMessageButtonText, setDropMessageButtonText] = useState('Reconnect');
   const [allMessagesSentByDevice, setAllMessagesSentByDevice] = useState([]);
   const [pickerModalVisible, setPickerModalVisible] = useState(false);
   const [psiIndex, setPsiIndex] = useState(0);
@@ -346,6 +357,7 @@ const Home = ({ navigation, route }) => {
   const dropAnim = useRef(new Animated.Value(0)).current;
 
   Dimensions.addEventListener('change', () => {
+    log("HOME", `Changed rotation. Is portrait - ${isPortrait()}`);
     setIsPortraitOrientation(isPortrait())
   });
 
@@ -353,31 +365,39 @@ const Home = ({ navigation, route }) => {
 
   const onDeviceDisconnect = (error, device) => {
     if (error) {
-      log("HOME", 'ERROR');
+      log("HOME", `ERROR when device disconnected, device - ${device ? device.id : null}. error: ${error}`);
       setModalError(true);
       setModalText(getErrorText(error));
       setModalVisible(true);
     } else {
       setShowStatusLoading(false);
+      log("HOME", `Device ${device ? device.id : null} disconnected successfully`);
       if (disconnectMonitor) {
+        log("HOME", `Removing disconnect listener.`);
         disconnectMonitor.remove();
         setDisconnectMonitor(null);
       }
+
+      log("HOME", `Removing all timers.`);
       for (timer of timerList) {
         clearInterval(timer);
       }
+
       setStatusText('Disconnected');
       if (readMonitor) {
+        log("HOME", `Removing received data listener.`);
         readMonitor.remove();
         setReadMonitor(null);
       }
-      log("HOME", 'Device disconnected: ' + device.id);
+
       setConnected(false);
+
       if (Platform.OS === 'android') {
         Vibration.vibrate([200, 200, 200, 500]);
       } else {
         Vibration.vibrate([200, 500]);
       }
+
       removeSubscriptions();
       setDropMessageText('You have disconnected from the device.');
       setDropMessageButtonText('Reconnect');
@@ -386,18 +406,24 @@ const Home = ({ navigation, route }) => {
   };
 
   useEffect(() => {
+    log("HOME", `Loading home screen.`);
+
     return navigation.addListener('focus', () => {
-      if (BT05_DEVICE && MANAGER) {
+
+      if (BluetoothDevice && MANAGER) {
+        log("HOME", `Sending arduino screen status`);
         sendDeviceSignal('home');
       }
-      log("HOME", 'navigation focus');
+
       if (Platform.OS === 'android' && Platform.Version <= 19) {
+        log("HOME", `Android version too low (${Platform.Version})`);
         setModalError(true);
         setModalText(
           "You have to update your Android version to use this app. It's not supported on Android API versions below 19. You have API version " + Platform.Version,
         );
         setModalVisible(true);
       } else if (Platform.OS === 'ios' && Platform.Version <= 9) {
+        log("HOME", `IOS version too low (${Platform.Version})`);
         setModalError(true);
         setModalText(
           "You have to update your iOS version to use this app. It's not supported on iOS versions below 9.",
@@ -405,30 +431,31 @@ const Home = ({ navigation, route }) => {
       }
 
       storeData();
+
       getData('@factor')
         .then(value => {
           if (value != null && value != undefined) {
             setFactor(parseFloat(JSON.parse(value)));
           }
         })
-        .catch(err => log("HOME", err));
+        .catch(error => log("HOME", `ERROR when tried getting factor data. error: ${error}`));
 
-      log("HOME", 1);
       getData('@wantedPsi')
         .then(value => {
-          log("HOME", 'value: ' + value);
           if (value != null && value != undefined) {
             setWantedPsi(parseInt(JSON.parse(value)));
           }
         })
-        .catch(err => log("HOME", err));
+        .catch(error => log("HOME", `ERROR when tried getting wanted psi data. error: ${error}`));
 
       if (disconnectMonitor) {
+        log("HOME", `Removing disconnect listener.`);
         disconnectMonitor.remove();
         setDisconnectMonitor(null);
       }
 
       if (readMonitor) {
+        log("HOME", `Removing received data listener.`);
         readMonitor.remove();
         setReadMonitor(null);
       }
@@ -439,72 +466,67 @@ const Home = ({ navigation, route }) => {
         route.params != null &&
         route.params != undefined
       ) {
-        log("HOME",
-          `Passed route checks - device: ${route.params.device}, manager: ${route.params.manager}`,
-        );
+        log("HOME", `Passed route checks.`);
+
         if (
           route.params.device != null &&
           route.params.device != undefined &&
           route.params.manager != null &&
           route.params.manager != undefined
         ) {
-          log("HOME", 'Passed params checks');
+
+          log("HOME", `Passed params checks. params: ${route.params}`);
           MANAGER = route.params.manager;
-          BT05_DEVICE = route.params.device;
+          BluetoothDevice = route.params.device;
 
-          log("HOME", 'MANAGER: ' + JSON.stringify(MANAGER));
-          log("HOME", 'DEVICE has id: ' + BT05_DEVICE.hasOwnProperty('id'));
-          if (BT05_DEVICE.hasOwnProperty('id')) {
-            MANAGER.isDeviceConnected(BT05_DEVICE.id)
+          if (BluetoothDevice && BluetoothDevice.id) {
+            MANAGER.isDeviceConnected(BluetoothDevice.id)
               .then(isConnected => {
-                log("HOME", 'IS CONNECTED: ' + isConnected);
                 if (isConnected) {
-                  log("HOME", 'Passed isConnected checks');
-                  setDisconnectMonitor(
-                    MANAGER.onDeviceDisconnected(
-                      BT05_DEVICE.id,
-                      onDeviceDisconnect,
-                    ),
-                  );
+                  log("HOME", `Device ${BluetoothDevice ? BluetoothDevice.id : null} is connected.`);
+                  log("HOME", `Creating disconnect and received data listeners.`);
 
-                  log("HOME", 'Passed set disconnect monitor');
-                  setReadMonitor(
-                    MANAGER.monitorCharacteristicForDevice(
-                      BT05_DEVICE.id,
-                      'FFE0',
-                      'FFE1',
-                      monitorDeviceData,
-                    ),
-                  );
-                  log("HOME", 'Passed set read monitor');
+                  try {
+                    setDisconnectMonitor(
+                      MANAGER.onDeviceDisconnected(
+                        BluetoothDevice.id,
+                        onDeviceDisconnect,
+                      ),
+                    );
+                  } catch (error) {
+                    log("HOME", `ERROR when tried creating a disconnect listener. error: ${error}`);
+                  }
+
+                  try {
+                    setReadMonitor(
+                      MANAGER.monitorCharacteristicForDevice(
+                        BluetoothDevice.id,
+                        'FFE0',
+                        'FFE1',
+                        monitorDeviceData,
+                      ),
+                    );
+                  } catch (error) {
+                    log("HOME", `ERROR when tried creating a received data listener. error: ${error}`);
+                  }
                   setConnected(true);
-
-                  log("HOME", 'Passed set connected');
                 }
               })
               .catch(error => {
-                log("HOME", 'ERROR: ' + JSON.stringify(error));
+                log("HOME", `ERROR when tried to check connection status. error: ${error}`);
               });
           } else {
-            BT05_DEVICE = null;
+            BluetoothDevice = null;
           }
 
           DEVICE_SERVICE_UUID = route.params.serviceUUID;
           DEVICE_CHARACTERISTICS_UUID = route.params.characteristicsUUID;
         } else {
-          BT05_DEVICE = null;
+          BluetoothDevice = null;
         }
-        log("HOME", 'AT END BT05 IS: ' + BT05_DEVICE);
-        log("HOME", 'AT END BT05 IS: ' + BT05_DEVICE);
-        log("HOME", 'AT END BT05 IS: ' + BT05_DEVICE);
-        log("HOME", 'AT END BT05 IS: ' + BT05_DEVICE);
       }
     });
   }, [route]);
-
-  // setInterval(() => {
-  //   log("HOME", 'PSI: ' + wantedPsi);
-  // }, 100);
 
   const checkPermission = () => {
     if (Platform.OS === 'android') {
@@ -519,11 +541,13 @@ const Home = ({ navigation, route }) => {
               clearInterval(permTimer);
               permTimer = null;
             }
+
+            log("HOME", `Permission requirement (${PERMISSIONS.ANDROID.BLUETOOTH_CONNECT}) not met.`);
             navigation.dispatch(StackActions.replace('Permissions'));
-            log("HOME", permTimer)
+
           }
         })
-        .catch(err => log("HOME", 'error checking perm1:', err));
+        .catch(error => log("HOME", `ERROR when tried checking permission ${PERMISSIONS.ANDROID.BLUETOOTH_CONNECT}. error: ${error}`))
 
       check(PERMISSIONS.ANDROID.BLUETOOTH_SCAN)
         .then(data => {
@@ -536,11 +560,12 @@ const Home = ({ navigation, route }) => {
               clearInterval(permTimer);
               permTimer = null;
             }
+
+            log("HOME", `Permission requirement (${PERMISSIONS.ANDROID.BLUETOOTH_SCAN}) not met.`);
             navigation.dispatch(StackActions.replace('Permissions'));
-            log("HOME", permTimer)
           }
         })
-        .catch(err => log("HOME", 'error checking perm1:', err));
+        .catch(error => log("HOME", `ERROR when tried checking permission ${PERMISSIONS.ANDROID.BLUETOOTH_SCAN}. error: ${error}`));
 
       check(PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION)
         .then(data => {
@@ -549,11 +574,12 @@ const Home = ({ navigation, route }) => {
               clearInterval(permTimer);
               permTimer = null;
             }
+
+            log("HOME", `Permission requirement (${PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION}) not met.`);
             navigation.dispatch(StackActions.replace('Permissions'));
-            log("HOME", permTimer)
           }
         })
-        .catch(err => log("HOME", 'error checking perm1:', err));
+        .catch(error => log("HOME", `ERROR when tried checking permission ${PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION}. error: ${error}`));
 
       BluetoothStateManager.getState()
         .then(data => {
@@ -562,11 +588,13 @@ const Home = ({ navigation, route }) => {
               clearInterval(permTimer);
               permTimer = null;
             }
+
+            log("HOME", `Permission requirement (BLUETOOTH_STATUS) not met.`);
             navigation.dispatch(StackActions.replace('Permissions'));
-            log("HOME", permTimer)
           }
         })
-        .catch(err => log("HOME", 'error checking perm1:', err));
+        .catch(error => log("HOME", `ERROR when tried checking permission BLUETOOTH_STATUS. error: ${error}`));
+
     } else {
       check(PERMISSIONS.IOS.BLUETOOTH_PERIPHERAL)
         .then(data => {
@@ -607,19 +635,7 @@ const Home = ({ navigation, route }) => {
   };
 
   const exitApp = () => {
-    // log("HOME", 'Wanted PSI: ' + wantedPsi);
-    // setData('@wantedPsi', wantedPsi.toString());
-    // log("HOME", 'exit APp');
-    // setShowStatusLoading(false);
-    // if (disconnectMonitor) {
-    //   disconnectMonitor.remove();
-    //   setDisconnectMonitor(null);
-    // }
-
-    // if (readMonitor) {
-    //   readMonitor.remove();
-    //   setReadMonitor(null);
-    // }
+    log("HOME", `Exited home screen`);
   };
 
   navigation.addListener('blur', e => {
@@ -627,6 +643,8 @@ const Home = ({ navigation, route }) => {
   });
 
   useEffect(() => {
+    log("HOME", `Initializing permission check loop`);
+
     AppState.addEventListener('change', currentState => {
       if (currentState === 'background') {
         exitApp();
@@ -645,21 +663,19 @@ const Home = ({ navigation, route }) => {
     let base64Signal = Buffer.from(startChar + signal + endChar).toString(
       'base64',
     );
-    // log("HOME", base64Signal + ' - ' + (base64Signal.length + 3));
+    log("HOME", `Sending data (${signal}-${base64Signal}) to device - ${BluetoothDevice ? BluetoothDevice.id : null}`)
     return MANAGER.writeCharacteristicWithoutResponseForDevice(
-      BT05_DEVICE.id,
+      BluetoothDevice.id,
       'FFE0',
       'FFE1',
       base64Signal,
     )
       .then(d => {
-        if (signal != 'DATA WAS READ') {
-          // sendDeviceSignal('DATA WAS READ');
-        }
         setAllMessagesSentByDevice(oldArray => [...oldArray, signal]);
         return d;
       })
-      .catch(e => {
+      .catch(error => {
+        log("HOME", `ERROR when tried sending data (${signal}) to device - ${BluetoothDevice ? BluetoothDevice.id : null}. error: ${error}`)
         setModalError(true);
         setModalText(getErrorText(e));
         setModalVisible(true);
@@ -668,13 +684,12 @@ const Home = ({ navigation, route }) => {
   };
 
   const sendAllData = async (wantedPsi, factor) => {
-    sendDeviceSignal(
-      `{${parseFloat(wantedPsi).toFixed(1)},${parseFloat(factor).toFixed(1)}}`,
-      false,
-    );
+    log("HOME", `Sending all data to device - ${BluetoothDevice ? BluetoothDevice.id : null}. data: {${parseFloat(wantedPsi).toFixed(1)},${parseFloat(factor).toFixed(1)}}`)
+    await sendDeviceSignal(`{${parseFloat(wantedPsi).toFixed(1)},${parseFloat(factor).toFixed(1)}}`);
   };
 
   const removeSubscriptions = () => {
+    log("HOME", `Removing all subscriptions.`)
 
     if (MANAGER != null) {
       for (const [_key, val] of Object.entries(MANAGER._activeSubscriptions)) {
@@ -684,10 +699,10 @@ const Home = ({ navigation, route }) => {
       }
       try {
         for (const [_key, val] of Object.entries(
-          BT05_DEVICE._manager._activeSubscriptions,
+          BluetoothDevice._manager._activeSubscriptions,
         )) {
           try {
-            BT05_DEVICE._manager._activeSubscriptions[val].remove();
+            BluetoothDevice._manager._activeSubscriptions[val].remove();
           } catch (error) { }
         }
       } catch (error) { }
@@ -695,6 +710,7 @@ const Home = ({ navigation, route }) => {
   };
 
   const doneStatus = async () => {
+    log("HOME", `Done with current operation!`)
     setIsDone(true);
   };
 
@@ -711,8 +727,8 @@ const Home = ({ navigation, route }) => {
 
 
   const handleStatusId = async (startTime, statusId) => {
-    log("HOME", 'Called handleStatusId');
-    log("HOME", statusId, startTime);
+    log("HOME", `Started operation: ${StatusIdMap[statusId]} that will last: ${startTime}s`)
+
     startTime -= 2;
     for (timer of timerList) {
       BackgroundTimer.clearInterval(timer);
@@ -754,6 +770,7 @@ const Home = ({ navigation, route }) => {
 
   const monitorDeviceData = (error, data) => {
     if (error) {
+      log("HOME", `ERROR when tried reading device data. error: ${error}`)
       setModalError(true);
       setModalText(getErrorText(error));
       setModalVisible(true);
@@ -761,10 +778,15 @@ const Home = ({ navigation, route }) => {
     }
 
     data = Buffer.from(data.value, 'base64').toString();
+    log("HOME", `Got raw data from device - ${data}`)
+
     if (data != 'SUCCESS CONNECT') {
       data = data.substring(data.indexOf(startChar) + 1, data.indexOf(endChar));
+      log("HOME", `Filtered data - ${data}`)
     }
-    log("HOME", data);
+
+    log("HOME", `Validating data sent:\n\t1. Duplicate message: ${allMessagesSentByDevice.includes(data)}\n\t2. Message empty: ${data != '~^' && data != '~DATA WAS READ^' && data[0] == '['}\n\t3. Valid Data: ${isValidData(data)}`)
+
     if (
       !allMessagesSentByDevice.includes(data) &&
       data != '~^' &&
@@ -772,40 +794,27 @@ const Home = ({ navigation, route }) => {
       data[0] == '[' &&
       isValidData(data)
     ) {
-      if (data.includes('alive')) {
-        // log("HOME", 'Asking for connection status');
-        let x = 0;
-        let timer = setInterval(() => {
-          x++;
-          sendDeviceSignal('yes');
-          if (x == 5) {
-            clearInterval(timer);
-          }
-        }, 170);
-      } else {
-        let dataArray = eval(data);
-        log("HOME", dataArray);
-        handleStatusId(dataArray[1], dataArray[0]);
-        setTirePressure(dataArray[2]);
-        setLowBattery(dataArray[4])
-      }
+
+      let dataArray = eval(data);
+      log("HOME", `Evaluated data: ${dataArray}`);
+      handleStatusId(dataArray[1], dataArray[0]);
+      setTirePressure(dataArray[2]);
+      setLowBattery(dataArray[4])
+
     }
   };
 
   const dropIn = () => {
-    // Will change fadeAnim value to 1 in 5 seconds
     Animated.timing(dropAnim, {
       toValue: 50,
       duration: 500,
       useNativeDriver: false,
-      // useNativeDriver: true,
     }).start();
     setTimeout(() => {
       Animated.timing(dropAnim, {
         toValue: 0,
         duration: 500,
         useNativeDriver: false,
-        // useNativeDriver: true,
       }).start();
     }, 10000);
   };
@@ -828,7 +837,6 @@ const Home = ({ navigation, route }) => {
           animationType="slide"
           transparent={true}
           visible={modalText == null ? false : pickerModalVisible}
-          // visible
           onRequestClose={() => {
             setPickerModalVisible(!pickerModalVisible);
           }}>
@@ -1093,7 +1101,6 @@ const Home = ({ navigation, route }) => {
             <Text
               style={{
                 color: 'white',
-                // marginLeft: 10,
               }}>
               {dropMessageText}
             </Text>
@@ -1108,11 +1115,10 @@ const Home = ({ navigation, route }) => {
                   toValue: 0,
                   duration: 1,
                   useNativeDriver: false,
-                  // useNativeDriver: true,
                 }).start();
                 removeSubscriptions();
                 navigation.navigate('Settings', {
-                  device: BT05_DEVICE,
+                  device: BluetoothDevice,
                   serviceUUID: DEVICE_SERVICE_UUID,
                   characteristicsUUID: DEVICE_CHARACTERISTICS_UUID,
                   startConnect: true,
@@ -1147,27 +1153,10 @@ const Home = ({ navigation, route }) => {
               aspectRatio: 1,
             }}
             onPressOut={() => {
-              try {
-                MANAGER.isDeviceConnected(BT05_DEVICE.id).then(d => {
-                  log("HOME", 'BEFORE LEAVE, CONNECTED 1 - ' + d);
-                });
-              } catch (err) {
-                log("HOME",
-                  'Error checking connected before leave home 1 - ' + err,
-                );
-              }
               removeSubscriptions();
-              try {
-                MANAGER.isDeviceConnected(BT05_DEVICE.id).then(d => {
-                  log("HOME", 'BEFORE LEAVE, CONNECTED 2 - ' + d);
-                });
-              } catch (err) {
-                log("HOME",
-                  'Error checking connected before leave home 2 - ' + err,
-                );
-              }
+              log("HOME", `Going to settings via cog icon`)
               navigation.navigate('Settings', {
-                device: BT05_DEVICE,
+                device: BluetoothDevice,
                 serviceUUID: DEVICE_SERVICE_UUID,
                 characteristicsUUID: DEVICE_CHARACTERISTICS_UUID,
                 startConnect: false,
@@ -1188,8 +1177,6 @@ const Home = ({ navigation, route }) => {
           </TouchableOpacity>
 
 
-          {/* Logo */}
-
           <TouchableOpacity
             style={{
               width: isPortraitOrientation ? "50%" : "30%",
@@ -1197,24 +1184,25 @@ const Home = ({ navigation, route }) => {
               justifyContent: 'center',
               alignItems: 'center',
               top: isPortraitOrientation ? "18%" : "2%",
-
             }}
             onPress={async () => {
-              if (BT05_DEVICE != null) {
+              log("HOME", `OnAir button pressed`)
+              if (BluetoothDevice != null) {
                 try {
-                  let d = await MANAGER.isDeviceConnected(BT05_DEVICE.id);
-                  if (!d) {
-                    log("HOME", 'BT05_DEVICE is not connected');
+                  let isConnected = await MANAGER.isDeviceConnected(BluetoothDevice.id);
+                  if (!isConnected) {
+                    log("HOME", `Bluetooth device - ${BluetoothDevice ? BluetoothDevice.id : null} not connected`)
                     setConnected(false);
                   }
-                } catch (err) {
-                  log("HOME", 'Error checking connected - ' + err);
+                } catch (error) {
+                  log("HOME", `ERROR when tried checking connection status for bluetooth device - ${BluetoothDevice ? BluetoothDevice.id : null}. error: ${error}`)
                 }
 
                 if (connected) {
-                  log("HOME", 'Sending all data to the device');
+                  log("HOME", `Bluetooth device - ${BluetoothDevice ? BluetoothDevice.id : null} is connected`)
                   sendAllData(wantedPsi, factor);
                   if (isDone) {
+                    log("HOME", `Turned off done status`)
                     setIsDone(false);
                   }
                 } else {
@@ -1222,7 +1210,7 @@ const Home = ({ navigation, route }) => {
                     dropIn();
                     setDropMessageText('You are not connected to the device.');
                     setDropMessageButtonText('Connect');
-                    log("HOME", "Device is not connected")
+                    log("HOME", `Device - ${BluetoothDevice ? BluetoothDevice.id : null} is not connected`)
                   }
                 }
               } else {
@@ -1234,6 +1222,7 @@ const Home = ({ navigation, route }) => {
                 }
               }
             }}>
+
             <Image
               source={require('../assets/icons/logo.png')}
               resizeMode="center"
@@ -1252,6 +1241,7 @@ const Home = ({ navigation, route }) => {
               position: "relative",
             }}
             onPressOut={() => {
+              log("HOME", `Going to about me via the about me button`)
               removeSubscriptions();
               navigation.navigate('AboutMe');
             }}>
@@ -1259,8 +1249,6 @@ const Home = ({ navigation, route }) => {
               flexDirection: 'row',
               alignItems: 'center'
             }}>
-
-
 
               <Image
                 key={new Date()}
@@ -1373,15 +1361,14 @@ const Home = ({ navigation, route }) => {
               <TouchableOpacity
                 disabled={showStatusLoading}
                 onPress={() => {
+                  log("HOME", `Opening picker modal`)
                   setPickerModalVisible(true);
                 }}
                 style={{
                   height: '100%',
                   justifyContent: 'center',
                   marginRight: isPortraitOrientation ? 0 : '32%',
-
                 }}>
-
 
                 <Text
                   adjustsFontSizeToFit
@@ -1398,7 +1385,9 @@ const Home = ({ navigation, route }) => {
                     fontSize: 2 * (winWidth / 18)
                   }}>
                   {wantedPsi}
-                </Text></TouchableOpacity>
+                </Text>
+              </TouchableOpacity>
+
             </View>
             <View style={{
               flexDirection: 'row',
@@ -1413,9 +1402,10 @@ const Home = ({ navigation, route }) => {
                     getData('@roadPreset')
                       .then(data => data)
                       .then(value => {
+                        log("HOME", `Road Preset button pressed! value: ${value}`)
                         setWantedPsi(parseInt(value));
                       })
-                      .catch(err => log("HOME", err));
+                      .catch(error => log("HOME", `ERROR when tried getting road preset value. error: ${error}`));
                   }
                 }
                 style={{
@@ -1444,9 +1434,10 @@ const Home = ({ navigation, route }) => {
                     getData('@trailPreset')
                       .then(data => data)
                       .then(value => {
+                        log("HOME", `Trail Preset button pressed! value: ${value}`)
                         setWantedPsi(parseInt(value));
                       })
-                      .catch(err => log("HOME", err));
+                      .catch(error => log("HOME", `ERROR when tried getting trail preset value. error: ${error}`));
                   }
                 }
                 style={{
@@ -1515,13 +1506,9 @@ const Home = ({ navigation, route }) => {
                     width: "100%", fontWeight: "bold",
                   }}>-</Text>
               </TouchableOpacity>
-
-
             </View>
           </View>
         </View>
-
-
 
         {/* STATUS TEXT */}
         <View
@@ -1535,7 +1522,6 @@ const Home = ({ navigation, route }) => {
             flexDirection: 'row',
             justifyContent: 'space-around',
             marginTop: isPortraitOrientation ? '2%' : '1%',
-            // paddingHorizontal: '5%',
             ...SHADOWS.extraDark,
           }}>
           <Text
