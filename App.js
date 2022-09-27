@@ -8,26 +8,26 @@ import Permissions from './screens/Permissions';
 import AboutMe from './screens/AboutMe';
 import FactorInfo from './screens/FactorInfo';
 import DeviceChooser from './screens/DeviceChooser';
-import { I18nManager } from 'react-native';
+import { I18nManager, Platform } from 'react-native';
+import DeviceInfo from 'react-native-device-info';
 import RNRestart from 'react-native-restart';
-
+import { log } from './services/logs'
 
 try {
-  console.log("IS RTL: " + I18nManager.isRTL)
+  log("APP", `Is Right To Left layout: ${I18nManager.isRTL}`)
 
   AsyncStorage.getItem('@restarted').then(d => {
-    console.log(d)
     if (d != "true") {
       I18nManager.allowRTL(false);
       I18nManager.forceRTL(false);
+      log("APP", `Restarting to force LTR`)
       AsyncStorage.setItem('@restarted', "true").then(() => { RNRestart.Restart() });
-
     }
   })
 
 
-} catch (e) {
-  console.log('I18nManager Error:', e);
+} catch (error) {
+  log("APP", `Failed forcing LTR. error: ${error}`)
 }
 
 const theme = {
@@ -41,48 +41,57 @@ const theme = {
 
 const Stack = createStackNavigator();
 const storeData = async () => {
-  if (!AsyncStorage.getItem('@factor')) {
+  if (!JSON.parse(await AsyncStorage.getItem('@factor'))) {
+    log("APP", `Factor is not set! setting to default: 3.5`);
     try {
-      await AsyncStorage.setItem('@factor', JSON.stringify(3.2) + 'setup');
+      await AsyncStorage.setItem('@factor', JSON.stringify(3.5));
     } catch (error) {
-      console.log('ERROR SAVING FACTOR', error);
+      log("APP", `ERROR when tried to save default data for factor. error: ${error}`);
     }
   }
 
-  if (!AsyncStorage.getItem('@wantedPsi')) {
+  if (!JSON.parse(await AsyncStorage.getItem('@wantedPsi'))) {
+    log("APP", `Wanted PSI is not set! setting to default: 3`);
     try {
-      await AsyncStorage.setItem('@wantedPsi', JSON.stringify(3) + 'setup');
+      await AsyncStorage.setItem('@wantedPsi', JSON.stringify(3));
     } catch (error) {
-      console.log('ERROR SAVING WANTED PSI', error);
+      log("APP", `ERROR when tried to save default data for Wanted PSI. error: ${error}`);
     }
   }
 
-  if (!AsyncStorage.getItem('@roadPreset')) {
+  if (!JSON.parse(await AsyncStorage.getItem('@roadPreset'))) {
+    log("APP", `Road Preset is not set! setting to default: 32`);
     try {
-      await AsyncStorage.setItem('@roadPreset', JSON.stringify(32) + 'setup');
+      await AsyncStorage.setItem('@roadPreset', JSON.stringify(32));
     } catch (error) {
-      console.log('ERROR SAVING ROAD PRESET', error);
-    }
-  }
-  if (!AsyncStorage.getItem('@trailPreset')) {
-    try {
-      await AsyncStorage.setItem('@trailPreset', JSON.stringify(16) + 'setup');
-    } catch (error) {
-      console.log('ERROR SAVING TRAIL PRESET', error);
+      log("APP", `ERROR when tried to save default data for Road Preset. error: ${error}`);
     }
   }
 
-  if (!AsyncStorage.getItem('@btImage')) {
+  if (!JSON.parse(await AsyncStorage.getItem('@trailPreset'))) {
+    log("APP", `Trail Preset is not set! setting to default: 16`);
+    try {
+      await AsyncStorage.setItem('@trailPreset', JSON.stringify(16));
+    } catch (error) {
+      log("APP", `ERROR when tried to save default data for Trail Preset. error: ${error}`);
+    }
+  }
+
+  if (!JSON.parse(await AsyncStorage.getItem('@btImage'))) {
+    log("APP", `BT Image is not set! setting to default: null`);
     try {
       await AsyncStorage.setItem('@BtImage', JSON.stringify(null));
     } catch (error) {
-      console.log('ERROR SAVING BtImage', error);
+      log("APP", `ERROR when tried to save default data for BT Image. error: ${error}`);
     }
   }
 };
 storeData();
 
-
+const logDeviceInfo = async () => {
+  log("APP", `\n-----------------DEVICE INFO-----------------\n\t*Is Tablet: ${DeviceInfo.isTablet()}\n\t*OS name: ${DeviceInfo.getSystemName()}\n\t*${await DeviceInfo.getDeviceName()}\n\t*API level: ${await DeviceInfo.getApiLevel()}\n\t*Release version: ${Platform.constants['Release']}\n\n`)
+}
+logDeviceInfo()
 
 const App = () => {
   return (
