@@ -6,9 +6,11 @@ import Home from './screens/Home';
 import Details from './screens/Settings';
 import Permissions from './screens/Permissions';
 import AboutMe from './screens/AboutMe';
+import FactorInfo from './screens/FactorInfo';
 import DeviceChooser from './screens/DeviceChooser';
 import { I18nManager } from 'react-native';
 import RNRestart from 'react-native-restart';
+
 
 try {
   console.log("IS RTL: " + I18nManager.isRTL)
@@ -18,7 +20,7 @@ try {
     if (d != "true") {
       I18nManager.allowRTL(false);
       I18nManager.forceRTL(false);
-      AsyncStorage.setItem('@restarted', "true").then(RNRestart.Restart());
+      AsyncStorage.setItem('@restarted', "true").then(() => { RNRestart.Restart() });
 
     }
   })
@@ -80,8 +82,11 @@ const storeData = async () => {
 };
 storeData();
 
+
+
 const App = () => {
   return (
+
     <NavigationContainer theme={theme}>
       <Stack.Navigator
         screenOptions={{ headerShown: false }}
@@ -91,8 +96,10 @@ const App = () => {
         <Stack.Screen name="Settings" component={Details} />
         <Stack.Screen name="AboutMe" component={AboutMe} />
         <Stack.Screen name="DeviceChooser" component={DeviceChooser} />
+        <Stack.Screen name="FactorInfo" component={FactorInfo} />
       </Stack.Navigator>
     </NavigationContainer>
+
   );
 };
 

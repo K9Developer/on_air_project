@@ -22,6 +22,7 @@ import BluetoothStateManager from 'react-native-bluetooth-state-manager';
 import { LogBox } from 'react-native';
 import { StackActions } from '@react-navigation/native';
 import DeviceInfo from 'react-native-device-info';
+import { log } from '../services/logs'
 
 LogBox.ignoreLogs(['new NativeEventEmitter']);
 LogBox.ignoreLogs([
@@ -33,11 +34,8 @@ let permissionTimer = null;
 
 
 const isPortrait = () => {
-  if (DeviceInfo.getDeviceType() == "Handset") {
-    return dim.height >= dim.width;
-  } else {
-    return true;
-  }
+  const dim = Dimensions.get('screen');
+  return dim.height >= dim.width;
 };
 
 const Permissions = ({ navigation, route }) => {
@@ -46,7 +44,7 @@ const Permissions = ({ navigation, route }) => {
     useState(null);
   const [bluetoothScanPermission, setBluetoothScanPermission] = useState(null);
   const [bluetoothStatus, setBluetoothStatus] = useState(null);
-  const [modalVisible, setModalVisible] = useState(false);
+  const [modalVisible, setModalVisible] = useState(true);
   const [modalError, setModalError] = useState(false);
   const [modalText, setModalText] = useState('N/A');
   const [isPortraitOrientation, setIsPortraitOrientation] = useState(isPortrait());
@@ -64,7 +62,7 @@ const Permissions = ({ navigation, route }) => {
       }
       return;
     } catch (error) {
-      console.log('Error while checking permission: ' + e);
+      log("PERMISSIONS", 'Error while checking permission: ' + e);
     }
   };
 
@@ -74,7 +72,7 @@ const Permissions = ({ navigation, route }) => {
         setter(data);
       })
       .catch(e => {
-        console.log('Error while checking bluetooth: ' + e);
+        log("PERMISSIONS", 'Error while checking bluetooth: ' + e);
       });
   };
 
@@ -94,7 +92,7 @@ const Permissions = ({ navigation, route }) => {
       );
       checkBluetooth(setBluetoothStatus);
 
-      // console.log(
+      // log("PERMISSIONS", 
       //   '\n-------------------------------------------------\n' +
       //     'Permission - BLUETOOTH_CONNECT:',
       //   bluetoothConnectPermission + ', Permission - BLUETOOTH_SCAN:',
@@ -161,13 +159,40 @@ const Permissions = ({ navigation, route }) => {
 
   return (
     <SafeAreaView
-      style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginVertical: "5%", marginHorizontal: '2%' }}>
+
       <ScrollView
-        style={{
-          marginVertical: "7%",
-          width: '75%',
-          height: '75%',
+        contentContainerStyle={{
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100%'
+        }}
+      >
+        <View style={{
+          width: "100%",
+          justifyContent: 'flex-start'
         }}>
+          <TouchableOpacity
+            style={{
+              alignItems: 'center',
+              width: isPortraitOrientation ? "15%" : "7%",
+              aspectRatio: 1,
+              position: "relative",
+            }}
+            onPressOut={() => {
+              navigation.navigate('AboutMe');
+            }}>
+            <Image
+              key={new Date()}
+              source={require('../assets/icons/aboutme.png')}
+              resizeMode="contain"
+              style={{
+                width: '100%',
+                height: undefined,
+                aspectRatio: 1,
+              }}
+            />
+          </TouchableOpacity></View>
         <Modal
           animationType="slide"
           transparent={true}
@@ -187,6 +212,7 @@ const Permissions = ({ navigation, route }) => {
               }}></View>
           </TouchableWithoutFeedback>
           <ScrollView
+            nestedScrollEnabled
             contentContainerStyle={{
               flex: 1,
               justifyContent: 'center',
@@ -284,11 +310,13 @@ const Permissions = ({ navigation, route }) => {
 
         <View style={{
           flex: 1,
+          height: '100%',
+
         }}>
+
+
           <View
-            contentContainerStyle={{
-              flexGrow: 1,
-              backgroundColor: 'green',
+            style={{
               height: '100%',
               width: "100%",
               alignItems: 'center',
@@ -316,6 +344,8 @@ const Permissions = ({ navigation, route }) => {
               Our app is using BLE (bluetooth low energy). Apps using that,
               require location and bluetooth permission. Don't worry we dont share
               or store your information.
+
+
             </Text>
 
             <TouchableOpacity
@@ -354,7 +384,7 @@ const Permissions = ({ navigation, route }) => {
                 shadowOffset: { width: -4, height: 4 },
                 shadowOpacity: 1,
                 shadowRadius: 1,
-                width: '100%',
+                minWidth: '90%',
                 justifyContent: 'center',
                 alignItems: 'center',
                 marginBottom: isPortraitOrientation ? '5%' : '2%',
@@ -362,6 +392,7 @@ const Permissions = ({ navigation, route }) => {
                 elevation: locationPermission == 'granted' ? 0 : 2,
               }}>
               <Text
+                adjustsFontSizeToFit
                 style={{
                   color: locationPermission == 'granted' ? 'darkgrey' : 'black',
                   fontFamily: 'Inter-Bold',
@@ -425,7 +456,7 @@ const Permissions = ({ navigation, route }) => {
                 shadowOffset: { width: -4, height: 4 },
                 shadowOpacity: 1,
                 shadowRadius: 1,
-                width: '100%',
+                minWidth: '90%',
                 paddingVertical: '1%',
                 justifyContent: 'center',
                 alignItems: 'center',
@@ -439,6 +470,7 @@ const Permissions = ({ navigation, route }) => {
                     : 2,
               }}>
               <Text
+                adjustsFontSizeToFit
                 style={{
                   color:
                     (bluetoothScanPermission == 'granted' &&
@@ -464,7 +496,7 @@ const Permissions = ({ navigation, route }) => {
                       Platform.constants['Release'] <= 11)
                   ) {
                     BluetoothStateManager.requestToEnable().catch(e => {
-                      console.log('error turning on bluetooth:', e);
+                      log("PERMISSIONS", 'error turning on bluetooth:', e);
                     });
                   } else {
                     setModalError(true);
@@ -485,13 +517,14 @@ const Permissions = ({ navigation, route }) => {
                 shadowOffset: { width: -4, height: 4 },
                 shadowOpacity: 1,
                 shadowRadius: 1,
-                width: '100%',
+                minWidth: '90%',
                 paddingVertical: '1%',
                 justifyContent: 'center',
                 alignItems: 'center',
                 elevation: bluetoothStatus == 'PoweredOn' ? 0 : 2,
               }}>
               <Text
+                adjustsFontSizeToFit
                 style={{
                   color: bluetoothStatus == 'PoweredOn' ? 'darkgrey' : 'black',
                   fontFamily: 'Inter-Bold',

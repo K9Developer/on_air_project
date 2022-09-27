@@ -9,7 +9,8 @@ import {
   Image,
   Animated,
   AppState,
-  Dimensions, ScrollView,
+  Dimensions,
+  ScrollView,
   TouchableOpacity,
 } from 'react-native';
 import React, { useState, useRef, useEffect } from 'react';
@@ -20,6 +21,7 @@ import Sound from 'react-native-sound';
 import { BleManager } from 'react-native-ble-plx';
 import ValuePicker from 'react-native-picker-horizontal';
 import DeviceInfo from 'react-native-device-info';
+import { log } from '../services/logs'
 
 const Buffer = require('buffer').Buffer;
 
@@ -45,7 +47,7 @@ let scanTimer = null;
 let onDisconnectEvent = null;
 let readMonitor = null;
 
-console.log('Set onDisconnectEvent [setup]');
+log("SETTINGS", 'Set onDisconnectEvent [setup]');
 
 const getData = async key => {
   try {
@@ -54,17 +56,13 @@ const getData = async key => {
       return data;
     }
   } catch (error) {
-    console.log('getData error:', error);
+    log("SETTINGS", 'getData error:', error);
   }
 };
 
 const isPortrait = () => {
   const dim = Dimensions.get('screen');
-  if (DeviceInfo.getDeviceType() == "Handset") {
-    return dim.height >= dim.width;
-  } else {
-    return true;
-  }
+  return dim.height >= dim.width;
 };
 
 const getErrorText = error => {
@@ -134,7 +132,7 @@ const sendDeviceSignal = async signal => {
     base64Signal,
   )
     .then(d => {
-      console.log(base64Signal + ' - ' + (base64Signal.length + 3));
+      log("SETTINGS", base64Signal + ' - ' + (base64Signal.length + 3));
       // if (signal != 'DATA WAS READ') {
       //   allMessagesSentByDevice.push('~' + signal + '^');
       //   // sendDeviceSignal('DATA WAS READ');
@@ -149,25 +147,25 @@ const sendDeviceSignal = async signal => {
 const playConnectedSound = () => {
   let beep = new Sound('beep_short.mp3', Sound.MAIN_BUNDLE, error => {
     if (error) {
-      console.log('failed to load the sound', error);
+      log("SETTINGS", 'failed to load the sound', error);
       return;
     }
     // loaded successfully
     beep.setVolume(0.02);
     beep.play(success => {
       if (success) {
-        console.log('successfully finished playing');
+        log("SETTINGS", 'successfully finished playing');
         setTimeout(() => {
           beep.play(success => {
             if (success) {
-              console.log('successfully finished playing');
+              log("SETTINGS", 'successfully finished playing');
             } else {
-              console.log('playback failed due to audio decoding errors');
+              log("SETTINGS", 'playback failed due to audio decoding errors');
             }
           });
         }, 200);
       } else {
-        console.log('playback failed due to audio decoding errors');
+        log("SETTINGS", 'playback failed due to audio decoding errors');
       }
     });
   });
@@ -179,7 +177,7 @@ const storeData = async () => {
     try {
       await AsyncStorage.setItem('@factor', JSON.stringify(3.5));
     } catch (error) {
-      console.log('ERROR SAVING FACTOR', error);
+      log("SETTINGS", 'ERROR SAVING FACTOR', error);
     }
   }
 
@@ -187,25 +185,25 @@ const storeData = async () => {
     try {
       await AsyncStorage.setItem('@wantedPsi', JSON.stringify(3));
     } catch (error) {
-      console.log('ERROR SAVING WANTED PSI', error);
+      log("SETTINGS", 'ERROR SAVING WANTED PSI', error);
     }
   }
 
-  console.log('road:', await AsyncStorage.getItem('@roadPreset'));
+  log("SETTINGS", 'road:', await AsyncStorage.getItem('@roadPreset'));
   if (!JSON.parse(await AsyncStorage.getItem('@roadPreset'))) {
     try {
       await AsyncStorage.setItem('@roadPreset', JSON.stringify(32));
     } catch (error) {
-      console.log('ERROR SAVING ROAD PRESET', error);
+      log("SETTINGS", 'ERROR SAVING ROAD PRESET', error);
     }
   }
-  console.log(await AsyncStorage.getItem('@trailPreset'));
+  log("SETTINGS", await AsyncStorage.getItem('@trailPreset'));
   if (!JSON.parse(await AsyncStorage.getItem('@trailPreset'))) {
     try {
-      console.log('Storing data - trailPreset');
+      log("SETTINGS", 'Storing data - trailPreset');
       await AsyncStorage.setItem('@trailPreset', JSON.stringify(16));
     } catch (error) {
-      console.log('ERROR SAVING TRAIL PRESET', error);
+      log("SETTINGS", 'ERROR SAVING TRAIL PRESET', error);
     }
   }
 
@@ -213,7 +211,7 @@ const storeData = async () => {
     try {
       await AsyncStorage.setItem('@btImage', JSON.stringify(null));
     } catch (error) {
-      console.log('ERROR SAVING BtImage', error);
+      log("SETTINGS", 'ERROR SAVING BtImage', error);
     }
   }
 };
@@ -239,7 +237,7 @@ const Settings = ({ navigation, route }) => {
   });
 
   const onDeviceDisconnect = (error, device) => {
-    console.log('REACHED DISCONNECT');
+    log("SETTINGS", 'REACHED DISCONNECT');
 
     if (readMonitor) {
       readMonitor.remove();
@@ -252,7 +250,7 @@ const Settings = ({ navigation, route }) => {
     }
 
     if (error) {
-      console.log(console.log('On device disconnect error: ', err));
+      log("SETTINGS", log("SETTINGS", 'On device disconnect error: ', err));
     } else {
       dropIn();
       setStatusText('Device has been disconnected');
@@ -273,7 +271,7 @@ const Settings = ({ navigation, route }) => {
     data = Buffer.from(data.value, 'base64').toString();
     data = data.substring(data.indexOf(startChar) + 1, data.indexOf(endChar));
     if (data.includes('alive')) {
-      console.log('Asking for connection status');
+      log("SETTINGS", 'Asking for connection status');
       let x = 0;
       let timer = setInterval(() => {
         x++;
@@ -286,7 +284,7 @@ const Settings = ({ navigation, route }) => {
   };
 
   const goHome = () => {
-    console.log(
+    log("SETTINGS",
       `\n-----------------------------------\n
       Type of MANAGER: ${typeof MANAGER}
       \nType of DEVICE: ${JSON.stringify(BT05_DEVICE)}
@@ -297,12 +295,12 @@ const Settings = ({ navigation, route }) => {
     try {
       removeSubscriptions();
     } catch (error) {
-      console.log('Error removing subscriptions: ', error);
+      log("SETTINGS", 'Error removing subscriptions: ', error);
     }
     if (MANAGER) {
       MANAGER.stopDeviceScan();
     }
-    console.log('MANAGER: ' + typeof MANAGER);
+    log("SETTINGS", 'MANAGER: ' + typeof MANAGER);
     if (readMonitor) {
       readMonitor.remove();
       readMonitor = null;
@@ -321,8 +319,8 @@ const Settings = ({ navigation, route }) => {
   }
 
   useEffect(() => {
-    console.log('ROUTE: ' + JSON.stringify(route));
-    console.log('ROUTE DEVICE: ' + JSON.stringify(route.params.device));
+    log("SETTINGS", 'ROUTE: ' + JSON.stringify(route));
+    log("SETTINGS", 'ROUTE DEVICE: ' + JSON.stringify(route.params.device));
     navigation.addListener('focus', () => {
       if (readMonitor) {
         readMonitor.remove();
@@ -334,8 +332,8 @@ const Settings = ({ navigation, route }) => {
         onDisconnectEvent = null;
       }
 
-      console.log('Gained Foucs');
-      console.log('ROUTE: ' + JSON.stringify(route));
+      log("SETTINGS", 'Gained Foucs');
+      log("SETTINGS", 'ROUTE: ' + JSON.stringify(route));
 
       if (
         route != null &&
@@ -349,13 +347,13 @@ const Settings = ({ navigation, route }) => {
           route.params.device.hasOwnProperty('id')
         ) {
           BT05_DEVICE = { ...route.params.device };
-          console.log('--->> DEVICE CHECK 1: ' + BT05_DEVICE);
+          log("SETTINGS", '--->> DEVICE CHECK 1: ' + BT05_DEVICE);
           MANAGER = route.params.manager;
-          console.log('--->> DEVICE CHECK 2: ' + BT05_DEVICE);
+          log("SETTINGS", '--->> DEVICE CHECK 2: ' + BT05_DEVICE);
 
           MANAGER.isDeviceConnected(BT05_DEVICE.id).then(isConnected => {
             if (isConnected) {
-              console.log('Device is connect so setting events');
+              log("SETTINGS", 'Device is connect so setting events');
               onDisconnectEvent = MANAGER.onDeviceDisconnected(
                 BT05_DEVICE.id,
                 onDeviceDisconnect,
@@ -374,45 +372,45 @@ const Settings = ({ navigation, route }) => {
         }
         setStartScan(route.params.startConnect);
 
-        console.log('Start connection with device: ' + startScan);
+        log("SETTINGS", 'Start connection with device: ' + startScan);
       }
 
       storeData();
 
       getData('@factor')
         .then(value => {
-          console.log('getData factor value: ' + value);
+          log("SETTINGS", 'getData factor value: ' + value);
           if (value != null && value != undefined) {
             setFactor(parseFloat(JSON.parse(value)));
           }
         })
-        .catch(err => console.log('getData factor error', err));
+        .catch(err => log("SETTINGS", 'getData factor error', err));
 
       getData('@roadPreset')
         .then(value => {
-          console.log('getData roadPreset value: ' + value);
+          log("SETTINGS", 'getData roadPreset value: ' + value);
           if (value != null && value != undefined) {
             setRoadPreset(parseFloat(JSON.parse(value)));
           }
         })
-        .catch(err => console.log('getData trailPreset error', err));
+        .catch(err => log("SETTINGS", 'getData trailPreset error', err));
 
       getData('@trailPreset')
         .then(value => {
-          console.log('getData trailPreset value: ' + value);
+          log("SETTINGS", 'getData trailPreset value: ' + value);
           if (value != null && value != undefined) {
             setTrailPreset(parseFloat(JSON.parse(value)));
           }
         })
-        .catch(err => console.log('getData trailPreset error', err));
-      console.log('--->> DEVICE CHECK 3: ' + BT05_DEVICE);
-      console.log('=> PARAMS connectToDevice: ' + route.params.connectToDevice);
+        .catch(err => log("SETTINGS", 'getData trailPreset error', err));
+      log("SETTINGS", '--->> DEVICE CHECK 3: ' + BT05_DEVICE);
+      log("SETTINGS", '=> PARAMS connectToDevice: ' + route.params.connectToDevice);
       if (route.params.connectToDevice) {
         if (BT05_DEVICE) {
-          console.log('=> DEVICE is OK');
+          log("SETTINGS", '=> DEVICE is OK');
           MANAGER.isDeviceConnected(BT05_DEVICE.id).then(connected => {
             if (connected) {
-              console.log('=> DEVICE is Connected : ' + BT05_DEVICE);
+              log("SETTINGS", '=> DEVICE is Connected : ' + BT05_DEVICE);
 
               dropIn();
               setStatusText('Connected To Device');
@@ -434,7 +432,7 @@ const Settings = ({ navigation, route }) => {
               setBluetoothImageId(2);
               goHome();
             } else {
-              console.log('=> DEVICE is not Connected');
+              log("SETTINGS", '=> DEVICE is not Connected');
               BT05_DEVICE = null;
               dropIn();
               setStatusText('Failed To Connect');
@@ -443,25 +441,25 @@ const Settings = ({ navigation, route }) => {
         } else {
           dropIn();
           setStatusText('Failed To Connect');
-          console.log('=> DEVICE: ' + JSON.stringify(BT05_DEVICE));
-          console.log('=> DEVICE is not OK');
+          log("SETTINGS", '=> DEVICE: ' + JSON.stringify(BT05_DEVICE));
+          log("SETTINGS", '=> DEVICE is not OK');
         }
 
         scannedDevices = [];
 
-        console.log('Source of device: Reconnect');
+        log("SETTINGS", 'Source of device: Reconnect');
         DEVICE_SERVICE_UUID = null;
         DEVICE_CHARACTERISTICS_UUID = null;
 
-        console.log('CONNECTING TO DEVICE [BEFORE]');
+        log("SETTINGS", 'CONNECTING TO DEVICE [BEFORE]');
       }
 
       getData('@btImage')
         .then(value => {
-          console.log('VALUE: ' + value);
-          console.log('VALUE: ' + value);
-          console.log('VALUE: ' + value);
-          console.log('VALUE: ' + value);
+          log("SETTINGS", 'VALUE: ' + value);
+          log("SETTINGS", 'VALUE: ' + value);
+          log("SETTINGS", 'VALUE: ' + value);
+          log("SETTINGS", 'VALUE: ' + value);
           if (value != null && value != undefined) {
             if (parseInt(value) == 2) {
               if (
@@ -469,24 +467,24 @@ const Settings = ({ navigation, route }) => {
                 BT05_DEVICE != undefined &&
                 BT05_DEVICE.hasOwnProperty('id')
               ) {
-                console.log('BT05_DEVICE: ' + JSON.stringify(BT05_DEVICE));
+                log("SETTINGS", 'BT05_DEVICE: ' + JSON.stringify(BT05_DEVICE));
                 try {
-                  console.log('MANAGER: ' + MANAGER);
+                  log("SETTINGS", 'MANAGER: ' + MANAGER);
                   MANAGER.isDeviceConnected(BT05_DEVICE.id).then(d =>
-                    console.log('IS DEVICE CONNECTED? - ' + d),
+                    log("SETTINGS", 'IS DEVICE CONNECTED? - ' + d),
                   );
 
                   MANAGER.isDeviceConnected(BT05_DEVICE.id)
                     .then(connected => {
                       if (connected) {
                         setBluetoothImageId(2);
-                        console.log(
+                        log("SETTINGS",
                           'onDisconnectEvent: ' +
                           JSON.stringify(typeof onDisconnectEvent),
                         );
-                        console.log(!onDisconnectEvent);
-                        console.log(typeof onDisconnectEvent == 'object');
-                        console.log(
+                        log("SETTINGS", !onDisconnectEvent);
+                        log("SETTINGS", typeof onDisconnectEvent == 'object');
+                        log("SETTINGS",
                           !onDisconnectEvent ||
                           typeof onDisconnectEvent == 'object',
                         );
@@ -494,7 +492,7 @@ const Settings = ({ navigation, route }) => {
                           !onDisconnectEvent ||
                           typeof onDisconnectEvent == 'object'
                         ) {
-                          console.log(
+                          log("SETTINGS",
                             'Set onDisconnectEvent [icon switch focus]',
                           );
                         }
@@ -513,10 +511,10 @@ const Settings = ({ navigation, route }) => {
                       }
                     })
                     .catch(e => {
-                      console.log("Couldn't get connected status: " + e);
+                      log("SETTINGS", "Couldn't get connected status: " + e);
                     });
                 } catch (error) {
-                  console.log(
+                  log("SETTINGS",
                     "Couldn't get BT05_DEVICE.isConnected(): " +
                     error +
                     ' - ' +
@@ -530,13 +528,13 @@ const Settings = ({ navigation, route }) => {
             } else {
               setBluetoothImageId(parseInt(value));
             }
-            console.log('\n-----------------------------------------\n');
+            log("SETTINGS", '\n-----------------------------------------\n');
           } else {
             setBluetoothImageId(1);
-            console.log('VALUE IS NULL');
+            log("SETTINGS", 'VALUE IS NULL');
           }
         })
-        .catch(err => console.log('getData btImage error', err));
+        .catch(err => log("SETTINGS", 'getData btImage error', err));
     });
   }, [route]);
 
@@ -568,7 +566,7 @@ const Settings = ({ navigation, route }) => {
   const dropIn = () => {
     // Will change fadeAnim value to 1 in 5 seconds
     Animated.timing(dropAnim, {
-      toValue: winWidth / 15,
+      toValue: isPortraitOrientation ? 50 : 25,
       duration: 200,
       useNativeDriver: false,
       // useNativeDriver: true,
@@ -586,7 +584,7 @@ const Settings = ({ navigation, route }) => {
   };
 
   const scanForDevice = async manager => {
-    console.log('Scan func');
+    log("SETTINGS", 'Scan func');
     setStatusText('Scanning for devices... (Found: 0)');
 
     scanTimer = setTimeout(() => {
@@ -614,7 +612,7 @@ const Settings = ({ navigation, route }) => {
         });
         // Go to DeviceChooser screen
       }
-      console.log('All Scanned Devices: ' + JSON.stringify(scannedDevices));
+      log("SETTINGS", 'All Scanned Devices: ' + JSON.stringify(scannedDevices));
     }, 5000);
 
     await manager.startDeviceScan(
@@ -629,7 +627,7 @@ const Settings = ({ navigation, route }) => {
         }
 
         if (device && device !== 'null') {
-          console.log('Found Device Name: ' + device.name);
+          log("SETTINGS", 'Found Device Name: ' + device.name);
           if (device.name === 'BT05') {
             let push = true;
 
@@ -648,7 +646,7 @@ const Settings = ({ navigation, route }) => {
               setStatusText(
                 `Scanning for devices... (Found: ${scannedDevices.length})`,
               );
-              console.log('Found BT05 - ' + device.id);
+              log("SETTINGS", 'Found BT05 - ' + device.id);
             }
           }
         }
@@ -662,7 +660,7 @@ const Settings = ({ navigation, route }) => {
       try {
         MANAGER._activeSubscriptions[val].remove();
       } catch (error) {
-        console.log('Error removing subscription (manager): ', error);
+        log("SETTINGS", 'Error removing subscription (manager): ', error);
       }
     }
 
@@ -672,7 +670,7 @@ const Settings = ({ navigation, route }) => {
       try {
         BT05_DEVICE._manager._activeSubscriptions[val].remove();
       } catch (error) {
-        console.log('Error removing subscription (device): ', error);
+        log("SETTINGS", 'Error removing subscription (device): ', error);
       }
     }
   };
@@ -680,14 +678,14 @@ const Settings = ({ navigation, route }) => {
   const createManager = () => {
     if (MANAGER === null) {
       MANAGER = new BleManager();
-      console.log('CREATED BLE MANAGER [connect btn]');
+      log("SETTINGS", 'CREATED BLE MANAGER [connect btn]');
     } else {
-      console.log('BLE MANAGER ALREADY EXISTS [connect btn]');
+      log("SETTINGS", 'BLE MANAGER ALREADY EXISTS [connect btn]');
     }
   };
 
   const resetBluetoothData = async () => {
-    console.log('CREATING BLE MANAGER [connect btn]');
+    log("SETTINGS", 'CREATING BLE MANAGER [connect btn]');
     if (readMonitor) {
       readMonitor.remove();
       readMonitor = null;
@@ -699,15 +697,15 @@ const Settings = ({ navigation, route }) => {
     }
     if (MANAGER === null) {
       MANAGER = new BleManager();
-      console.log('CREATED BLE MANAGER [connect btn]');
+      log("SETTINGS", 'CREATED BLE MANAGER [connect btn]');
     } else {
-      console.log('BLE MANAGER ALREADY EXISTS [connect btn]');
+      log("SETTINGS", 'BLE MANAGER ALREADY EXISTS [connect btn]');
       MANAGER.destroy();
       MANAGER = new BleManager();
     }
-    console.log('Active manager: ' + MANAGER);
+    log("SETTINGS", 'Active manager: ' + MANAGER);
     BT05_DEVICE = null;
-    console.log('Source of device: Reconnect');
+    log("SETTINGS", 'Source of device: Reconnect');
     DEVICE_SERVICE_UUID = null;
     DEVICE_CHARACTERISTICS_UUID = null;
   };
@@ -719,8 +717,8 @@ const Settings = ({ navigation, route }) => {
     createManager();
     resetBluetoothData();
     if (MANAGER !== null) {
-      console.log('SCANNING FOR DEVICE');
-      console.log('Current manager: ' + MANAGER);
+      log("SETTINGS", 'SCANNING FOR DEVICE');
+      log("SETTINGS", 'Current manager: ' + MANAGER);
       try {
         const subscription = MANAGER.onStateChange(state => {
           if (state === 'PoweredOn') {
@@ -729,7 +727,7 @@ const Settings = ({ navigation, route }) => {
           }
         }, true);
       } catch {
-        console.log(
+        log("SETTINGS",
           'Error subscribing to state change, manager: ' +
           JSON.stringify(MANAGER),
         );
@@ -772,12 +770,12 @@ const Settings = ({ navigation, route }) => {
     }
     clearTimeout(scanTimer);
     scannedDevices = [];
-    console.log('Exit app');
+    log("SETTINGS", 'Exit app');
   };
 
   useEffect(() => {
     const saveId = async () => {
-      console.log('----- BLUETOOTH IMAGE ID - ' + bluetoothImageId + ' -----');
+      log("SETTINGS", '----- BLUETOOTH IMAGE ID - ' + bluetoothImageId + ' -----');
       if (bluetoothImageId != 1) {
         await AsyncStorage.setItem(
           '@btImage',
@@ -803,557 +801,570 @@ const Settings = ({ navigation, route }) => {
   // useEffect(() => {
   //   AsyncStorage.setItem('@trailPreset', JSON.stringify(trailPreset));
   // }, [trailPreset]);
-  console.log(winWidth / 5.1);
+  log("SETTINGS", winWidth / 5.1);
   return (
     <SafeAreaView style={{ flex: 1 }}>
+      <ScrollView contentContainerStyle={{
+        minHeight: '100%'
+      }}>
 
-      <FocusedStatusBar backgroundColor={COLORS.primary} />
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalText == null ? false : modalVisible}
-        onRequestClose={() => {
-          setModalVisible(!modalVisible);
-        }}>
-        <TouchableWithoutFeedback
-          onPress={() => setModalVisible(!modalVisible)}>
-          <View
-            style={{
-              width: '100%',
-              height: '100%',
-              backgroundColor: 'rgba(0,0,0,0.5)',
-              flex: 1,
-              position: 'absolute',
-            }}></View>
-        </TouchableWithoutFeedback>
-        <ScrollView
-          contentContainerStyle={{
-            flex: 1,
-            justifyContent: 'center',
-            alignItems: 'center', display: "flex",
-            flexDirection: "column"
+        <FocusedStatusBar backgroundColor={COLORS.primary} />
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={modalText == null ? false : modalVisible}
+          onRequestClose={() => {
+            setModalVisible(!modalVisible);
           }}>
-          <View
-            style={{
-              width: '80%',
-              maxHeight: '90%',
-              minHeight: "30%",
-              backgroundColor: 'white',
-              borderRadius: 2 * (winWidth / 25),
-              alignItems: 'center',
-              shadowColor: '#000',
-              shadowOffset: {
-                width: 0,
-                height: 2,
-              },
-              shadowOpacity: 0.25,
-              shadowRadius: 4,
-              elevation: 5,
-              paddingTop: '5%',
-              position: 'relative'
-            }}>
-
-            <Text
-              style={{
-                color: '#6f7173',
-                paddingRight: 40,
-                paddingLeft: 40,
-                marginBottom: 20,
-                fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60),
-                fontWeight: 'bold',
-                textAlign: 'center',
-              }}>
-              {modalError ? 'Oh Snap!' : 'Info'}
-            </Text>
-            {isPortraitOrientation && <Image
-              source={
-                modalError
-                  ? require('../assets/icons/error.png')
-                  : require('../assets/icons/info.png')
-              }
-              style={{ width: winWidth / 7, height: winWidth / 7, marginBottom: 20 }}
-            />}
-
-            <Text
-              adjustsFontSizeToFit
-              style={{
-                color: '#6f7173',
-                paddingRight: "5%",
-                paddingLeft: "5%",
-                fontSize: isPortraitOrientation ? 2 * (winWidth / 40) : 2 * (winWidth / 90),
-                height: '50%',
-                textAlign: 'center',
-                marginBottom: isPortraitOrientation ? "2%" : 0
-              }}>
-              {modalText}
-            </Text>
-
-            <Pressable
-              style={{
-                borderBottomRightRadius: 20,
-                borderBottomLeftRadius: 20,
-                width: '100%',
-                elevation: 2,
-                height: '20%', marginTop: "auto",
-                backgroundColor: modalError ? '#db4d4d' : '#2196F3',
-
-              }}
-              onPress={() => setModalVisible(!modalVisible)}>
-              <Text
-
-                style={{
-                  color: 'white',
-                  fontSize: 2 * (winWidth / 60),
-                  textAlign: 'center', height: '100%',
-                  textAlignVertical: 'center'
-                }}>
-                {modalError ? 'Dismiss' : 'Ok'}
-              </Text>
-            </Pressable>
-          </View>
-        </ScrollView>
-      </Modal>
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalText == null ? false : pickerModalVisible}
-        onRequestClose={() => {
-          Alert.alert('Modal has been closed.');
-          setPickerModalVisible(!pickerModalVisible);
-        }}>
-        <TouchableWithoutFeedback
-          onPress={() => setPickerModalVisible(!pickerModalVisible)}>
-          <View
-            style={{
-              width: '100%',
-              height: '100%',
-              backgroundColor: 'rgba(0,0,0,0.5)',
-              flex: 1,
-              position: 'absolute',
-            }}></View>
-        </TouchableWithoutFeedback>
-        <View
-          style={{
-            width: '100%',
-            height: '100%',
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}>
-          <View
-            style={{
-              backgroundColor: 'white',
-              borderRadius: 25,
-              flex: 1,
-              width: isPortraitOrientation ? '80%' : "60%",
-              maxHeight: isPortraitOrientation ? '30%' : "60%",
-              position: 'relative',
-            }}>
-            {/* <View
+          <TouchableWithoutFeedback
+            onPress={() => setModalVisible(!modalVisible)}>
+            <View
               style={{
                 width: '100%',
                 height: '100%',
+                backgroundColor: 'rgba(0,0,0,0.5)',
+                flex: 1,
                 position: 'absolute',
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}>
-              <View
-                style={{
-                  height: 40,
-                  paddingHorizontal: 25,
-                  position: 'absolute',
-                  borderLeftWidth: 1,
-                  borderRightWidth: 1,
-                  borderLeftColor: '#6f7173',
-                  borderRightColor: '#6f7173',
-                }}>
-                <Text style={{lineHeight: 0}}></Text>
-              </View>
-            </View> */}
-            <View style={{ alignItems: 'center' }}>
-              <Text
-                style={{
-                  fontSize: 20,
-                  color: 'black',
-                  fontWeight: 'bold',
-                  paddingVertical: '5%',
-                }}>
-                {pickerModalText}
-              </Text>
-            </View>
-
-            <View style={{ flex: 1 }}>
-              <ValuePicker
-                style={{
-                  // justifyContent: 'center',
-                  // alignItems: 'center',
-                  textAlign: 'center',
-                  flex: 1,
-                  width: '100%',
-                  height: '100%',
-                }}
-                data={
-                  pickerModalText == 'Factor' ? FACTOR_OPTIONS : PRESET_OPTIONS
-                }
-                renderItem={renderItem}
-                itemWidth={winWidth / 5.1}
-                mark={
-                  <View
-                    style={{
-                      aspectRatio: 1,
-                      width: isPortraitOrientation ? '20%' : "15%",
-                      borderWidth: 1,
-                      borderColor: '#6f7173',
-                      borderRadius: 20,
-                    }}></View>
-                }
-                onChange={index => {
-                  if (pickerModalText == 'Road Preset') {
-                    setRoadPresetIndex(index);
-                  } else if (pickerModalText == 'Trail Preset') {
-                    setTrailPresetIndex(index);
-                  } else {
-                    setFactorIndex(index);
-                  }
-                }}
-              />
-            </View>
+              }}></View>
+          </TouchableWithoutFeedback>
+          <ScrollView
+            contentContainerStyle={{
+              flex: 1,
+              justifyContent: 'center',
+              alignItems: 'center', display: "flex",
+              flexDirection: "column"
+            }}>
             <View
               style={{
-                marginTop: 30,
+                width: '80%',
+                maxHeight: '90%',
+                minHeight: "30%",
+                backgroundColor: 'white',
+                borderRadius: 2 * (winWidth / 25),
+                alignItems: 'center',
+                shadowColor: '#000',
+                shadowOffset: {
+                  width: 0,
+                  height: 2,
+                },
+                shadowOpacity: 0.25,
+                shadowRadius: 4,
+                elevation: 5,
+                paddingTop: '5%',
+                position: 'relative'
               }}>
-              <View style={{ flexDirection: 'row' }}>
-                <Pressable
-                  style={{
-                    borderBottomLeftRadius: 20,
-                    paddingVertical: '5%',
-                    width: '50%',
-                    padding: 20,
-                    elevation: 2,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    backgroundColor: 'red',
-                  }}
-                  onPress={() => setPickerModalVisible(!pickerModalVisible)}>
-                  <Text
-                    adjustsFontSizeToFit
-                    numberOfLines={1}
-                    style={{
-                      color: 'white',
-                      textAlign: 'center',
-                    }}>
-                    Cancel
-                  </Text>
-                </Pressable>
-                <Pressable
-                  style={{
-                    borderBottomRightRadius: 20,
-                    width: '50%',
-                    // padding: 20,
-                    elevation: 2,
-                    backgroundColor: '#2196F3',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                  }}
-                  onPress={() => {
-                    setPickerModalVisible(!pickerModalVisible);
-                    setPickerModalVisible(!pickerModalVisible);
 
-                    if (pickerModalText == 'Road Preset') {
-                      setRoadPreset(PRESET_OPTIONS[roadPresetIndex]);
-                      AsyncStorage.setItem(
-                        '@roadPreset',
-                        JSON.stringify(PRESET_OPTIONS[roadPresetIndex]),
-                      );
-                      console.log(
-                        'roadPreset',
-                        PRESET_OPTIONS[roadPresetIndex],
-                      );
-                    } else if (pickerModalText == 'Trail Preset') {
-                      setTrailPreset(PRESET_OPTIONS[trailPresetIndex]);
-                      AsyncStorage.setItem(
-                        '@trailPreset',
-                        JSON.stringify(PRESET_OPTIONS[trailPresetIndex]),
-                      );
-                      console.log(
-                        'trailPreset',
-                        PRESET_OPTIONS[trailPresetIndex],
-                      );
-                    } else {
-                      setFactor(FACTOR_OPTIONS[factorIndex]);
-                      AsyncStorage.setItem(
-                        '@factor',
-                        JSON.stringify(FACTOR_OPTIONS[factorIndex]),
-                      );
-                      console.log('factor', FACTOR_OPTIONS[factorIndex]);
-                    }
+              <Text
+                style={{
+                  color: '#6f7173',
+                  paddingRight: 40,
+                  paddingLeft: 40,
+                  marginBottom: 20,
+                  fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60),
+                  fontWeight: 'bold',
+                  textAlign: 'center',
+                }}>
+                {modalError ? 'Oh Snap!' : 'Info'}
+              </Text>
+              {isPortraitOrientation && <Image
+                source={
+                  modalError
+                    ? require('../assets/icons/error.png')
+                    : require('../assets/icons/info.png')
+                }
+                style={{ width: winWidth / 7, height: winWidth / 7, marginBottom: 20 }}
+              />}
+
+              <Text
+                adjustsFontSizeToFit
+                style={{
+                  color: '#6f7173',
+                  paddingRight: "5%",
+                  paddingLeft: "5%",
+                  fontSize: isPortraitOrientation ? 2 * (winWidth / 40) : 2 * (winWidth / 90),
+                  height: '50%',
+                  textAlign: 'center',
+                  marginBottom: isPortraitOrientation ? "2%" : 0
+                }}>
+                {modalText}
+              </Text>
+
+              <Pressable
+                style={{
+                  borderBottomRightRadius: 20,
+                  borderBottomLeftRadius: 20,
+                  width: '100%',
+                  elevation: 2,
+                  height: '20%', marginTop: "auto",
+                  backgroundColor: modalError ? '#db4d4d' : '#2196F3',
+
+                }}
+                onPress={() => setModalVisible(!modalVisible)}>
+                <Text
+
+                  style={{
+                    color: 'white',
+                    fontSize: 2 * (winWidth / 60),
+                    textAlign: 'center', height: '100%',
+                    textAlignVertical: 'center'
                   }}>
-                  <Text
-                    adjustsFontSizeToFit
-                    numberOfLines={1}
+                  {modalError ? 'Dismiss' : 'Ok'}
+                </Text>
+              </Pressable>
+            </View>
+          </ScrollView>
+        </Modal>
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={modalText == null ? false : pickerModalVisible}
+          // visible
+          onRequestClose={() => {
+            setPickerModalVisible(!pickerModalVisible);
+          }}>
+          <TouchableWithoutFeedback
+            onPress={() => setPickerModalVisible(!pickerModalVisible)}>
+            <View
+              style={{
+                width: '100%',
+                height: '100%',
+                backgroundColor: 'rgba(0,0,0,0.5)',
+                flex: 1,
+                position: 'absolute',
+              }}></View>
+          </TouchableWithoutFeedback>
+          <View
+            style={{
+              width: '100%',
+              height: '100%',
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}>
+            <View
+              style={{
+                backgroundColor: 'white',
+                borderRadius: 25,
+                flex: 1,
+                width: isPortraitOrientation ? '80%' : "60%",
+                maxHeight: isPortraitOrientation ? '30%' : "60%",
+                position: 'relative',
+              }}>
+              <View style={{ alignItems: 'center' }}>
+                <Text
+                  adjustsFontSizeToFit
+                  numberOfLines={1}
+                  style={{
+                    fontSize: 20,
+                    color: 'black',
+                    fontWeight: 'bold',
+                    paddingVertical: '5%',
+                  }}>
+                  {pickerModalText}
+                </Text>
+              </View>
+
+              <View style={{ flex: 1 }}>
+                <ValuePicker
+                  style={{
+                    textAlign: 'center',
+                    flex: 1,
+                    width: '100%',
+                    height: '100%',
+                  }}
+                  data={
+                    pickerModalText == 'Factor' ? FACTOR_OPTIONS : PRESET_OPTIONS
+                  }
+                  renderItem={renderItem}
+                  itemWidth={winWidth / 5.1}
+                  mark={
+                    <View
+                      style={{
+                        aspectRatio: 1,
+                        width: isPortraitOrientation ? '20%' : "15%",
+                        borderWidth: 1,
+                        borderColor: '#6f7173',
+                        borderRadius: 20,
+                      }}></View>
+                  }
+                  onChange={index => {
+                    if (pickerModalText == 'Road Preset') {
+                      setRoadPresetIndex(index);
+                    } else if (pickerModalText == 'Trail Preset') {
+                      setTrailPresetIndex(index);
+                    } else {
+                      setFactorIndex(index);
+                    }
+                  }}
+                />
+              </View>
+              <View
+                style={{
+                  marginTop: 10
+                }}>
+                <View style={{ flexDirection: 'row' }}>
+                  <Pressable
                     style={{
-                      color: 'white',
-                      textAlign: 'center',
+                      borderBottomLeftRadius: 20,
+                      paddingVertical: '5%',
+                      width: '50%',
+                      padding: 20,
+                      elevation: 2,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      backgroundColor: 'red',
+                    }}
+                    onPress={() => setPickerModalVisible(!pickerModalVisible)}>
+                    <Text
+                      adjustsFontSizeToFit
+                      numberOfLines={1}
+                      style={{
+                        color: 'white',
+                        textAlign: 'center',
+                      }}>
+                      Cancel
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    style={{
+                      borderBottomRightRadius: 20,
+                      width: '50%',
+                      // padding: 20,
+                      elevation: 2,
+                      backgroundColor: '#2196F3',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}
+                    onPress={() => {
+                      setPickerModalVisible(!pickerModalVisible);
+                      setPickerModalVisible(!pickerModalVisible);
+
+                      if (pickerModalText == 'Road Preset') {
+                        setRoadPreset(PRESET_OPTIONS[roadPresetIndex]);
+                        AsyncStorage.setItem(
+                          '@roadPreset',
+                          JSON.stringify(PRESET_OPTIONS[roadPresetIndex]),
+                        );
+                        log("SETTINGS",
+                          'roadPreset',
+                          PRESET_OPTIONS[roadPresetIndex],
+                        );
+                      } else if (pickerModalText == 'Trail Preset') {
+                        setTrailPreset(PRESET_OPTIONS[trailPresetIndex]);
+                        AsyncStorage.setItem(
+                          '@trailPreset',
+                          JSON.stringify(PRESET_OPTIONS[trailPresetIndex]),
+                        );
+                        log("SETTINGS",
+                          'trailPreset',
+                          PRESET_OPTIONS[trailPresetIndex],
+                        );
+                      } else {
+                        setFactor(FACTOR_OPTIONS[factorIndex]);
+                        AsyncStorage.setItem(
+                          '@factor',
+                          JSON.stringify(FACTOR_OPTIONS[factorIndex]),
+                        );
+                        log("SETTINGS", 'factor', FACTOR_OPTIONS[factorIndex]);
+                      }
                     }}>
-                    Submit
-                  </Text>
-                </Pressable>
+                    <Text
+                      adjustsFontSizeToFit
+                      numberOfLines={1}
+                      style={{
+                        color: 'white',
+                        textAlign: 'center',
+                      }}>
+                      Submit
+                    </Text>
+                  </Pressable>
+                </View>
               </View>
             </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
 
-      <Animated.View
-        style={[
-          {
-            ...{
-              width: '100%',
-              backgroundColor: '#2e2d2d',
-              justifyContent: 'center',
-              alignItems: 'center',
-              paddingBottom: 0,
-              paddingTop: 0,
-              transformOrigin: 'right top',
-              ...SHADOWS.extraDark,
+        <Animated.View
+          style={[
+            {
+              ...{
+                width: '100%',
+                backgroundColor: '#2e2d2d',
+                justifyContent: 'center',
+                alignItems: 'center',
+                paddingBottom: 0,
+                paddingTop: 0,
+                transformOrigin: 'right top',
+                ...SHADOWS.extraDark,
+              },
             },
-          },
-          {
-            // Bind opacity to animated value
+            {
+              // Bind opacity to animated value
 
-            height: dropAnim,
-          },
-        ]}>
-        <Text style={{ color: 'white', fontSize: isPortraitOrientation ? 2 * (winWidth / 60) : 2 * (winWidth / 100) }}>
-          {statusText}
-        </Text>
-      </Animated.View>
+              height: dropAnim,
+            },
+          ]}>
+          <Text style={{ color: 'white', fontSize: isPortraitOrientation ? 2 * (winWidth / 60) : 2 * (winWidth / 100) }}>
+            {statusText}
+          </Text>
+        </Animated.View>
 
-      <View
-        style={{
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          marginBottom: isPortraitOrientation ? "10%" : '1%'
-        }}>
-        <CircleButton
-          imgUrl={require('../assets/icons/back.png')}
-          handlePressDown={() => { }}
-          handlePressUp={goHome}
-          size={isPortraitOrientation ? [winWidth / 10, winWidth / 10] : [winWidth / 20, winWidth / 20]}
-          {...{
-            marginLeft: "2%",
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            marginBottom: isPortraitOrientation ? "10%" : '1%'
+          }}>
+          <CircleButton
+            imgUrl={require('../assets/icons/back.png')}
+            handlePressDown={() => { }}
+            handlePressUp={goHome}
+            size={isPortraitOrientation ? [winWidth / 10, winWidth / 10] : [winWidth / 20, winWidth / 20]}
+            {...{
+              marginLeft: "2%",
+              marginTop: "2%",
+              backgroundColor: 'transparent',
+            }}
+          />
+          <Text style={{
+            fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 50),
+            color: 'white',
             marginTop: "2%",
-            backgroundColor: 'transparent',
-          }}
-        />
-        <Text style={{
-          fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 50),
-          color: 'white',
-          marginTop: "2%",
 
-        }}>
-          SETTINGS
-        </Text>
-        <CircleButton
-          imgUrl={
-            bluetoothImageId == 1
-              ? require('../assets/icons/bluetooth.png')
-              : bluetoothImageId == 2
-                ? require('../assets/icons/bluetooth_connected.png')
-                : bluetoothImageId == 3
-                  ? require('../assets/icons/bluetooth_disconnected.png')
-                  : require('../assets/icons/bluetooth_scanning.png')
-          }
-          handlePressDown={() => { }}
-          handlePressUp={() => {
-            if (bluetoothImageId != 4) {
-              startConnection();
+          }}>
+            SETTINGS
+          </Text>
+          <CircleButton
+            imgUrl={
+              bluetoothImageId == 1
+                ? require('../assets/icons/bluetooth.png')
+                : bluetoothImageId == 2
+                  ? require('../assets/icons/bluetooth_connected.png')
+                  : bluetoothImageId == 3
+                    ? require('../assets/icons/bluetooth_disconnected.png')
+                    : require('../assets/icons/bluetooth_scanning.png')
             }
-          }}
-          size={isPortraitOrientation ? [winWidth / 7, winWidth / 7] : [winWidth / 20, winWidth / 20]}
-          {...{
-            marginRight: "2%",
-            marginTop: "2%",
-            backgroundColor: 'transparent',
-          }}
-        />
-      </View>
+            handlePressDown={() => { }}
+            handlePressUp={() => {
+              if (bluetoothImageId != 4) {
+                startConnection();
+              }
+            }}
+            size={isPortraitOrientation ? [winWidth / 7, winWidth / 7] : [winWidth / 20, winWidth / 20]}
+            {...{
+              marginRight: "2%",
+              marginTop: "2%",
+              backgroundColor: 'transparent',
+            }}
+          />
+        </View>
 
-      <View
-        style={{
-          backgroundColor: '#242424',
-          width: '100%',
-          height: '17%',
-          borderTopLeftRadius: 20,
-          borderTopRightRadius: 20,
-          alignItems: 'center',
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-        }}>
-        <Text
+        <View
           style={{
-            fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60),
-            marginLeft: isPortraitOrientation ? 50 : "25%",
-            color: 'white',
-          }}>
-          Factor
-        </Text>
-        <TouchableOpacity
-          onPress={() => {
-            setPickerModalText('Factor');
-            setPickerModalVisible(true);
-            setFactorIndex(0);
-            // setModalError(false);
-            // setModalText(
-            //   `${Dimensions.get('window').width}, ${
-            //     Dimensions.get('window').height
-            //   }`,
-            // );
-            // setModalVisible(true);
-          }}
-          style={{
-            paddingVertical: isPortraitOrientation ? "2%" : "1%",
-            width: '15%',
-            backgroundColor: '#424242',
-            borderRadius: 2 * (winWidth / 10),
+            backgroundColor: '#242424',
+            width: '100%',
+            height: '17%',
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
             alignItems: 'center',
-            justifyContent: 'center',
-            marginRight: isPortraitOrientation ? 50 : "25%",
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+          }}>
+          <View style={{
+            flexDirection: 'row',
+            marginLeft: isPortraitOrientation ? 50 : "25%",
+            alignItems: 'center',
+            // backgroundColor: 'red',
+            maxWidth: '50%',
+            justifyContent: 'space-between'
+          }}>
+            <Text
+              style={{
+                fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60),
+                color: 'white',
+              }}>
+              Factor
+            </Text>
+            <TouchableOpacity
+              onPress={() => { navigation.navigate("FactorInfo") }}
+              style={{
+                width: "20%", aspectRatio: 1,
+                maxWidth: '50%',
+              }}>
+              <Image
+                key={new Date()}
+                source={require('../assets/icons/qmark.png')}
+                resizeMode="contain"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  aspectRatio: 1,
+
+                }}
+              /></TouchableOpacity>
+          </View>
+          <TouchableOpacity
+            onPress={() => {
+              setPickerModalText('Factor');
+              setPickerModalVisible(true);
+              setFactorIndex(0);
+              // setModalError(false);
+              // setModalText(
+              //   `${Dimensions.get('window').width}, ${
+              //     Dimensions.get('window').height
+              //   }`,
+              // );
+              // setModalVisible(true);
+            }}
+            style={{
+              paddingVertical: isPortraitOrientation ? "2%" : 0,
+              width: '15%',
+              maxHeight: "70%",
+              backgroundColor: '#424242',
+              borderRadius: 2 * (winWidth / 10),
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: isPortraitOrientation ? 50 : "25%",
+            }}>
+            <Text
+              adjustsFontSizeToFit
+              style={{
+                textAlign: 'center',
+                textAlignVertical: 'center',
+                paddingHorizontal: '7%',
+                color: 'white',
+                fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60),
+              }}>
+              {JSON.stringify(factor)}
+            </Text>
+          </TouchableOpacity>
+        </View>
+        <View
+          style={{
+            backgroundColor: '#242424',
+            width: '100%',
+            height: '17%',
+            marginTop: '1%',
+            alignItems: 'center',
+            flexDirection: 'row',
+            justifyContent: 'space-between',
           }}>
           <Text
             style={{
-              textAlign: 'center',
-              textAlignVertical: 'center',
-              paddingHorizontal: '7%',
-              color: 'white',
               fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60),
+              marginLeft: isPortraitOrientation ? 50 : "25%",
+              color: 'white',
             }}>
-            {JSON.stringify(factor)}
+            Road Preset
           </Text>
-        </TouchableOpacity>
-      </View>
-      <View
-        style={{
-          backgroundColor: '#242424',
-          width: '100%',
-          height: '17%',
-          marginTop: '1%',
-          alignItems: 'center',
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-        }}>
-        <Text
+          <TouchableOpacity
+            onPress={() => {
+              setPickerModalText('Road Preset');
+              setPickerModalVisible(true);
+              setRoadPresetIndex(0);
+              // setModalVisible(true);
+              // setModalText(PRESET_OPTIONS);
+              // setModalError(false);
+            }}
+            style={{
+              paddingVertical: isPortraitOrientation ? "2%" : 0,
+              width: '15%',
+              maxHeight: "70%",
+              backgroundColor: '#424242',
+              borderRadius: 2 * (winWidth / 10),
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: isPortraitOrientation ? 50 : "25%",
+            }}>
+            <Text
+              adjustsFontSizeToFit
+              style={{
+                textAlign: 'center',
+                textAlignVertical: 'center',
+                paddingHorizontal: '7%',
+                color: 'white',
+                fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60),
+              }}>
+              {JSON.stringify(roadPreset)}
+            </Text>
+          </TouchableOpacity>
+        </View>
+        <View
           style={{
-            fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60),
-            marginLeft: isPortraitOrientation ? 50 : "25%",
-            color: 'white',
-          }}>
-          Road Preset
-        </Text>
-        <TouchableOpacity
-          onPress={() => {
-            setPickerModalText('Road Preset');
-            setPickerModalVisible(true);
-            setRoadPresetIndex(0);
-            // setModalVisible(true);
-            // setModalText(PRESET_OPTIONS);
-            // setModalError(false);
-          }}
-          style={{
-            paddingVertical: isPortraitOrientation ? "2%" : "1%",
-            width: '15%',
-            backgroundColor: '#424242',
-            borderRadius: 2 * (winWidth / 10),
+            backgroundColor: '#242424',
+            width: '100%',
+            height: '17%',
+            marginTop: '1%',
+            borderBottomLeftRadius: 20,
+            borderBottomRightRadius: 20,
             alignItems: 'center',
-            justifyContent: 'center',
-            marginRight: isPortraitOrientation ? 50 : "25%",
+            flexDirection: 'row',
+            justifyContent: 'space-between',
           }}>
           <Text
             style={{
-              textAlign: 'center',
-              textAlignVertical: 'center',
-              paddingHorizontal: '7%',
+              fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60),
+              marginLeft: isPortraitOrientation ? 50 : "25%",
               color: 'white',
-              fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60)
             }}>
-            {JSON.stringify(roadPreset)}
+            Trail Preset
           </Text>
-        </TouchableOpacity>
-      </View>
-      <View
-        style={{
-          backgroundColor: '#242424',
-          width: '100%',
-          height: '17%',
-          marginTop: '1%',
-          borderBottomLeftRadius: 20,
-          borderBottomRightRadius: 20,
-          alignItems: 'center',
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-        }}>
-        <Text
+          <TouchableOpacity
+            onPress={() => {
+              setPickerModalText('Trail Preset');
+              setPickerModalVisible(true);
+              setTrailPresetIndex(0);
+              // setModalVisible(true);
+              // setModalText(Platform.constants['Release'], Platform.OS);
+              // setModalError(false);
+            }}
+            style={{
+              paddingVertical: isPortraitOrientation ? "2%" : 0,
+              width: '15%',
+              maxHeight: "70%",
+              backgroundColor: '#424242',
+              borderRadius: 2 * (winWidth / 10),
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: isPortraitOrientation ? 50 : "25%",
+            }}>
+            <Text
+              adjustsFontSizeToFit
+              style={{
+                textAlign: 'center',
+                textAlignVertical: 'center',
+                paddingHorizontal: '7%',
+                color: 'white',
+                fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60),
+              }}>
+              {JSON.stringify(trailPreset)}
+            </Text>
+          </TouchableOpacity>
+        </View>
+        <View
           style={{
-            fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60),
-            marginLeft: isPortraitOrientation ? 50 : "25%",
-            color: 'white',
-          }}>
-          Trail Preset
-        </Text>
-        <TouchableOpacity
-          onPress={() => {
-            setPickerModalText('Trail Preset');
-            setPickerModalVisible(true);
-            setTrailPresetIndex(0);
-            // setModalVisible(true);
-            // setModalText(Platform.constants['Release'], Platform.OS);
-            // setModalError(false);
-          }}
-          style={{
-            paddingVertical: isPortraitOrientation ? "2%" : "1%",
-            width: '15%',
-            backgroundColor: '#424242',
-            borderRadius: 2 * (winWidth / 10),
+            width: '100%',
             alignItems: 'center',
             justifyContent: 'center',
-            marginRight: isPortraitOrientation ? 50 : "25%",
+            marginTop: isPortraitOrientation ? '15%' : 0,
           }}>
-          <Text
-            style={{
-              textAlign: 'center',
-              textAlignVertical: 'center',
-              paddingHorizontal: '7%',
-              color: 'white',
-              fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60)
-            }}>
-            {JSON.stringify(trailPreset)}
-          </Text>
-        </TouchableOpacity>
-      </View>
-      <View
-        style={{
-          width: '100%',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginTop: isPortraitOrientation ? '15%' : 0,
-        }}>
-        <Text style={{ fontSize: isPortraitOrientation ? 2 * (winWidth / 40) : 2 * (winWidth / 70), color: 'white' }}>
-          All units are measured in PSI
+          <Text adjustsFontSizeToFit style={{ fontSize: isPortraitOrientation ? 2 * (winWidth / 40) : 2 * (winWidth / 70), color: 'white' }}>
+            All units are measured in PSI
 
-        </Text>
-        <Text style={{ fontSize: isPortraitOrientation ? 2 * (winWidth / 40) : 2 * (winWidth / 70), color: 'white' }}>
-          On Air Version 4.4
-        </Text>
-        <Text
-          onPress={() =>
-            Linking.openURL('https://github.com/KingOfTNT10/on_air_project')
-          }
-          style={{
-            color: '#2269B2',
-            fontSize: isPortraitOrientation ? 2 * (winWidth / 40) : 2 * (winWidth / 70),
-          }}>
-          Code On Github
-        </Text>
-      </View>
+          </Text>
+          <Text adjustsFontSizeToFit style={{ fontSize: isPortraitOrientation ? 2 * (winWidth / 40) : 2 * (winWidth / 70), color: 'white' }}>
+            On Air Version 4.4
+          </Text>
+          <Text adjustsFontSizeToFit
+            onPress={() =>
+              Linking.openURL('https://github.com/KingOfTNT10/on_air_project')
+            }
+            style={{
+              color: '#2269B2',
+              fontSize: isPortraitOrientation ? 2 * (winWidth / 40) : 2 * (winWidth / 70),
+            }}>
+            Code On Github
+          </Text>
+        </View></ScrollView>
     </SafeAreaView >
   );
 };

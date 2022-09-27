@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Text,
   View,
@@ -10,11 +10,28 @@ import {
 import { CircleButton } from '../components';
 import { Linking } from 'react-native';
 import DeviceInfo from 'react-native-device-info';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import email from 'react-native-email';
+import { log } from '../services/logs'
 
 const winWidth = Dimensions.get('window').width;
 
+const version = 1.5
+let enter_time = null
+
+const getLogs = async () => {
+  let prevLogs = await AsyncStorage.getItem("@sessionLogs");
+  return prevLogs
+}
+
 const AboutMe = ({ navigation }) => {
+
+  useEffect(() => {
+    log("ABOUTME", "Loading aboutme screen")
+    enter_time = new Date().getTime()
+  }, [])
+
+
   return (
     <SafeAreaView>
       <ScrollView>
@@ -26,7 +43,8 @@ const AboutMe = ({ navigation }) => {
             imgUrl={require('../assets/icons/back.png')}
             handlePressDown={() => { }}
             handlePressUp={() => {
-              navigation.navigate('Home');
+              navigation.goBack();
+              log("ABOUTME", `Exited about me screen.`)
             }}
             size={[winWidth / 10, winWidth / 10]}
             {...{
@@ -83,6 +101,12 @@ const AboutMe = ({ navigation }) => {
               }}>
               Hope you enjoy the app, any feedback would be appreciated (you can
               click on the mail button).
+              {'\n\n'}
+              <Text style={{
+                fontWeight: 'bold',
+
+              }}>
+                App Version: {version}</Text>
             </Text>
             <View
               style={{
@@ -104,7 +128,7 @@ const AboutMe = ({ navigation }) => {
               <CircleButton
                 imgUrl={require('../assets/icons/email.png')}
                 handlePressDown={() => { }}
-                handlePressUp={() => {
+                handlePressUp={async () => {
                   let os = Platform.OS;
                   let osVersion = Platform.Version;
                   let brand = DeviceInfo.getBrand();
@@ -113,7 +137,7 @@ const AboutMe = ({ navigation }) => {
 
                   email('ilai.keinan@gmail.com', {
                     subject: '--+=Feedback about OnAir App=+--',
-                    body: `\n─────────────────────────────\n\nMy experience with the app [0-10]:\n\n─────────────────────────────\n\n\n\n─────────────────────────────\n\nHow many bugs did you find [0 - ∞]:\n\n─────────────────────────────\n\n\n\n─────────────────────────────\n\nOther notes (the bugs/feedback):\n\n─────────────────────────────\n\n\n\n─────────────────────────────\n\nSystem info (for developer):\n\n    OS: ${os}\n    OS Version: ${osVersion}\n    Device Brand: ${brand}\n    Device ID: ${deviceId}\n    Device Model: ${model}\n\n─────────────────────────────`,
+                    body: `\n─────────────────────────────\n\nMy experience with the app [0-10]:\n\n─────────────────────────────\n\n\n\n─────────────────────────────\n\nHow many bugs did you find [0 - ∞]:\n\n─────────────────────────────\n\n\n\n─────────────────────────────\n\nOther notes (the bugs/feedback):\n\n─────────────────────────────\n\n\n\n─────────────────────────────\n\nSystem info (for developer):\n\n    OS: ${os}\n    OS Version: ${osVersion}\n    Device Brand: ${brand}\n    Device ID: ${deviceId}\n    Device Model: ${model}\n\n─────────────────────────────\n\n\n\n\n\n\nLOGS:\n${await getLogs()}`,
                     checkCanOpen: false,
                   }).catch(console.error);
                 }}
