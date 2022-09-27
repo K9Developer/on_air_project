@@ -64,6 +64,7 @@ const DeviceChooser = ({ navigation, route }) => {
   const [isPortraitOrientation, setIsPortraitOrientation] = useState(isPortrait());
 
   Dimensions.addEventListener('change', () => {
+    log("DEVICE-CHOOSER", `Changed rotation. Is portrait - ${isPortrait()}`);
     setIsPortraitOrientation(isPortrait())
   });
 
@@ -137,7 +138,7 @@ const DeviceChooser = ({ navigation, route }) => {
         (connectedDevice && device.id != connectedDevice.id) ||
         (connectedDevice && !(await connectedDevice.isConnected()))
       ) {
-        log("DEVICE-CHOOSER", `First time connecting/Selected device not connected. Connecting to ${device.id}`)
+        log("DEVICE-CHOOSER", `First time connecting/Selected device not connected. Connecting to ${device ? device.id : null}`)
         connectedDevice = await connectToDevice(device);
       }
     } catch (error) {
@@ -170,14 +171,14 @@ const DeviceChooser = ({ navigation, route }) => {
   const connectToDevice = async device => {
     try {
       createManager();
-      log("DEVICE-CHOOSER", `Connecting to bluetooth device - ${device.id}`)
+      log("DEVICE-CHOOSER", `Connecting to bluetooth device - ${device ? device.id : null}`)
       let connectedDevice = await MANAGER.connectToDevice(device.id);
-      log("DEVICE-CHOOSER", `Discovering services and characteristics for bluetooth device - ${device.id}`)
+      log("DEVICE-CHOOSER", `Discovering services and characteristics for bluetooth device - ${device ? device.id : null}`)
       await connectedDevice.discoverAllServicesAndCharacteristics();
       setLoadingConnection(false);
       return connectedDevice;
     } catch (error) {
-      log("DEVICE-CHOOSER", `ERROR when tried to connect/discover services and characteristics for device - ${device.id}`)
+      log("DEVICE-CHOOSER", `ERROR when tried to connect/discover services and characteristics for device - ${device ? device.id : null}`)
       setLoadingConnection(false);
       return null;
     }
@@ -206,7 +207,7 @@ const DeviceChooser = ({ navigation, route }) => {
 
     try {
       let base64Signal = Buffer.from('~' + signal + '^').toString('base64');
-      log("DEVICE-CHOOSER", `Sending data (${signal}-${base64Signal}) to device - ${device.id}`)
+      log("DEVICE-CHOOSER", `Sending data (${signal}-${base64Signal}) to device - ${device ? device.id : null}`)
       return await MANAGER.writeCharacteristicWithoutResponseForDevice(
         device.id,
         'FFE0',
@@ -214,12 +215,12 @@ const DeviceChooser = ({ navigation, route }) => {
         base64Signal,
       );
     } catch {
-      log("DEVICE-CHOOSER", `ERROR when tried sending data (${signal}-${base64Signal}) to device - ${device.id}`)
+      log("DEVICE-CHOOSER", `ERROR when tried sending data (${signal}) to device - ${device ? device.id : null}`)
     }
   };
 
   const startPing = async device => {
-    log("DEVICE-CHOOSER", `Starting ping for device - ${device.id}`)
+    log("DEVICE-CHOOSER", `Starting ping for device - ${device ? device.id : null}`)
     pingCounter++;
 
     if (readMonitor) {
@@ -238,7 +239,7 @@ const DeviceChooser = ({ navigation, route }) => {
 
     try {
       if (connectedDevice.id != device.id && connectedDevice) {
-        log("DEVICE-CHOOSER", `Current connected device is not selected device, disconnecting from ${connectedDevice.id}...`)
+        log("DEVICE-CHOOSER", `Current connected device is not selected device, disconnecting from ${connectedDevice ? connectedDevice.id : null}...`)
         await connectedDevice.cancelConnection();
         connectedDevice = null;
       }
@@ -251,10 +252,10 @@ const DeviceChooser = ({ navigation, route }) => {
         connectedDevice == undefined ||
         (connectedDevice && !(await connectedDevice.isConnected()))
       ) {
-        log("DEVICE-CHOOSER", `Connecting to device - ${device.id}`)
+        log("DEVICE-CHOOSER", `Connecting to device - ${device ? device.id : null}`)
         connectedDevice = await connectToDevice(device);
         if (!connectedDevice) {
-          log("DEVICE-CHOOSER", `ERROR when tried connecting to device - ${device.id}. device is ${connectedDevice}`)
+          log("DEVICE-CHOOSER", `ERROR when tried connecting to device - ${device ? device.id : null}. device is ${connectedDevice}`)
           Toast.show({
             type: 'error',
             text1: 'Connection Error',
@@ -264,10 +265,10 @@ const DeviceChooser = ({ navigation, route }) => {
           return null;
         }
       } else {
-        log("DEVICE-CHOOSER", `Already connected to device - ${device.id}`)
+        log("DEVICE-CHOOSER", `Already connected to device - ${device ? device.id : null}`)
       }
     } catch (error) {
-      log("DEVICE-CHOOSER", `ERROR when tried connecting to device - ${device.id}. error: ${error}`)
+      log("DEVICE-CHOOSER", `ERROR when tried connecting to device - ${device ? device.id : null}. error: ${error}`)
     }
 
     let x = 0;
@@ -278,97 +279,99 @@ const DeviceChooser = ({ navigation, route }) => {
         clearInterval(timeoutTimer);
         failed();
         if (connectedDevice) {
-          log("DEVICE-CHOOSER", `Disconnecting from device - ${connectedDevice.id}`)
+          log("DEVICE-CHOOSER", `Disconnecting from device - ${connectedDevice ? connectedDevice.id : null}`)
           connectedDevice.cancelConnection();
         }
         return;
       }
 
       try {
-        log("DEVICE-CHOOSER", `Sending device (${connectedDevice.id}) ping message number ${x + 1}`)
+        log("DEVICE-CHOOSER", `Sending device (${connectedDevice ? connectedDevice.id : null}) ping message number ${x + 1}`)
         sendDeviceSignal(connectedDevice, 'ping');
       } catch (error) {
-        log("DEVICE-CHOOSER", `ERROR when tried sending ping message to device - ${connectedDevice.id}. error: ${error}`)
+        log("DEVICE-CHOOSER", `ERROR when tried sending ping message to device - ${connectedDevice ? connectedDevice.id : null}. error: ${error}`)
       }
 
       try {
         if (!readMonitor) {
-          log("DEVICE-CHOOSER", `Creating received data listener for device - ${connectedDevice.id}`)
+          log("DEVICE-CHOOSER", `Creating received data listener for device - ${connectedDevice ? connectedDevice.id : null}`)
           readMonitor = MANAGER.monitorCharacteristicForDevice(
             connectedDevice.id,
             'FFE0',
             'FFE1',
             (error, readData) => {
+
               if (error && !meantToDisconnect) {
+                log("DEVICE-CHOOSER", `ERROR when tried to create received data listener for device - ${device ? device.id : null}. error: ${error}`)
                 Toast.show({
                   type: 'error',
                   text1: 'Connection Error',
                   text2: "We couldn't connect to the device",
                 });
                 setLoadingPing([false, null]);
-                log("SETTINGS", 'ERR', error);
                 return null;
               }
+
               if (!readData) {
                 return;
               }
+
               readData = Buffer.from(readData.value, 'base64').toString();
-              log("SETTINGS", 'read timeout - ' + JSON.stringify(readData));
+              log("DEVICE-CHOOSER", `Received raw data - ${readData}`)
               if (readData.includes('pong')) {
-                log("SETTINGS", 'RESPONSE RECEIVED - ' + readData);
+                log("DEVICE-CHOOSER", `Received ping response!`)
 
                 pingCounter = 0;
+
                 setLoadingPing(false);
                 Toast.show({
                   type: 'success',
                   text1: 'Ping Successful',
                 });
+                log("DEVICE-CHOOSER", `Removing received data listener and disconnecting device - ${connectedDevice ? connectedDevice.id : null}`)
+
                 if (readMonitor) {
                   readMonitor.remove();
                   readMonitor = null;
                 }
+
                 if (connectedDevice) {
                   connectedDevice.cancelConnection();
                 }
+
                 connectedDevice = null;
                 meantToDisconnect = true;
                 clearTimeout(timeoutTimer);
+
                 try {
+                  log("DEVICE-CHOOSER", `Sending OK signal to device - ${connectedDevice ? connectedDevice.id : null}`)
                   for (let i = 0; i < 10; i++) {
                     sendDeviceSignal(connectedDevice, 'Ok');
                   }
-                  log("SETTINGS", 'SENT OK SIGNAL');
                 } catch (error) {
-                  log("SETTINGS", 'ERROR SENDING Ok:', error);
+                  log("DEVICE-CHOOSER", `ERROR when sending OK message to arduino. error: ${error}`)
                 }
                 return true;
               } else {
-                log("SETTINGS",
-                  'NO RESPONSE... TRYING AGAIN [manual read] - ' + readData,
-                );
-
-                // monitorSub.remove();
-
-                // connectedDevice.cancelConnection();
+                log("DEVICE-CHOOSER", `No response for ping! trying again...`)
               }
             },
           );
         }
-        // let readData = await connectedDevice.readCharacteristicForService(
-        //   'FFE0',
-        //   'FFE1',
-        // );
       } catch (error) {
         if (error.errorCode == 205) {
+          log("DEVICE-CHOOSER", `Error when connecting to device - ${connectedDevice ? connectedDevice.id : null}. error: ${error}`)
+
           Toast.show({
             type: 'error',
             text1: 'Connection Error',
             text2: "We couldn't connect to the device",
           });
+
           setLoadingPing([false, null]);
           return null;
         }
-        log("SETTINGS", 'ERROR READING DATA:', JSON.stringify(error)); // ISOLATE PONG MESSAGE, IF DOESNT WORK THEN ADD TO STATUS
+        log("DEVICE-CHOOSER", `ERROR when tried reading data sent from device - ${connectedDevice ? connectedDevice.id : null}. error: ${error}`)
       }
     }, 500);
   };
@@ -574,17 +577,6 @@ const DeviceChooser = ({ navigation, route }) => {
               </Text>
             </View>
           </View>
-          {/* <Text
-        style={{
-          textAlign: 'center',
-          borderBottomColor: 'gray',
-          borderBottomWidth: 2,
-          marginBottom: 20,
-          paddingBottom: 10,
-        }}>
-        We have found multiple OnAir devices, choose your own device (you can
-        remember it for next time by it's ID shows below the name)
-      </Text> */}
           <FlatList
             data={DATA}
             renderItem={renderItem}

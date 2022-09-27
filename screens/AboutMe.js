@@ -27,7 +27,7 @@ const getLogs = async () => {
 const AboutMe = ({ navigation }) => {
 
   useEffect(() => {
-    log("ABOUTME", "Loading aboutme screen")
+    log("ABOUT-ME", "Loading about me screen")
     enter_time = new Date().getTime()
   }, [])
 
@@ -44,7 +44,7 @@ const AboutMe = ({ navigation }) => {
             handlePressDown={() => { }}
             handlePressUp={() => {
               navigation.goBack();
-              log("ABOUTME", `Exited about me screen.`)
+              log("ABOUT-ME", `Exited about me screen.`)
             }}
             size={[winWidth / 10, winWidth / 10]}
             {...{

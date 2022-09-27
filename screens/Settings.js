@@ -12,15 +12,15 @@ import {
   Dimensions,
   ScrollView,
   TouchableOpacity,
+  Platform,
+  Vibration
 } from 'react-native';
 import React, { useState, useRef, useEffect } from 'react';
 import { FocusedStatusBar, CircleButton } from '../components';
 import { COLORS, SHADOWS } from '../constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Sound from 'react-native-sound';
 import { BleManager } from 'react-native-ble-plx';
 import ValuePicker from 'react-native-picker-horizontal';
-import DeviceInfo from 'react-native-device-info';
 import { log } from '../services/logs'
 
 const Buffer = require('buffer').Buffer;
@@ -39,7 +39,7 @@ const FACTOR_OPTIONS = [
   3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10,
 ];
 
-let BT05_DEVICE = null;
+let BluetoothDevice = null;
 let DEVICE_SERVICE_UUID = null;
 let DEVICE_CHARACTERISTICS_UUID = null;
 let MANAGER = null;
@@ -47,16 +47,15 @@ let scanTimer = null;
 let onDisconnectEvent = null;
 let readMonitor = null;
 
-log("SETTINGS", 'Set onDisconnectEvent [setup]');
-
 const getData = async key => {
   try {
+    log("SETTINGS", `Getting data for key: ${data}`)
     const data = await AsyncStorage.getItem(key);
     if (data !== null) {
       return data;
     }
   } catch (error) {
-    log("SETTINGS", 'getData error:', error);
+    log("SETTINGS", `ERROR when tried getting data for key: ${data}`)
   }
 };
 
@@ -115,103 +114,78 @@ const getErrorText = error => {
     600: "Please allow all requested permissions to this app, if that doesn't work try restarting it.",
     601: 'Location services are disabled',
   };
-  return (
-    errorMap[error.errorCode] ??
+
+  let err = errorMap[error.errorCode] ??
     'Unknown error occurred [custom]. (Please try again) info: ' +
     JSON.stringify(error)
-  );
+
+  log("SETTINGS", `Error code: ${error.errorCode}. Error text: ${err}`)
+  return err;
 };
 
 const sendDeviceSignal = async signal => {
   let base64Signal = Buffer.from('~' + signal + '^').toString('base64');
+  log("SETTINGS", `Sending signal for device - ${BluetoothDevice ? BluetoothDevice.id : null}. value: ${signal}-${base64Signal}`)
 
   return MANAGER.writeCharacteristicWithoutResponseForDevice(
-    BT05_DEVICE.id,
+    BluetoothDevice.id,
     'FFE0',
     'FFE1',
     base64Signal,
   )
     .then(d => {
-      log("SETTINGS", base64Signal + ' - ' + (base64Signal.length + 3));
-      // if (signal != 'DATA WAS READ') {
-      //   allMessagesSentByDevice.push('~' + signal + '^');
-      //   // sendDeviceSignal('DATA WAS READ');
-      // }
+      log("SETTINGS", `Successfully sent data`)
       return d;
     })
-    .catch(e => {
-      return e;
+    .catch(error => {
+      log("SETTINGS", `ERROR when tried sending data (${signal}-${base64Signal}) to device - ${BluetoothDevice ? BluetoothDevice.id : null}. error: ${error}`)
+      return error;
     });
-};
-
-const playConnectedSound = () => {
-  let beep = new Sound('beep_short.mp3', Sound.MAIN_BUNDLE, error => {
-    if (error) {
-      log("SETTINGS", 'failed to load the sound', error);
-      return;
-    }
-    // loaded successfully
-    beep.setVolume(0.02);
-    beep.play(success => {
-      if (success) {
-        log("SETTINGS", 'successfully finished playing');
-        setTimeout(() => {
-          beep.play(success => {
-            if (success) {
-              log("SETTINGS", 'successfully finished playing');
-            } else {
-              log("SETTINGS", 'playback failed due to audio decoding errors');
-            }
-          });
-        }, 200);
-      } else {
-        log("SETTINGS", 'playback failed due to audio decoding errors');
-      }
-    });
-  });
-  return beep;
 };
 
 const storeData = async () => {
   if (!JSON.parse(await AsyncStorage.getItem('@factor'))) {
+    log("SETTINGS", `Factor is not set! setting to default: 3.5`);
     try {
       await AsyncStorage.setItem('@factor', JSON.stringify(3.5));
     } catch (error) {
-      log("SETTINGS", 'ERROR SAVING FACTOR', error);
+      log("SETTINGS", `ERROR when tried to save default data for factor. error: ${error}`);
     }
   }
 
   if (!JSON.parse(await AsyncStorage.getItem('@wantedPsi'))) {
+    log("SETTINGS", `Wanted PSI is not set! setting to default: 3`);
     try {
       await AsyncStorage.setItem('@wantedPsi', JSON.stringify(3));
     } catch (error) {
-      log("SETTINGS", 'ERROR SAVING WANTED PSI', error);
+      log("SETTINGS", `ERROR when tried to save default data for Wanted PSI. error: ${error}`);
     }
   }
 
-  log("SETTINGS", 'road:', await AsyncStorage.getItem('@roadPreset'));
   if (!JSON.parse(await AsyncStorage.getItem('@roadPreset'))) {
+    log("SETTINGS", `Road Preset is not set! setting to default: 32`);
     try {
       await AsyncStorage.setItem('@roadPreset', JSON.stringify(32));
     } catch (error) {
-      log("SETTINGS", 'ERROR SAVING ROAD PRESET', error);
+      log("SETTINGS", `ERROR when tried to save default data for Road Preset. error: ${error}`);
     }
   }
-  log("SETTINGS", await AsyncStorage.getItem('@trailPreset'));
+
   if (!JSON.parse(await AsyncStorage.getItem('@trailPreset'))) {
+    log("SETTINGS", `Trail Preset is not set! setting to default: 16`);
     try {
-      log("SETTINGS", 'Storing data - trailPreset');
       await AsyncStorage.setItem('@trailPreset', JSON.stringify(16));
     } catch (error) {
-      log("SETTINGS", 'ERROR SAVING TRAIL PRESET', error);
+      log("SETTINGS", `ERROR when tried to save default data for Trail Preset. error: ${error}`);
     }
   }
 
   if (!JSON.parse(await AsyncStorage.getItem('@btImage'))) {
+    log("SETTINGS", `BT Image is not set! setting to default: null`);
     try {
-      await AsyncStorage.setItem('@btImage', JSON.stringify(null));
+      await AsyncStorage.setItem('@BtImage', JSON.stringify(null));
     } catch (error) {
-      log("SETTINGS", 'ERROR SAVING BtImage', error);
+      log("SETTINGS", `ERROR when tried to save default data for BT Image. error: ${error}`);
     }
   }
 };
@@ -233,29 +207,43 @@ const Settings = ({ navigation, route }) => {
   const [isPortraitOrientation, setIsPortraitOrientation] = useState(isPortrait());
 
   Dimensions.addEventListener('change', () => {
+    log("SETTINGS", `Changed rotation. Is portrait - ${isPortrait()}`);
     setIsPortraitOrientation(isPortrait())
   });
 
   const onDeviceDisconnect = (error, device) => {
-    log("SETTINGS", 'REACHED DISCONNECT');
-
-    if (readMonitor) {
-      readMonitor.remove();
-      readMonitor = null;
-    }
-
-    if (onDisconnectEvent) {
-      onDisconnectEvent.remove();
-      onDisconnectEvent = null;
-    }
-
     if (error) {
-      log("SETTINGS", log("SETTINGS", 'On device disconnect error: ', err));
+      log("HOME", `ERROR when device disconnected, device - ${device ? device.id : null}. error: ${error}`);
+      setModalError(true);
+      setModalText(getErrorText(error));
+      setModalVisible(true);
     } else {
+
+      log("HOME", `Device ${device ? device.id : null} disconnected successfully`);
+      if (onDisconnectEvent) {
+        log("HOME", `Removing disconnect listener.`);
+        onDisconnectEvent.remove();
+        setDisconnectMonitor(null);
+      }
+
+      setStatusText('Disconnected');
+      if (readMonitor) {
+        log("HOME", `Removing received data listener.`);
+        readMonitor.remove();
+        readMonitor = null
+
+      }
+
+      if (Platform.OS === 'android') {
+        Vibration.vibrate([200, 200, 200, 500]);
+      } else {
+        Vibration.vibrate([200, 500]);
+      }
+
+      removeSubscriptions();
+      setDropMessageText('You have disconnected from the device.');
+      setDropMessageButtonText('Reconnect');
       dropIn();
-      setStatusText('Device has been disconnected');
-      setBluetoothImageId(3);
-      BT05_DEVICE = null;
     }
   };
 
@@ -269,38 +257,24 @@ const Settings = ({ navigation, route }) => {
       return null;
     }
     data = Buffer.from(data.value, 'base64').toString();
+    log("SETTINGS", `Received raw data: ${data}`);
     data = data.substring(data.indexOf(startChar) + 1, data.indexOf(endChar));
-    if (data.includes('alive')) {
-      log("SETTINGS", 'Asking for connection status');
-      let x = 0;
-      let timer = setInterval(() => {
-        x++;
-        sendDeviceSignal('yes');
-        if (x == 5) {
-          clearInterval(timer);
-        }
-      }, 170);
-    }
+    log("SETTINGS", `Filtered data: ${data}`);
   };
 
   const goHome = () => {
-    log("SETTINGS",
-      `\n-----------------------------------\n
-      Type of MANAGER: ${typeof MANAGER}
-      \nType of DEVICE: ${JSON.stringify(BT05_DEVICE)}
-      \nType of SERVICE_UUID: ${typeof DEVICE_SERVICE_UUID}
-      \nType of CHARACTERISTICS_UUID: ${typeof DEVICE_CHARACTERISTICS_UUID}
-      \n-----------------------------------\n`,
-    );
+    log("SETTINGS", `Going home via back button/device chooser`)
     try {
+      log("SETTINGS", `Removing subscriptions`)
       removeSubscriptions();
     } catch (error) {
-      log("SETTINGS", 'Error removing subscriptions: ', error);
+      log("SETTINGS", `ERROR when tried removing subscriptions`)
     }
     if (MANAGER) {
+      log("SETTINGS", `Stopped scan for devices`)
       MANAGER.stopDeviceScan();
     }
-    log("SETTINGS", 'MANAGER: ' + typeof MANAGER);
+
     if (readMonitor) {
       readMonitor.remove();
       readMonitor = null;
@@ -312,7 +286,7 @@ const Settings = ({ navigation, route }) => {
     }
     navigation.navigate('Home', {
       manager: MANAGER,
-      device: BT05_DEVICE,
+      device: BluetoothDevice,
       serviceUUID: DEVICE_SERVICE_UUID,
       characteristicUUID: DEVICE_CHARACTERISTICS_UUID,
     });
@@ -346,20 +320,20 @@ const Settings = ({ navigation, route }) => {
           route.params.device != undefined &&
           route.params.device.hasOwnProperty('id')
         ) {
-          BT05_DEVICE = { ...route.params.device };
-          log("SETTINGS", '--->> DEVICE CHECK 1: ' + BT05_DEVICE);
+          BluetoothDevice = { ...route.params.device };
+          log("SETTINGS", '--->> DEVICE CHECK 1: ' + BluetoothDevice);
           MANAGER = route.params.manager;
-          log("SETTINGS", '--->> DEVICE CHECK 2: ' + BT05_DEVICE);
+          log("SETTINGS", '--->> DEVICE CHECK 2: ' + BluetoothDevice);
 
-          MANAGER.isDeviceConnected(BT05_DEVICE.id).then(isConnected => {
+          MANAGER.isDeviceConnected(BluetoothDevice.id).then(isConnected => {
             if (isConnected) {
               log("SETTINGS", 'Device is connect so setting events');
               onDisconnectEvent = MANAGER.onDeviceDisconnected(
-                BT05_DEVICE.id,
+                BluetoothDevice.id,
                 onDeviceDisconnect,
               );
               readMonitor = MANAGER.monitorCharacteristicForDevice(
-                BT05_DEVICE.id,
+                BluetoothDevice.id,
                 'FFE0',
                 'FFE1',
                 monitorDeviceData,
@@ -403,27 +377,27 @@ const Settings = ({ navigation, route }) => {
           }
         })
         .catch(err => log("SETTINGS", 'getData trailPreset error', err));
-      log("SETTINGS", '--->> DEVICE CHECK 3: ' + BT05_DEVICE);
+      log("SETTINGS", '--->> DEVICE CHECK 3: ' + BluetoothDevice);
       log("SETTINGS", '=> PARAMS connectToDevice: ' + route.params.connectToDevice);
       if (route.params.connectToDevice) {
-        if (BT05_DEVICE) {
+        if (BluetoothDevice) {
           log("SETTINGS", '=> DEVICE is OK');
-          MANAGER.isDeviceConnected(BT05_DEVICE.id).then(connected => {
+          MANAGER.isDeviceConnected(BluetoothDevice.id).then(connected => {
             if (connected) {
-              log("SETTINGS", '=> DEVICE is Connected : ' + BT05_DEVICE);
+              log("SETTINGS", '=> DEVICE is Connected : ' + BluetoothDevice);
 
               dropIn();
               setStatusText('Connected To Device');
               if (!onDisconnectEvent) {
                 onDisconnectEvent = MANAGER.onDeviceDisconnected(
-                  BT05_DEVICE.id,
+                  BluetoothDevice.id,
                   onDeviceDisconnect,
                 );
               }
 
               if (!readMonitor) {
                 readMonitor = MANAGER.monitorCharacteristicForDevice(
-                  BT05_DEVICE.id,
+                  BluetoothDevice.id,
                   'FFE0',
                   'FFE1',
                   monitorDeviceData,
@@ -433,7 +407,7 @@ const Settings = ({ navigation, route }) => {
               goHome();
             } else {
               log("SETTINGS", '=> DEVICE is not Connected');
-              BT05_DEVICE = null;
+              BluetoothDevice = null;
               dropIn();
               setStatusText('Failed To Connect');
             }
@@ -441,7 +415,7 @@ const Settings = ({ navigation, route }) => {
         } else {
           dropIn();
           setStatusText('Failed To Connect');
-          log("SETTINGS", '=> DEVICE: ' + JSON.stringify(BT05_DEVICE));
+          log("SETTINGS", '=> DEVICE: ' + JSON.stringify(BluetoothDevice));
           log("SETTINGS", '=> DEVICE is not OK');
         }
 
@@ -463,18 +437,18 @@ const Settings = ({ navigation, route }) => {
           if (value != null && value != undefined) {
             if (parseInt(value) == 2) {
               if (
-                BT05_DEVICE != null &&
-                BT05_DEVICE != undefined &&
-                BT05_DEVICE.hasOwnProperty('id')
+                BluetoothDevice != null &&
+                BluetoothDevice != undefined &&
+                BluetoothDevice.hasOwnProperty('id')
               ) {
-                log("SETTINGS", 'BT05_DEVICE: ' + JSON.stringify(BT05_DEVICE));
+                log("SETTINGS", 'BluetoothDevice: ' + JSON.stringify(BluetoothDevice));
                 try {
                   log("SETTINGS", 'MANAGER: ' + MANAGER);
-                  MANAGER.isDeviceConnected(BT05_DEVICE.id).then(d =>
+                  MANAGER.isDeviceConnected(BluetoothDevice.id).then(d =>
                     log("SETTINGS", 'IS DEVICE CONNECTED? - ' + d),
                   );
 
-                  MANAGER.isDeviceConnected(BT05_DEVICE.id)
+                  MANAGER.isDeviceConnected(BluetoothDevice.id)
                     .then(connected => {
                       if (connected) {
                         setBluetoothImageId(2);
@@ -497,11 +471,11 @@ const Settings = ({ navigation, route }) => {
                           );
                         }
                         onDisconnectEvent = MANAGER.onDeviceDisconnected(
-                          BT05_DEVICE.id,
+                          BluetoothDevice.id,
                           onDeviceDisconnect,
                         );
                         readMonitor = MANAGER.monitorCharacteristicForDevice(
-                          BT05_DEVICE.id,
+                          BluetoothDevice.id,
                           'FFE0',
                           'FFE1',
                           monitorDeviceData,
@@ -515,10 +489,10 @@ const Settings = ({ navigation, route }) => {
                     });
                 } catch (error) {
                   log("SETTINGS",
-                    "Couldn't get BT05_DEVICE.isConnected(): " +
+                    "Couldn't get BluetoothDevice.isConnected(): " +
                     error +
                     ' - ' +
-                    BT05_DEVICE,
+                    BluetoothDevice,
                   );
                   setBluetoothImageId(1);
                 }
@@ -634,9 +608,9 @@ const Settings = ({ navigation, route }) => {
             for (let bt of scannedDevices) {
               if (
                 bt.id == device.id ||
-                (BT05_DEVICE != null &&
-                  BT05_DEVICE.hasOwnProperty('id') &&
-                  device.id == BT05_DEVICE.id)
+                (BluetoothDevice != null &&
+                  BluetoothDevice.hasOwnProperty('id') &&
+                  device.id == BluetoothDevice.id)
               ) {
                 push = false;
               }
@@ -665,10 +639,10 @@ const Settings = ({ navigation, route }) => {
     }
 
     for (const [_key, val] of Object.entries(
-      BT05_DEVICE._manager._activeSubscriptions,
+      BluetoothDevice._manager._activeSubscriptions,
     )) {
       try {
-        BT05_DEVICE._manager._activeSubscriptions[val].remove();
+        BluetoothDevice._manager._activeSubscriptions[val].remove();
       } catch (error) {
         log("SETTINGS", 'Error removing subscription (device): ', error);
       }
@@ -704,7 +678,7 @@ const Settings = ({ navigation, route }) => {
       MANAGER = new BleManager();
     }
     log("SETTINGS", 'Active manager: ' + MANAGER);
-    BT05_DEVICE = null;
+    BluetoothDevice = null;
     log("SETTINGS", 'Source of device: Reconnect');
     DEVICE_SERVICE_UUID = null;
     DEVICE_CHARACTERISTICS_UUID = null;

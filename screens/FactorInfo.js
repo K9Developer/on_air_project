@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect } from 'react'
 import {
     Text,
     SafeAreaView,
@@ -13,6 +13,11 @@ const winWidth = Dimensions.get('window').width;
 
 const FactorInfo = ({ navigation, route }) => {
 
+    useEffect(() => {
+        log("FACTOR-INFO", `Loading factor info screen`)
+    }, [])
+
+
     return (
         <SafeAreaView style={{ flex: 1, padding: '5%', }}>
             <ScrollView>
@@ -25,7 +30,7 @@ const FactorInfo = ({ navigation, route }) => {
                     paddingHorizontal: '5%'
                 }}>
                     <TouchableOpacity
-                        onPress={() => { navigation.goBack() }}
+                        onPress={() => { log("ABOUT-ME", `Exited factor info screen.`); navigation.goBack() }}
                         style={{
                             width: "10%",
                             aspectRatio: 1,
