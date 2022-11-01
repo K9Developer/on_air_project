@@ -1,4 +1,5 @@
 import React from 'react';
+
 import { createStackNavigator } from '@react-navigation/stack';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -8,10 +9,12 @@ import Permissions from './screens/Permissions';
 import AboutMe from './screens/AboutMe';
 import FactorInfo from './screens/FactorInfo';
 import DeviceChooser from './screens/DeviceChooser';
-import { I18nManager, Platform } from 'react-native';
+import { I18nManager, Platform, Alert } from 'react-native';
 import DeviceInfo from 'react-native-device-info';
 import RNRestart from 'react-native-restart';
 import { log } from './services/logs'
+
+
 
 try {
   AsyncStorage.getItem('@restarted').then(d => {
@@ -96,6 +99,7 @@ const App = () => {
   return (
 
     <NavigationContainer theme={theme}>
+
       <Stack.Navigator
         screenOptions={{ headerShown: false }}
         initialRouteName="Home">

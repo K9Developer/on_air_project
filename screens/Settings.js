@@ -219,7 +219,7 @@ const Settings = ({ navigation, route }) => {
       setModalText(getErrorText(error));
       setModalVisible(true);
     } else {
-
+      setBluetoothImageId(4);
       log("HOME", `Device ${device ? device.id : null} disconnected successfully`);
       if (onDisconnectEvent) {
         log("HOME", `Removing disconnect listener.`);
@@ -396,6 +396,7 @@ const Settings = ({ navigation, route }) => {
         if (BluetoothDevice) {
           BluetoothManager.isDeviceConnected(BluetoothDevice.id).then(connected => {
             if (connected) {
+              setBluetoothImageId(2);
               log("SETTINGS", `Device - ${BluetoothDevice ? BluetoothDevice.id : null} is connected`)
 
               dropIn();
@@ -418,17 +419,19 @@ const Settings = ({ navigation, route }) => {
                 );
               }
 
-              setBluetoothImageId(2);
+
               goHome();
 
             } else {
               log("SETTINGS", `Device - ${BluetoothDevice ? BluetoothDevice.id : null} is not connected`);
               BluetoothDevice = null;
               dropIn();
+              setBluetoothImageId(4);
               setStatusText('Failed To Connect');
             }
           });
         } else {
+          setBluetoothImageId(4);
           log("SETTINGS", `Failed to connect. device: ${typeof BluetoothDevice}`);
           dropIn();
           setStatusText('Failed To Connect');
@@ -477,10 +480,18 @@ const Settings = ({ navigation, route }) => {
   const scanForDevice = async manager => {
     log("SETTINGS", `Starting scan for devices`);
     setStatusText('Scanning for devices... (Found: 0)');
+    let counter = 5
+
+    // let countDownInterval = setInterval(() => {
+    //   counter--;
+    //   setStatusText(
+    //     `Scanning for devices... (Found: ${scannedDevices.length}) [${counter}s]`,
+    //   );
+    // }, 1000);
 
     scanTimer = setTimeout(() => {
       if (scannedDevices.length == 0) {
-
+        // clearInterval(countDownInterval)
         log("SETTINGS", `No devices found in scan.`);
         setModalError(false);
         setModalText(
@@ -516,7 +527,7 @@ const Settings = ({ navigation, route }) => {
           setStatusText('An Error occurred');
           log("SETTINGS", `ERROR when tried scanning for devices. error: ${error}`);
         }
-
+        setBluetoothImageId(4)
         if (device && device != 'null') {
           if (device.name === 'BT05') {
 
@@ -536,13 +547,13 @@ const Settings = ({ navigation, route }) => {
               log("SETTINGS", `OnAir device discovered!`);
               scannedDevices.push(device);
               setStatusText(
-                `Scanning for devices... (Found: ${scannedDevices.length})`,
+                `Scanning for devices... (Found: ${scannedDevices.length}) [${counter}s]`,
               );
             }
           }
         }
       },
-      setBluetoothImageId(4),
+
     );
   };
 
@@ -624,8 +635,8 @@ const Settings = ({ navigation, route }) => {
   };
 
   if (startScan == true) {
-    startConnection();
     setStartScan(false);
+    startConnection();
   }
 
   const renderItem = (item, index) => {
@@ -652,19 +663,19 @@ const Settings = ({ navigation, route }) => {
   };
 
   useEffect(() => {
-    const saveId = async () => {
-      if (bluetoothImageId != 1) {
-        await AsyncStorage.setItem(
-          '@btImage',
-          JSON.stringify(bluetoothImageId),
-        );
-      } else {
-        if ((await AsyncStorage.getItem('@btImage')) == '2') {
-          setBluetoothImageId(2);
-        }
-      }
-    };
-    saveId();
+    // const saveId = async () => {
+    //   if (bluetoothImageId != 1) {
+    //     await AsyncStorage.setItem(
+    //       '@btImage',
+    //       JSON.stringify(bluetoothImageId),
+    //     );
+    //   } else {
+    //     if ((await AsyncStorage.getItem('@btImage')) == '2') {
+    //       setBluetoothImageId(2);
+    //     }
+    //   }
+    // };
+    // saveId();
   }, [bluetoothImageId]);
 
   return (

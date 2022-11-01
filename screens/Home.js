@@ -354,7 +354,7 @@ const Home = ({ navigation, route }) => {
       log("HOME", `Removing all timers.`);
       for (timer of timerList) {
         BackgroundTimer.clearInterval(timer);
-      } r
+      }
 
       setStatusText('Disconnected');
       if (readMonitor) {
@@ -377,6 +377,10 @@ const Home = ({ navigation, route }) => {
       dropIn();
     }
   };
+
+  useEffect(() => {
+    console.log("ASFFSADF, " + connected);
+  }, [connected])
 
   useEffect(() => {
     log("HOME", `Loading home screen.`);
@@ -456,6 +460,8 @@ const Home = ({ navigation, route }) => {
             BluetoothManager.isDeviceConnected(BluetoothDevice.id)
               .then(isConnected => {
                 if (isConnected) {
+                  setConnected(true);
+                  setStatusText('Connected');
                   log("HOME", `Device ${BluetoothDevice ? BluetoothDevice.id : null} is connected.`);
                   log("HOME", `Creating disconnect and received data listeners.`);
 
@@ -482,7 +488,7 @@ const Home = ({ navigation, route }) => {
                   } catch (error) {
                     log("HOME", `ERROR when tried creating a received data listener. error: ${error}`);
                   }
-                  setConnected(true);
+
                 }
               })
               .catch(error => {
@@ -620,7 +626,6 @@ const Home = ({ navigation, route }) => {
   });
 
   useEffect(() => {
-    LocalNotification(wantedPsi)
     log("HOME", `Initializing permission check loop`);
 
     AppState.addEventListener('change', currentState => {
