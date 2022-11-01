@@ -112,8 +112,10 @@ const Permissions = ({ navigation, route }) => {
   };
 
   useEffect(() => {
+    let mounted = true;
+
     permissionTimer = setInterval(async () => {
-      if (Platform.OS === 'android' && Platform.Version <= 19) {
+      if (Platform.OS === 'android' && Platform.Version <= 19 && mounted) {
         log('PERMISSIONS', `Android version too low (${Platform.Version})`);
         setModalError(true);
         setModalText(
@@ -121,7 +123,7 @@ const Permissions = ({ navigation, route }) => {
           Platform.Version,
         );
         setModalVisible(true);
-      } else if (Platform.OS === 'ios' && Platform.Version <= 9) {
+      } else if (Platform.OS === 'ios' && Platform.Version <= 9 && mounted) {
         log('PERMISSIONS', `IOS version too low (${Platform.Version})`);
         setModalError(true);
         setModalText(
@@ -130,7 +132,7 @@ const Permissions = ({ navigation, route }) => {
         setModalVisible(true);
       }
 
-      if ((await BluetoothStateManager.getState()) == 'Unsupported') {
+      if ((await BluetoothStateManager.getState()) == 'Unsupported' && mounted) {
         log('PERMISSIONS', `Bluetooth is not supported on this device.`);
         setModalError(true);
         setModalText('Bluetooth is not supported on this device!');
@@ -151,6 +153,11 @@ const Permissions = ({ navigation, route }) => {
         navigation.dispatch(StackActions.replace('Home'));
       }
     }, 500);
+
+    return () => {
+      mounted = false;
+      clearInterval(permissionTimer)
+    }
   });
 
   return (

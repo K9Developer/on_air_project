@@ -20,7 +20,7 @@ import { useState, useEffect, useRef } from 'react';
 import ValuePicker from 'react-native-picker-horizontal';
 import { check, PERMISSIONS } from 'react-native-permissions';
 import BluetoothStateManager from 'react-native-bluetooth-state-manager';
-import { LocalNotification } from '../services/LocalPushController'
+import { DisconnectedNotification } from '../services/LocalPushController'
 import { FocusedStatusBar } from '../components';
 import { COLORS, SHADOWS } from '../constants';
 import React from 'react';
@@ -304,6 +304,12 @@ const storeData = async () => {
   }
 };
 
+const handleAppInBackground = (currentState) => {
+  if (currentState === 'background') {
+    exitApp();
+  }
+}
+
 const Home = ({ navigation, route }) => {
 
   const [wantedPsi, setWantedPsi] = useState(MIN_PSI);
@@ -371,6 +377,9 @@ const Home = ({ navigation, route }) => {
         Vibration.vibrate([200, 500]);
       }
 
+      BackgroundTimer.setTimeout(() => {
+        DisconnectedNotification()
+      }, 10)
       removeSubscriptions();
       setDropMessageText('You have disconnected from the device.');
       setDropMessageButtonText('Reconnect');
@@ -378,14 +387,12 @@ const Home = ({ navigation, route }) => {
     }
   };
 
-  useEffect(() => {
-    console.log("ASFFSADF, " + connected);
-  }, [connected])
 
   useEffect(() => {
+    let mounted = true
     log("HOME", `Loading home screen.`);
 
-    return navigation.addListener('focus', () => {
+    let navListener = navigation.addListener('focus', () => {
 
       if (BluetoothDevice && BluetoothManager) {
         log("HOME", `Sending arduino screen status`);
@@ -411,7 +418,7 @@ const Home = ({ navigation, route }) => {
 
       getData('@factor')
         .then(value => {
-          if (value != null && value != undefined) {
+          if (value != null && value != undefined && mounted) {
             setFactor(parseFloat(JSON.parse(value)));
           }
         })
@@ -419,7 +426,7 @@ const Home = ({ navigation, route }) => {
 
       getData('@wantedPsi')
         .then(value => {
-          if (value != null && value != undefined) {
+          if (value != null && value != undefined && mounted) {
             setWantedPsi(parseInt(JSON.parse(value)));
           }
         })
@@ -459,6 +466,10 @@ const Home = ({ navigation, route }) => {
           if (BluetoothDevice && BluetoothDevice.id) {
             BluetoothManager.isDeviceConnected(BluetoothDevice.id)
               .then(isConnected => {
+                if (!mounted) {
+                  return
+                }
+
                 if (isConnected) {
                   setConnected(true);
                   setStatusText('Connected');
@@ -505,6 +516,11 @@ const Home = ({ navigation, route }) => {
         }
       }
     });
+
+    return () => {
+      mounted = false;
+      navListener()
+    }
   }, [route]);
 
   const checkPermission = () => {
@@ -626,19 +642,20 @@ const Home = ({ navigation, route }) => {
   });
 
   useEffect(() => {
-    log("HOME", `Initializing permission check loop`);
 
-    AppState.addEventListener('change', currentState => {
-      if (currentState === 'background') {
-        exitApp();
-      }
-    });
+    log("HOME", `Initializing permission check loop`);
+    AppState.addEventListener('change', handleAppInBackground);
 
 
     if (!permTimer) {
       permTimer = setInterval(() => {
         checkPermission();
       }, 500)
+    }
+
+    return () => {
+      clearInterval(permTimer)
+      AppState.removeEventListener("change", handleAppInBackground)
     }
   }, []);
 

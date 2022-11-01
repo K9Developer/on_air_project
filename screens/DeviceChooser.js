@@ -57,6 +57,11 @@ const isPortrait = () => {
   return dim.height >= dim.width;
 };
 
+const hardwareBackBtn = async () => {
+  log("DEVICE-CHOOSER", `Pressed hardware back button`)
+  await exit();
+}
+
 const DeviceChooser = ({ navigation, route }) => {
 
   const [loadingPing, setLoadingPing] = useState([false, null]);
@@ -101,16 +106,10 @@ const DeviceChooser = ({ navigation, route }) => {
 
   useEffect(() => {
 
-
-
-    BackHandler.addEventListener('hardwareBackPress', async () => {
-      log("DEVICE-CHOOSER", `Pressed hardware back button`)
-      await exit();
-    });
+    BackHandler.addEventListener('hardwareBackPress', hardwareBackBtn);
 
     return () => {
-      // BackHandler.removeEventListener('hardwareBackPress', () => { });
-      // AppState.removeEventListener('change', () => { });
+      BackHandler.removeEventListener('hardwareBackPress', hardwareBackBtn);
     };
   }, []);
 
