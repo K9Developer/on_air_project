@@ -128,7 +128,7 @@ def reactNativeArchitectures() {
     def value = project.getProperties().get("reactNativeArchitectures")
     return value ? value.split(",") : ["armeabi-v7a", "x86", "x86_64", "arm64-v8a"]
 }
-
+apply plugin: 'com.google.gms.google-services'
 android {
     ndkVersion rootProject.ext.ndkVersion
 
@@ -264,6 +264,8 @@ dependencies {
 
     //noinspection GradleDynamicVersion
     implementation "com.facebook.react:react-native:+"  // From node_modules
+
+    implementation platform('com.google.firebase:firebase-bom:28.2.1')
 
     implementation "androidx.swiperefreshlayout:swiperefreshlayout:1.0.0"
 

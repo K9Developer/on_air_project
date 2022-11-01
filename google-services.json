@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "26843089606",
+    "project_id": "onair-notifications",
+    "storage_bucket": "onair-notifications.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:26843089606:android:0c538a7573bd183696a5c7",
+        "android_client_info": {
+          "package_name": "onair.k9dev.com"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "26843089606-h7lkqljmubu23vtbna01ch4gpkqpqh2j.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD2FQ7zgFiPneCsUulA_xx85fEkWpXTcZU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "26843089606-h7lkqljmubu23vtbna01ch4gpkqpqh2j.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

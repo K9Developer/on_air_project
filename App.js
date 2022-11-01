@@ -14,9 +14,8 @@ import RNRestart from 'react-native-restart';
 import { log } from './services/logs'
 
 try {
-  log("APP", `Is Right To Left layout: ${I18nManager.isRTL}`)
-
   AsyncStorage.getItem('@restarted').then(d => {
+    log("APP", `Is Right To Left layout: ${I18nManager.isRTL}. Restarted: ${d}`)
     if (d != "true") {
       I18nManager.allowRTL(false);
       I18nManager.forceRTL(false);

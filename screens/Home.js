@@ -14,6 +14,7 @@ import {
   ScrollView,
   Dimensions,
   ActivityIndicator,
+  I18nManager
 } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
 import ValuePicker from 'react-native-picker-horizontal';
@@ -34,7 +35,7 @@ let permTimer = null;
 let timer = null;
 let waitTimer = null;
 let BluetoothDevice = null;
-let MANAGER = null;
+let BluetoothManager = null;
 let DEVICE_SERVICE_UUID = null;
 let DEVICE_CHARACTERISTICS_UUID = null;
 let MIN_FACTOR = 3;
@@ -84,44 +85,15 @@ const renderItem = (item, index) => {
 };
 
 const playDoneSound = () => {
-  let beep = new Sound('beep_long.mp3', Sound.MAIN_BUNDLE, error => {
+  let beep = new Sound('done_beep.mp3', Sound.MAIN_BUNDLE, error => {
     if (error) {
-      log("HOME", `Failed to load beep_long.mp3 sound. error: ${error}`);
+      log("HOME", `Failed to load done_beep.mp3 sound. error: ${error}`);
       return;
     }
-
+    beep.setVolume(1);
     beep.play(success => {
       if (success) {
         log("HOME", 'successfully finished playing');
-        BackgroundTimer.setTimeout(() => {
-          beep.play(success => {
-            if (success) {
-              log("HOME", 'successfully finished playing');
-              BackgroundTimer.setTimeout(() => {
-                beep.play(success => {
-                  if (success) {
-                    log("HOME", 'successfully finished playing');
-                    BackgroundTimer.setTimeout(() => {
-                      beep.play(success => {
-                        if (success) {
-                          log("HOME", 'successfully finished playing');
-                        } else {
-                          log("HOME",
-                            'playback failed due to audio decoding errors',
-                          );
-                        }
-                      });
-                    }, 1000);
-                  } else {
-                    log("HOME", 'playback failed due to audio decoding errors');
-                  }
-                });
-              }, 1000);
-            } else {
-              log("HOME", 'playback failed due to audio decoding errors');
-            }
-          });
-        }, 1000);
       } else {
         log("HOME", 'playback failed due to audio decoding errors');
       }
@@ -129,6 +101,7 @@ const playDoneSound = () => {
   });
   return beep;
 };
+
 
 const downPressPlus = (currentCounter, setCounter) => {
   if (currentCounter < MAX_PSI) {
@@ -380,8 +353,8 @@ const Home = ({ navigation, route }) => {
 
       log("HOME", `Removing all timers.`);
       for (timer of timerList) {
-        clearInterval(timer);
-      }
+        BackgroundTimer.clearInterval(timer);
+      } r
 
       setStatusText('Disconnected');
       if (readMonitor) {
@@ -410,7 +383,7 @@ const Home = ({ navigation, route }) => {
 
     return navigation.addListener('focus', () => {
 
-      if (BluetoothDevice && MANAGER) {
+      if (BluetoothDevice && BluetoothManager) {
         log("HOME", `Sending arduino screen status`);
         sendDeviceSignal('home');
       }
@@ -476,11 +449,11 @@ const Home = ({ navigation, route }) => {
         ) {
 
           log("HOME", `Passed params checks. params: ${route.params}`);
-          MANAGER = route.params.manager;
+          BluetoothManager = route.params.manager;
           BluetoothDevice = route.params.device;
 
           if (BluetoothDevice && BluetoothDevice.id) {
-            MANAGER.isDeviceConnected(BluetoothDevice.id)
+            BluetoothManager.isDeviceConnected(BluetoothDevice.id)
               .then(isConnected => {
                 if (isConnected) {
                   log("HOME", `Device ${BluetoothDevice ? BluetoothDevice.id : null} is connected.`);
@@ -488,7 +461,7 @@ const Home = ({ navigation, route }) => {
 
                   try {
                     setDisconnectMonitor(
-                      MANAGER.onDeviceDisconnected(
+                      BluetoothManager.onDeviceDisconnected(
                         BluetoothDevice.id,
                         onDeviceDisconnect,
                       ),
@@ -499,7 +472,7 @@ const Home = ({ navigation, route }) => {
 
                   try {
                     setReadMonitor(
-                      MANAGER.monitorCharacteristicForDevice(
+                      BluetoothManager.monitorCharacteristicForDevice(
                         BluetoothDevice.id,
                         'FFE0',
                         'FFE1',
@@ -529,6 +502,10 @@ const Home = ({ navigation, route }) => {
   }, [route]);
 
   const checkPermission = () => {
+    if (I18nManager.isRTL) {
+      AsyncStorage.setItem('@restarted', "false")
+    }
+
     if (Platform.OS === 'android') {
       check(PERMISSIONS.ANDROID.BLUETOOTH_CONNECT)
         .then(data => {
@@ -643,6 +620,7 @@ const Home = ({ navigation, route }) => {
   });
 
   useEffect(() => {
+    LocalNotification(wantedPsi)
     log("HOME", `Initializing permission check loop`);
 
     AppState.addEventListener('change', currentState => {
@@ -664,7 +642,7 @@ const Home = ({ navigation, route }) => {
       'base64',
     );
     log("HOME", `Sending data (${signal}-${base64Signal}) to device - ${BluetoothDevice ? BluetoothDevice.id : null}`)
-    return MANAGER.writeCharacteristicWithoutResponseForDevice(
+    return BluetoothManager.writeCharacteristicWithoutResponseForDevice(
       BluetoothDevice.id,
       'FFE0',
       'FFE1',
@@ -691,10 +669,10 @@ const Home = ({ navigation, route }) => {
   const removeSubscriptions = () => {
     log("HOME", `Removing all subscriptions.`)
 
-    if (MANAGER != null) {
-      for (const [_key, val] of Object.entries(MANAGER._activeSubscriptions)) {
+    if (BluetoothManager != null) {
+      for (const [_key, val] of Object.entries(BluetoothManager._activeSubscriptions)) {
         try {
-          MANAGER._activeSubscriptions[val].remove();
+          BluetoothManager._activeSubscriptions[val].remove();
         } catch (error) { }
       }
       try {
@@ -778,14 +756,14 @@ const Home = ({ navigation, route }) => {
     }
 
     data = Buffer.from(data.value, 'base64').toString();
-    log("HOME", `Got raw data from device - ${data}`)
+    // log("HOME", `Got raw data from device - ${data}`)
 
     if (data != 'SUCCESS CONNECT') {
-      data = data.substring(data.indexOf(startChar) + 1, data.indexOf(endChar));
-      log("HOME", `Filtered data - ${data}`)
+      data = data.substring(data.indexOf(startChar) + 1, data.indexOf("]") + 1);
+      // log("HOME", `Filtered data - ${data}`)
     }
 
-    log("HOME", `Validating data sent:\n\t1. Duplicate message: ${allMessagesSentByDevice.includes(data)}\n\t2. Message empty: ${data != '~^' && data != '~DATA WAS READ^' && data[0] == '['}\n\t3. Valid Data: ${isValidData(data)}`)
+    // log("HOME", `Validating data sent:\n\t1. Duplicate message: ${allMessagesSentByDevice.includes(data)}\n\t2. Message empty: ${data != '~^' && data != '~DATA WAS READ^' && data[0] == '['}\n\t3. Valid Data: ${isValidData(data)}`)
 
     if (
       !allMessagesSentByDevice.includes(data) &&
@@ -796,11 +774,16 @@ const Home = ({ navigation, route }) => {
     ) {
 
       let dataArray = eval(data);
-      log("HOME", `Evaluated data: ${dataArray}`);
-      handleStatusId(dataArray[1], dataArray[0]);
-      setTirePressure(dataArray[2]);
-      setLowBattery(dataArray[4])
-
+      // log("HOME", `Evaluated data: ${dataArray}`);
+      if (dataArray.length == 5) {
+        handleStatusId(dataArray[1], dataArray[0]);
+        setTirePressure(dataArray[2]);
+        setLowBattery(dataArray[4])
+      } else {
+        if (dataArray.length == 2 && dataArray[0] == "p") {
+          setWantedPsi(dataArray[1])
+        }
+      }
     }
   };
 
@@ -1123,7 +1106,7 @@ const Home = ({ navigation, route }) => {
                   characteristicsUUID: DEVICE_CHARACTERISTICS_UUID,
                   startConnect: true,
                   connectToDevice: false,
-                  manager: MANAGER,
+                  manager: BluetoothManager,
                 });
               }}>
               {dropMessageButtonText}
@@ -1161,7 +1144,7 @@ const Home = ({ navigation, route }) => {
                 characteristicsUUID: DEVICE_CHARACTERISTICS_UUID,
                 startConnect: false,
                 connectToDevice: false,
-                manager: MANAGER,
+                manager: BluetoothManager,
               });
             }}>
             <Image
@@ -1189,7 +1172,7 @@ const Home = ({ navigation, route }) => {
               log("HOME", `OnAir button pressed`)
               if (BluetoothDevice != null) {
                 try {
-                  let isConnected = await MANAGER.isDeviceConnected(BluetoothDevice.id);
+                  let isConnected = await BluetoothManager.isDeviceConnected(BluetoothDevice.id);
                   if (!isConnected) {
                     log("HOME", `Bluetooth device - ${BluetoothDevice ? BluetoothDevice.id : null} not connected`)
                     setConnected(false);

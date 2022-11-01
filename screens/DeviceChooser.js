@@ -19,7 +19,7 @@ import { log } from '../services/logs'
 
 const Buffer = require('buffer').Buffer;
 
-let MANAGER = null;
+let BluetoothManager = null;
 let timeoutTimer = null;
 let connectedDevice = null;
 let pingCounter = 0;
@@ -101,11 +101,7 @@ const DeviceChooser = ({ navigation, route }) => {
 
   useEffect(() => {
 
-    AppState.addEventListener('change', currentState => {
-      if (currentState === 'background') {
-        exitApp();
-      }
-    });
+
 
     BackHandler.addEventListener('hardwareBackPress', async () => {
       log("DEVICE-CHOOSER", `Pressed hardware back button`)
@@ -113,10 +109,8 @@ const DeviceChooser = ({ navigation, route }) => {
     });
 
     return () => {
-      BackHandler.removeEventListener('hardwareBackPress', async () => {
-        log("SETTINGS", 'Exit back button');
-        await exit();
-      });
+      // BackHandler.removeEventListener('hardwareBackPress', () => { });
+      // AppState.removeEventListener('change', () => { });
     };
   }, []);
 
@@ -140,49 +134,57 @@ const DeviceChooser = ({ navigation, route }) => {
       ) {
         log("DEVICE-CHOOSER", `First time connecting/Selected device not connected. Connecting to ${device ? device.id : null}`)
         connectedDevice = await connectToDevice(device);
+        setLoadingConnection(false);
       }
     } catch (error) {
       log("DEVICE-CHOOSER", `ERROR when tried to connect to device: ${error}`)
     }
-    try {
-      log("DEVICE-CHOOSER", `Sending Connected signal to arduino`)
-      await sendDeviceSignal(connectedDevice, 'Connected');
-    } catch (error) {
-      log("DEVICE-CHOOSER", `ERROR when tried to send Connected signal to arduino: ${error}`)
-    }
+    // try {
+    //   log("DEVICE-CHOOSER", `Sending Connected signal to arduino`)
+    //   await sendDeviceSignal(connectedDevice, 'Connected');
+    // } catch (error) {
+    //   log("DEVICE-CHOOSER", `ERROR when tried to send Connected signal to arduino: ${error}`)
+    // }
 
     log("DEVICE-CHOOSER", `Navigating to settings`)
     navigation.navigate('Settings', {
       connectToDevice: true,
       device: connectedDevice,
-      manager: MANAGER,
+      manager: BluetoothManager,
       goHome: true,
     });
   };
 
 
   const createManager = () => {
-    if (!MANAGER) {
-      MANAGER = new BleManager();
+    if (!BluetoothManager) {
+      BluetoothManager = new BleManager();
       log("DEVICE-CHOOSER", `Reloaded bluetooth manager`)
     }
   };
 
   const connectToDevice = async device => {
+    createManager();
+    let connectedDevice = null;
     try {
-      createManager();
       log("DEVICE-CHOOSER", `Connecting to bluetooth device - ${device ? device.id : null}`)
-      let connectedDevice = await MANAGER.connectToDevice(device.id);
+      connectedDevice = await BluetoothManager.connectToDevice(device.id);
+    } catch (error) {
+      connectedDevice = null;
+      log("DEVICE-CHOOSER", `Error when tried connecting to device - ${device ? device.id : null} (${error})`)
+    }
+    try {
       log("DEVICE-CHOOSER", `Discovering services and characteristics for bluetooth device - ${device ? device.id : null}`)
       await connectedDevice.discoverAllServicesAndCharacteristics();
-      setLoadingConnection(false);
-      return connectedDevice;
+
+
     } catch (error) {
-      log("DEVICE-CHOOSER", `ERROR when tried to connect/discover services and characteristics for device - ${device ? device.id : null}`)
-      setLoadingConnection(false);
-      return null;
+      log("DEVICE-CHOOSER", `ERROR when tried to connect/discover services and characteristics for device - ${device ? device.id : null} (${error})`)
+      connectedDevice = null;
     }
-  };
+    return connectedDevice;
+
+  }
 
   const failed = () => {
 
@@ -208,7 +210,7 @@ const DeviceChooser = ({ navigation, route }) => {
     try {
       let base64Signal = Buffer.from('~' + signal + '^').toString('base64');
       log("DEVICE-CHOOSER", `Sending data (${signal}-${base64Signal}) to device - ${device ? device.id : null}`)
-      return await MANAGER.writeCharacteristicWithoutResponseForDevice(
+      return await BluetoothManager.writeCharacteristicWithoutResponseForDevice(
         device.id,
         'FFE0',
         'FFE1',
@@ -295,7 +297,7 @@ const DeviceChooser = ({ navigation, route }) => {
       try {
         if (!readMonitor) {
           log("DEVICE-CHOOSER", `Creating received data listener for device - ${connectedDevice ? connectedDevice.id : null}`)
-          readMonitor = MANAGER.monitorCharacteristicForDevice(
+          readMonitor = BluetoothManager.monitorCharacteristicForDevice(
             connectedDevice.id,
             'FFE0',
             'FFE1',
