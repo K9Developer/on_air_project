@@ -28,3 +28,28 @@ export const LocalNotification = async (wantedPSI, debug = false) => {
         message: "We have inflated/deflated your tire",
     })
 }
+
+export const DisconnectedNotification = async () => {
+
+
+    await PushNotification.channelExists("disconnect-notif", (exists) => {
+        if (!exists) {
+            PushNotification.createChannel({
+                channelId: "disconnect-notif",
+                channelName: "Disconnect Notification",
+            })
+        }
+    })
+
+    PushNotification.localNotification({
+        channelId: "disconnect-notif",
+        bigText: "The OnAir device has been disconnected from your phone",
+        subText: "Disconnected",
+        bigLargeIcon: "ic_launcher",
+        color: "#eb4034",
+        visibility: "private",
+        ignoreInForeground: false,
+        title: "Disconnected OnAir",
+        message: "To reconnect go into your app and connect again via the settings page",
+    })
+}

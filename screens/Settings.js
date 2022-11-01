@@ -190,6 +190,12 @@ const storeData = async () => {
   }
 };
 
+const handleAppInBackground = currentState => {
+  if (currentState === 'background') {
+    exitApp();
+  }
+}
+
 const Settings = ({ navigation, route }) => {
   const [factor, setFactor] = useState(MIN_FACTOR);
   const [roadPreset, setRoadPreset] = useState(MIN_PRESET);
@@ -206,6 +212,7 @@ const Settings = ({ navigation, route }) => {
   const [trailPresetIndex, setTrailPresetIndex] = useState(0);
   const [isPortraitOrientation, setIsPortraitOrientation] = useState(isPortrait());
   const [voltage, setVoltage] = useState("0.0");
+  const [bluetoothImageId, setBluetoothImageId] = useState(1);
 
   Dimensions.addEventListener('change', () => {
     log("SETTINGS", `Changed rotation. Is portrait - ${isPortrait()}`);
@@ -219,7 +226,7 @@ const Settings = ({ navigation, route }) => {
       setModalText(getErrorText(error));
       setModalVisible(true);
     } else {
-      setBluetoothImageId(4);
+      setBluetoothImageId(3);
       log("HOME", `Device ${device ? device.id : null} disconnected successfully`);
       if (onDisconnectEvent) {
         log("HOME", `Removing disconnect listener.`);
@@ -310,7 +317,7 @@ const Settings = ({ navigation, route }) => {
   useEffect(() => {
     let mounted = true
 
-    navigation.addListener('focus', () => {
+    let navListener = navigation.addListener('focus', () => {
       if (readMonitor) {
         readMonitor.remove();
         readMonitor = null;
@@ -337,7 +344,12 @@ const Settings = ({ navigation, route }) => {
           BluetoothDevice = { ...route.params.device };
           BluetoothManager = route.params.manager;
           BluetoothManager.isDeviceConnected(BluetoothDevice.id).then(isConnected => {
+            if (!mounted) {
+              return
+            }
+
             if (isConnected) {
+              setBluetoothImageId(2)
               log("SETTINGS", `Device - ${BluetoothDevice ? BluetoothDevice.id : null} connected. creating listeners`);
 
               if (!route.params.connectToDevice) {
@@ -365,36 +377,39 @@ const Settings = ({ navigation, route }) => {
 
       storeData();
 
-      if (mounted) {
-        getData('@factor')
-          .then(value => {
-            if (value != null && value != undefined) {
-              setFactor(parseFloat(JSON.parse(value)));
-            }
-          })
-          .catch(error => log("SETTINGS", `ERROR when tried getting factor. error: ${error}`));
+      getData('@factor')
+        .then(value => {
+          if (value != null && value != undefined && mounted) {
+            setFactor(parseFloat(JSON.parse(value)));
+          }
+        })
+        .catch(error => log("SETTINGS", `ERROR when tried getting factor. error: ${error}`));
 
-        getData('@roadPreset')
-          .then(value => {
-            log("SETTINGS", 'getData roadPreset value: ' + value);
-            if (value != null && value != undefined) {
-              setRoadPreset(parseFloat(JSON.parse(value)));
-            }
-          })
-          .catch(error => log("SETTINGS", `ERROR when tried getting road preset. error: ${error}`));
+      getData('@roadPreset')
+        .then(value => {
+          log("SETTINGS", 'getData roadPreset value: ' + value);
+          if (value != null && value != undefined && mounted) {
+            setRoadPreset(parseFloat(JSON.parse(value)));
+          }
+        })
+        .catch(error => log("SETTINGS", `ERROR when tried getting road preset. error: ${error}`));
 
-        getData('@trailPreset')
-          .then(value => {
-            log("SETTINGS", 'getData trailPreset value: ' + value);
-            if (value != null && value != undefined) {
-              setTrailPreset(parseFloat(JSON.parse(value)));
-            }
-          })
-          .catch(error => log("SETTINGS", `ERROR when tried getting trail preset. error: ${error}`));
-      }
-      if (route.params.connectToDevice && mounted) {
+      getData('@trailPreset')
+        .then(value => {
+          log("SETTINGS", 'getData trailPreset value: ' + value);
+          if (value != null && value != undefined && mounted) {
+            setTrailPreset(parseFloat(JSON.parse(value)));
+          }
+        })
+        .catch(error => log("SETTINGS", `ERROR when tried getting trail preset. error: ${error}`));
+
+      if (route.params.connectToDevice) {
         if (BluetoothDevice) {
           BluetoothManager.isDeviceConnected(BluetoothDevice.id).then(connected => {
+            if (!mounted) {
+              return
+            }
+
             if (connected) {
               setBluetoothImageId(2);
               log("SETTINGS", `Device - ${BluetoothDevice ? BluetoothDevice.id : null} is connected`)
@@ -423,15 +438,18 @@ const Settings = ({ navigation, route }) => {
               goHome();
 
             } else {
+              setBluetoothImageId(3);
               log("SETTINGS", `Device - ${BluetoothDevice ? BluetoothDevice.id : null} is not connected`);
               BluetoothDevice = null;
               dropIn();
-              setBluetoothImageId(4);
               setStatusText('Failed To Connect');
             }
           });
         } else {
-          setBluetoothImageId(4);
+          if (!mounted) {
+            return
+          }
+          setBluetoothImageId(3);
           log("SETTINGS", `Failed to connect. device: ${typeof BluetoothDevice}`);
           dropIn();
           setStatusText('Failed To Connect');
@@ -443,10 +461,13 @@ const Settings = ({ navigation, route }) => {
         DEVICE_CHARACTERISTICS_UUID = null;
       }
     });
-    return () => { mounted = false }
+    return () => {
+      mounted = false
+      navListener()
+    }
   }, [route]);
 
-  const [bluetoothImageId, setBluetoothImageId] = useState(1);
+
   const dropAnim = useRef(new Animated.Value(0)).current;
 
   navigation.addListener('blur', e => {
@@ -454,11 +475,11 @@ const Settings = ({ navigation, route }) => {
   });
 
   useEffect(() => {
-    AppState.addEventListener('change', currentState => {
-      if (currentState === 'background') {
-        exitApp();
-      }
-    });
+    AppState.addEventListener('change', handleAppInBackground);
+
+    return () => {
+      AppState.removeEventListener("change", handleAppInBackground)
+    }
   }, []);
 
   const dropIn = () => {
@@ -480,7 +501,7 @@ const Settings = ({ navigation, route }) => {
   const scanForDevice = async manager => {
     log("SETTINGS", `Starting scan for devices`);
     setStatusText('Scanning for devices... (Found: 0)');
-    let counter = 5
+    // let counter = 5
 
     // let countDownInterval = setInterval(() => {
     //   counter--;
@@ -547,7 +568,7 @@ const Settings = ({ navigation, route }) => {
               log("SETTINGS", `OnAir device discovered!`);
               scannedDevices.push(device);
               setStatusText(
-                `Scanning for devices... (Found: ${scannedDevices.length}) [${counter}s]`,
+                `Scanning for devices... (Found: ${scannedDevices.length})`,
               );
             }
           }
@@ -661,22 +682,6 @@ const Settings = ({ navigation, route }) => {
   const exitApp = () => {
     log("SETTINGS", `Exited settings screen`);
   };
-
-  useEffect(() => {
-    // const saveId = async () => {
-    //   if (bluetoothImageId != 1) {
-    //     await AsyncStorage.setItem(
-    //       '@btImage',
-    //       JSON.stringify(bluetoothImageId),
-    //     );
-    //   } else {
-    //     if ((await AsyncStorage.getItem('@btImage')) == '2') {
-    //       setBluetoothImageId(2);
-    //     }
-    //   }
-    // };
-    // saveId();
-  }, [bluetoothImageId]);
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
