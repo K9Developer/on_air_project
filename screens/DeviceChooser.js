@@ -4,7 +4,6 @@ import {
   Text,
   Image,
   TouchableOpacity,
-  AppState,
   ActivityIndicator,
   Dimensions,
   BackHandler,
@@ -19,6 +18,7 @@ import { log } from '../services/logs'
 
 const Buffer = require('buffer').Buffer;
 
+let mounted = true;
 let BluetoothManager = null;
 let timeoutTimer = null;
 let connectedDevice = null;
@@ -75,6 +75,10 @@ const DeviceChooser = ({ navigation, route }) => {
 
   useEffect(() => {
     log("DEVICE-CHOOSER", "Loading device chooser screen")
+
+    return () => {
+      mounted = false;
+    }
   }, [])
 
 
@@ -115,6 +119,11 @@ const DeviceChooser = ({ navigation, route }) => {
 
   const transferToSettings = async device => {
     log("DEVICE-CHOOSER", `Transferring data to settings`)
+
+    if (!mounted) {
+      return
+    }
+
     if (connectedDevice) {
       try {
         for (let i = 0; i < 10; i++) {
@@ -125,6 +134,11 @@ const DeviceChooser = ({ navigation, route }) => {
         log("DEVICE-CHOOSER", `ERROR when tried to send OK signals`)
       }
     }
+
+    if (!mounted) {
+      return
+    }
+
     try {
       if (
         !connectedDevice ||
@@ -138,12 +152,10 @@ const DeviceChooser = ({ navigation, route }) => {
     } catch (error) {
       log("DEVICE-CHOOSER", `ERROR when tried to connect to device: ${error}`)
     }
-    // try {
-    //   log("DEVICE-CHOOSER", `Sending Connected signal to arduino`)
-    //   await sendDeviceSignal(connectedDevice, 'Connected');
-    // } catch (error) {
-    //   log("DEVICE-CHOOSER", `ERROR when tried to send Connected signal to arduino: ${error}`)
-    // }
+
+    if (!mounted) {
+      return
+    }
 
     log("DEVICE-CHOOSER", `Navigating to settings`)
     navigation.navigate('Settings', {

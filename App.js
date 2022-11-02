@@ -7,9 +7,10 @@ import Home from './screens/Home';
 import Details from './screens/Settings';
 import Permissions from './screens/Permissions';
 import AboutMe from './screens/AboutMe';
+import Feedback from './screens/Feedback';
 import FactorInfo from './screens/FactorInfo';
 import DeviceChooser from './screens/DeviceChooser';
-import { I18nManager, Platform, Alert } from 'react-native';
+import { I18nManager, Platform } from 'react-native';
 import DeviceInfo from 'react-native-device-info';
 import RNRestart from 'react-native-restart';
 import { log } from './services/logs'
@@ -109,6 +110,7 @@ const App = () => {
         <Stack.Screen name="AboutMe" component={AboutMe} />
         <Stack.Screen name="DeviceChooser" component={DeviceChooser} />
         <Stack.Screen name="FactorInfo" component={FactorInfo} />
+        <Stack.Screen name="Feedback" component={Feedback} />
       </Stack.Navigator>
     </NavigationContainer>
 

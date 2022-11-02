@@ -190,6 +190,10 @@ const storeData = async () => {
   }
 };
 
+const exitApp = () => {
+  log("SETTINGS", `Exited settings screen`);
+};
+
 const handleAppInBackground = currentState => {
   if (currentState === 'background') {
     exitApp();
@@ -305,6 +309,10 @@ const Settings = ({ navigation, route }) => {
       onDisconnectEvent = null;
     }
 
+    if (scanTimer) {
+      clearTimeout(scanTimer)
+    }
+
     log("SETTINGS", `Navigating home`)
     navigation.navigate('Home', {
       manager: BluetoothManager,
@@ -370,12 +378,16 @@ const Settings = ({ navigation, route }) => {
 
           DEVICE_SERVICE_UUID = route.params.serviceUUID;
           DEVICE_CHARACTERISTICS_UUID = route.params.characteristicsUUID;
+        } else {
+          setBluetoothImageId(1)
         }
 
-        if (mounted) setStartScan(route.params.startConnect);
+        if (mounted) { setStartScan(route.params.startConnect); }
       }
 
-      storeData();
+      if (mounted) {
+        storeData();
+      }
 
       getData('@factor')
         .then(value => {
@@ -449,6 +461,7 @@ const Settings = ({ navigation, route }) => {
           if (!mounted) {
             return
           }
+
           setBluetoothImageId(3);
           log("SETTINGS", `Failed to connect. device: ${typeof BluetoothDevice}`);
           dropIn();
@@ -475,10 +488,10 @@ const Settings = ({ navigation, route }) => {
   });
 
   useEffect(() => {
-    AppState.addEventListener('change', handleAppInBackground);
+    let appStateListener = AppState.addEventListener('change', handleAppInBackground);
 
     return () => {
-      AppState.removeEventListener("change", handleAppInBackground)
+      appStateListener.remove()
     }
   }, []);
 
@@ -501,14 +514,6 @@ const Settings = ({ navigation, route }) => {
   const scanForDevice = async manager => {
     log("SETTINGS", `Starting scan for devices`);
     setStatusText('Scanning for devices... (Found: 0)');
-    // let counter = 5
-
-    // let countDownInterval = setInterval(() => {
-    //   counter--;
-    //   setStatusText(
-    //     `Scanning for devices... (Found: ${scannedDevices.length}) [${counter}s]`,
-    //   );
-    // }, 1000);
 
     scanTimer = setTimeout(() => {
       if (scannedDevices.length == 0) {
@@ -679,9 +684,7 @@ const Settings = ({ navigation, route }) => {
     );
   };
 
-  const exitApp = () => {
-    log("SETTINGS", `Exited settings screen`);
-  };
+
 
   return (
     <SafeAreaView style={{ flex: 1 }}>

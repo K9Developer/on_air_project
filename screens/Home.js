@@ -304,6 +304,11 @@ const storeData = async () => {
   }
 };
 
+const exitApp = () => {
+  log("HOME", `Exited home screen`);
+};
+
+
 const handleAppInBackground = (currentState) => {
   if (currentState === 'background') {
     exitApp();
@@ -633,9 +638,6 @@ const Home = ({ navigation, route }) => {
     }
   };
 
-  const exitApp = () => {
-    log("HOME", `Exited home screen`);
-  };
 
   navigation.addListener('blur', e => {
     exitApp();
@@ -644,7 +646,7 @@ const Home = ({ navigation, route }) => {
   useEffect(() => {
 
     log("HOME", `Initializing permission check loop`);
-    AppState.addEventListener('change', handleAppInBackground);
+    let appStateListener = AppState.addEventListener('change', handleAppInBackground);
 
 
     if (!permTimer) {
@@ -655,7 +657,7 @@ const Home = ({ navigation, route }) => {
 
     return () => {
       clearInterval(permTimer)
-      AppState.removeEventListener("change", handleAppInBackground)
+      appStateListener.remove()
     }
   }, []);
 
