@@ -1,21 +1,25 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
     Text,
     SafeAreaView,
     View,
     TextInput,
     TouchableOpacity,
-    Platform
+    Platform,
+    Image
 } from 'react-native'
 import BouncyCheckbox from "react-native-bouncy-checkbox";
 import { Slider } from '@miblanchard/react-native-slider';
 import Toast, { SuccessToast, ErrorToast } from 'react-native-toast-message';
-import { Octokit, App } from "octokit";
+const { Octokit } = require("@octokit/core");
 import DeviceInfo from 'react-native-device-info';
+import { log } from '../services/logs'
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 
 const emojiList = ["😖", "😕", "😐", "🙂", "🤩"]
 const starRating = ["⭐", "⭐⭐", "⭐⭐⭐", "⭐⭐⭐⭐", "⭐⭐⭐⭐⭐"]
-const token = "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";
+const token = "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";
 const octokit = new Octokit({ auth: token });
 
 const toastConfig = {
@@ -43,14 +47,19 @@ const toastConfig = {
     ),
 };
 
-const Feedback = () => {
+const Feedback = ({ navigation }) => {
     const [bug, setBug] = useState(false)
     const [appCrash, setAppCrash] = useState(false)
     const [rate, setRate] = useState(3)
     const [bugReport, setBugReport] = useState("")
     const [thoughtsOnApp, setThoughtsOnApp] = useState("")
 
-    const submit = () => {
+    useEffect(() => {
+        log("HOME", `Loading feedback screen.`);
+    }, [])
+
+
+    const submit = async () => {
         if (bug && !bugReport) {
             Toast.show({
                 type: 'error',
@@ -62,8 +71,14 @@ const Feedback = () => {
         let brand = DeviceInfo.getBrand();
         let deviceId = DeviceInfo.getDeviceId();
         let model = DeviceInfo.getModel();
+        let labels = ["feedback"]
 
-        mdFeedback = `
+        if (bug) labels.push("bug")
+        if (appCrash) labels.push("app crash")
+
+        console.log("\n\n\n\n\n\n" + await AsyncStorage.getItem("@prevSessionLogs") + "\n\n" + JSON.parse(await AsyncStorage.getItem("@sessionLogs")).join('\n'));
+
+        let mdFeedback = `
 ### Device Data
 ------
     * Operating System: \`${os}\`
@@ -71,15 +86,20 @@ const Feedback = () => {
     * Device Brand: \`${brand}\`
     * Device ID: \`${deviceId}\`
     * Device Model: \`${model}\`
+    * Is Tablet: \`${DeviceInfo.isTablet()}\`
+    * Device Name: \`${await DeviceInfo.getDeviceName()}\`
+    * API Level: \`${await DeviceInfo.getApiLevel()}\`
+    * Release Version: \`${Platform.constants['Release']}\`
     
-- [${bug ? 'x' : ''}] Bug
-- [${appCrash ? 'x' : ''}] App Crash
+- [${bug ? 'x' : ' '}] Bug
+- [${appCrash ? 'x' : ' '}] App Crash
 
 ${bug ?
                 `
 ### Bug Report
 ------
-${bugReport}            
+\`
+${bugReport}  \`          
             ` : ''
             }
 
@@ -91,6 +111,16 @@ ${thoughtsOnApp || rate ?
     * Thoughts On App: ${thoughtsOnApp ? thoughtsOnApp : 'N/A'}            
     ` : ''
             }
+
+### Logs
+------
+<details>
+<summary>logs</summary>
+
+\`\`\`
+${JSON.parse(appCrash ? await AsyncStorage.getItem("@prevSessionLogs") : await AsyncStorage.getItem("@sessionLogs")).join('\n')}
+\`\`\`
+</details>
 `
         octokit.request('POST /repos/KingOfTNT10/on_air_project/issues', {
             owner: 'KingOfTNT10',
@@ -100,9 +130,7 @@ ${thoughtsOnApp || rate ?
             assignees: [
                 'KingOfTNT10'
             ],
-            labels: [
-                'bug'
-            ]
+            labels: labels
         }).then(() => {
             Toast.show({
                 type: 'success',
@@ -129,16 +157,39 @@ ${thoughtsOnApp || rate ?
                 <View style={{
                     backgroundColor: '#2d86cf',
                     width: '100%',
-                    height: '100%'
+                    height: '100%',
+                    flexDirection: 'row',
+                    justifyContent: 'center',
+                    alignItems: 'center'
                 }}>
+                    <TouchableOpacity
+                        onPress={() => { log("ABOUT-ME", `Exited Feedback screen.`); navigation.goBack() }}
+                        style={{
+                            width: "5%",
+                            aspectRatio: 1,
+                            left: "20%",
+                            position: 'absolute'
+                        }}>
+                        <Image
+                            key={new Date()}
+                            source={require('../assets/icons/back.png')}
+                            resizeMode="contain"
+                            style={{
+                                width: '100%',
+                                height: '100%',
+                                aspectRatio: 1,
+
+                            }}
+                        /></TouchableOpacity>
                     <Text style={{
                         fontSize: 30,
-                        width: '100%',
+
                         height: '100%',
                         color: 'white',
                         textAlignVertical: 'center',
                         textAlign: 'center'
                     }}>Feedback</Text>
+
                 </View>
             </View>
             <Toast
@@ -156,7 +207,6 @@ ${thoughtsOnApp || rate ?
                 <View style={{
                     flexDirection: 'row',
 
-                    paddingBottom: 10,
                     borderBottomWidth: 1,
                     marginBottom: '5%',
                     paddingBottom: '5%',

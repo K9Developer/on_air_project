@@ -395,6 +395,7 @@ const Home = ({ navigation, route }) => {
 
   useEffect(() => {
     let mounted = true
+
     log("HOME", `Loading home screen.`);
 
     let navListener = navigation.addListener('focus', () => {
@@ -547,7 +548,9 @@ const Home = ({ navigation, route }) => {
             }
 
             log("HOME", `Permission requirement (${PERMISSIONS.ANDROID.BLUETOOTH_CONNECT}) not met.`);
-            navigation.dispatch(StackActions.replace('Permissions'));
+            //return navigation.dispatch(StackActions.replace('Permissions'));
+            return navigation.navigate("Permissions")
+
 
           }
         })
@@ -566,7 +569,9 @@ const Home = ({ navigation, route }) => {
             }
 
             log("HOME", `Permission requirement (${PERMISSIONS.ANDROID.BLUETOOTH_SCAN}) not met.`);
-            navigation.dispatch(StackActions.replace('Permissions'));
+            //return navigation.dispatch(StackActions.replace('Permissions'));
+            return navigation.navigate("Permissions")
+
           }
         })
         .catch(error => log("HOME", `ERROR when tried checking permission ${PERMISSIONS.ANDROID.BLUETOOTH_SCAN}. error: ${error}`));
@@ -580,7 +585,9 @@ const Home = ({ navigation, route }) => {
             }
 
             log("HOME", `Permission requirement (${PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION}) not met.`);
-            navigation.dispatch(StackActions.replace('Permissions'));
+            //return navigation.dispatch(StackActions.replace('Permissions'));
+            return navigation.navigate("Permissions")
+
           }
         })
         .catch(error => log("HOME", `ERROR when tried checking permission ${PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION}. error: ${error}`));
@@ -594,7 +601,9 @@ const Home = ({ navigation, route }) => {
             }
 
             log("HOME", `Permission requirement (BLUETOOTH_STATUS) not met.`);
-            navigation.dispatch(StackActions.replace('Permissions'));
+            //return navigation.dispatch(StackActions.replace('Permissions'));
+            return navigation.navigate("Permissions")
+
           }
         })
         .catch(error => log("HOME", `ERROR when tried checking permission BLUETOOTH_STATUS. error: ${error}`));

@@ -7,11 +7,7 @@ const updateLogs = async (log) => {
         prevLogs = []
     }
     prevLogs.push(log)
-    AsyncStorage.setItem("@sessionLogs", JSON.stringify(prevLogs))
-}
-
-export const clearLogs = () => {
-    AsyncStorage.setItem("@sessionLogs", [])
+    await AsyncStorage.setItem("@sessionLogs", JSON.stringify(prevLogs))
 }
 
 export const log = (loc = "N/A", ...args) => {

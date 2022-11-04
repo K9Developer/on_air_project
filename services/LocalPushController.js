@@ -1,11 +1,23 @@
 import PushNotification from 'react-native-push-notification';
+import { log } from './logs'
 
+PushNotification.configure({
+    onRegister: function (token) {
+        log("NOTIFICATION_CONTROLLER", "Token: " + token)
+    },
 
+    onNotification: function (notification) {
+        log("NOTIFICATION_CONTROLLER", "Notification Click Registered")
+    },
 
+    requestPermissions: false,
+    popInitialNotification: true,
+
+});
 export const LocalNotification = async (wantedPSI, debug = false) => {
 
 
-    await PushNotification.channelExists("done-notif", (exists) => {
+    PushNotification.channelExists("done-notif", (exists) => {
         if (!exists) {
             PushNotification.createChannel({
                 channelId: "done-notif",
@@ -32,7 +44,7 @@ export const LocalNotification = async (wantedPSI, debug = false) => {
 export const DisconnectedNotification = async () => {
 
 
-    await PushNotification.channelExists("disconnect-notif", (exists) => {
+    PushNotification.channelExists("disconnect-notif", (exists) => {
         if (!exists) {
             PushNotification.createChannel({
                 channelId: "disconnect-notif",

@@ -5,13 +5,10 @@ import {
   ScrollView,
   SafeAreaView,
   Dimensions,
-  Platform,
 } from 'react-native';
 import { CircleButton } from '../components';
 import { Linking } from 'react-native';
-import DeviceInfo from 'react-native-device-info';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import email from 'react-native-email';
 import { log } from '../services/logs'
 
 const winWidth = Dimensions.get('window').width;

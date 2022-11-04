@@ -30,6 +30,8 @@ LogBox.ignoreLogs([
 
 const winWidth = Dimensions.get('window').width;
 let permissionTimer = null;
+let mounted = true;
+
 
 const isPortrait = () => {
   const dim = Dimensions.get('screen');
@@ -42,7 +44,7 @@ const Permissions = ({ navigation, route }) => {
     useState(null);
   const [bluetoothScanPermission, setBluetoothScanPermission] = useState(null);
   const [bluetoothStatus, setBluetoothStatus] = useState(null);
-  const [modalVisible, setModalVisible] = useState(true);
+  const [modalVisible, setModalVisible] = useState(false);
   const [modalError, setModalError] = useState(false);
   const [modalText, setModalText] = useState('N/A');
   const [isPortraitOrientation, setIsPortraitOrientation] = useState(
@@ -56,10 +58,10 @@ const Permissions = ({ navigation, route }) => {
   const checkPermission = async (perm, setter) => {
     try {
       let data = await check(perm);
-      if (data != null) {
+      if (data != null && mounted) {
         setter(data);
       }
-      log('PERMISSIONS', `The permission ${perm} is ${data}`);
+
       return;
     } catch (error) {
       log(
@@ -72,8 +74,9 @@ const Permissions = ({ navigation, route }) => {
   const checkBluetooth = async setter => {
     BluetoothStateManager.getState()
       .then(data => {
-        log('PERMISSIONS', `Bluetooth status: ${data}`);
-        setter(data);
+        if (mounted) {
+          setter(data);
+        }
       })
       .catch(error => {
         log(
@@ -112,8 +115,7 @@ const Permissions = ({ navigation, route }) => {
   };
 
   useEffect(() => {
-    let mounted = true;
-
+    mounted = true
     permissionTimer = setInterval(async () => {
       if (Platform.OS === 'android' && Platform.Version <= 19 && mounted) {
         log('PERMISSIONS', `Android version too low (${Platform.Version})`);
@@ -205,7 +207,7 @@ const Permissions = ({ navigation, route }) => {
         <Modal
           animationType="slide"
           transparent={true}
-          visible={modalText == null ? false : modalVisible}
+          visible={modalVisible}
           onRequestClose={() => {
             setModalVisible(!modalVisible);
           }}>
@@ -371,6 +373,8 @@ const Permissions = ({ navigation, route }) => {
             <TouchableOpacity
               onPress={() => {
                 log("PERMISSIONS", `Pressed grant location permission button`);
+                setTimeout(() => {
+                }, 3000)
                 if (locationPermission != 'granted') {
                   if (locationPermission != 'blocked') {
                     if (Platform.OS == 'android') {
