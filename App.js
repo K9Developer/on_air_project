@@ -137,7 +137,6 @@ const App = () => {
 
       await logDeviceInfo()
       await storeData();
-      sessionLogs = await AsyncStorage.getItem("@sessionLogs")
     }
 
     startProcess()

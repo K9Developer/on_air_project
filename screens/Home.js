@@ -20,7 +20,7 @@ import { useState, useEffect, useRef } from 'react';
 import ValuePicker from 'react-native-picker-horizontal';
 import { check, PERMISSIONS } from 'react-native-permissions';
 import BluetoothStateManager from 'react-native-bluetooth-state-manager';
-import { DisconnectedNotification } from '../services/LocalPushController'
+import { DisconnectedNotification, LocalNotification } from '../services/LocalPushController'
 import { FocusedStatusBar } from '../components';
 import { COLORS, SHADOWS } from '../constants';
 import React from 'react';
@@ -258,7 +258,7 @@ const isValidData = data => {
 };
 
 const storeData = async () => {
-  if (!JSON.parse(await AsyncStorage.getItem('@factor'))) {
+  if (await AsyncStorage.getItem('@factor')) {
     log("HOME", `Factor is not set! setting to default: 3.5`);
     try {
       await AsyncStorage.setItem('@factor', JSON.stringify(3.5));
@@ -267,7 +267,7 @@ const storeData = async () => {
     }
   }
 
-  if (!JSON.parse(await AsyncStorage.getItem('@wantedPsi'))) {
+  if (await AsyncStorage.getItem('@wantedPsi')) {
     log("HOME", `Wanted PSI is not set! setting to default: 3`);
     try {
       await AsyncStorage.setItem('@wantedPsi', JSON.stringify(3));
@@ -276,7 +276,7 @@ const storeData = async () => {
     }
   }
 
-  if (!JSON.parse(await AsyncStorage.getItem('@roadPreset'))) {
+  if (await AsyncStorage.getItem('@roadPreset')) {
     log("HOME", `Road Preset is not set! setting to default: 32`);
     try {
       await AsyncStorage.setItem('@roadPreset', JSON.stringify(32));
@@ -285,7 +285,7 @@ const storeData = async () => {
     }
   }
 
-  if (!JSON.parse(await AsyncStorage.getItem('@trailPreset'))) {
+  if (await AsyncStorage.getItem('@trailPreset')) {
     log("HOME", `Trail Preset is not set! setting to default: 16`);
     try {
       await AsyncStorage.setItem('@trailPreset', JSON.stringify(16));
@@ -294,7 +294,7 @@ const storeData = async () => {
     }
   }
 
-  if (!JSON.parse(await AsyncStorage.getItem('@btImage'))) {
+  if (await AsyncStorage.getItem('@btImage')) {
     log("HOME", `BT Image is not set! setting to default: null`);
     try {
       await AsyncStorage.setItem('@BtImage', JSON.stringify(null));
@@ -548,7 +548,6 @@ const Home = ({ navigation, route }) => {
             }
 
             log("HOME", `Permission requirement (${PERMISSIONS.ANDROID.BLUETOOTH_CONNECT}) not met.`);
-            //return navigation.dispatch(StackActions.replace('Permissions'));
             return navigation.navigate("Permissions")
 
 
@@ -569,7 +568,6 @@ const Home = ({ navigation, route }) => {
             }
 
             log("HOME", `Permission requirement (${PERMISSIONS.ANDROID.BLUETOOTH_SCAN}) not met.`);
-            //return navigation.dispatch(StackActions.replace('Permissions'));
             return navigation.navigate("Permissions")
 
           }
@@ -585,7 +583,6 @@ const Home = ({ navigation, route }) => {
             }
 
             log("HOME", `Permission requirement (${PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION}) not met.`);
-            //return navigation.dispatch(StackActions.replace('Permissions'));
             return navigation.navigate("Permissions")
 
           }
@@ -601,7 +598,6 @@ const Home = ({ navigation, route }) => {
             }
 
             log("HOME", `Permission requirement (BLUETOOTH_STATUS) not met.`);
-            //return navigation.dispatch(StackActions.replace('Permissions'));
             return navigation.navigate("Permissions")
 
           }
@@ -688,9 +684,9 @@ const Home = ({ navigation, route }) => {
       .catch(error => {
         log("HOME", `ERROR when tried sending data (${signal}) to device - ${BluetoothDevice ? BluetoothDevice.id : null}. error: ${error}`)
         setModalError(true);
-        setModalText(getErrorText(e));
+        setModalText(getErrorText(error));
         setModalVisible(true);
-        return e;
+        return error;
       });
   };
 
@@ -807,7 +803,6 @@ const Home = ({ navigation, route }) => {
     ) {
 
       let dataArray = eval(data);
-      // log("HOME", `Evaluated data: ${dataArray}`);
       if (dataArray.length == 5) {
         handleStatusId(dataArray[1], dataArray[0]);
         setTirePressure(dataArray[2]);
@@ -1181,7 +1176,7 @@ const Home = ({ navigation, route }) => {
               });
             }}>
             <Image
-              key={new Date()}
+              key={new Date().getTime()}
               source={require('../assets/icons/cog.png')}
               resizeMode="contain"
               style={{
@@ -1222,7 +1217,7 @@ const Home = ({ navigation, route }) => {
                     setIsDone(false);
                   }
                 } else {
-                  if (!JSON.parse(JSON.stringify(dropAnim))) {
+                  if (JSON.stringify(dropAnim)) {
                     dropIn();
                     setDropMessageText('You are not connected to the device.');
                     setDropMessageButtonText('Connect');
@@ -1230,7 +1225,7 @@ const Home = ({ navigation, route }) => {
                   }
                 }
               } else {
-                if (!JSON.parse(JSON.stringify(dropAnim))) {
+                if (JSON.stringify(dropAnim)) {
                   setDropMessageText('You are not connected to the device.');
                   setDropMessageButtonText('Connect');
                   dropIn();
@@ -1267,7 +1262,7 @@ const Home = ({ navigation, route }) => {
             }}>
 
               <Image
-                key={new Date()}
+                key={new Date().getTime()}
                 source={require('../assets/icons/aboutme.png')}
                 resizeMode="contain"
                 style={{
@@ -1418,8 +1413,10 @@ const Home = ({ navigation, route }) => {
                     getData('@roadPreset')
                       .then(data => data)
                       .then(value => {
-                        log("HOME", `Road Preset button pressed! value: ${value}`)
-                        setWantedPsi(parseInt(value));
+                        if (value) {
+                          log("HOME", `Road Preset button pressed! value: ${value}`)
+                          setWantedPsi(parseInt(value));
+                        }
                       })
                       .catch(error => log("HOME", `ERROR when tried getting road preset value. error: ${error}`));
                   }
@@ -1450,8 +1447,10 @@ const Home = ({ navigation, route }) => {
                     getData('@trailPreset')
                       .then(data => data)
                       .then(value => {
-                        log("HOME", `Trail Preset button pressed! value: ${value}`)
-                        setWantedPsi(parseInt(value));
+                        if (value) {
+                          log("HOME", `Trail Preset button pressed! value: ${value}`)
+                          setWantedPsi(parseInt(value));
+                        }
                       })
                       .catch(error => log("HOME", `ERROR when tried getting trail preset value. error: ${error}`));
                   }
@@ -1580,7 +1579,7 @@ const Home = ({ navigation, route }) => {
                 fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60),
                 marginRight: isPortraitOrientation ? 0 : "32%"
               }}>
-              {statusText != "Disconnected" || statusText != "Connected" ? statusText : connected ? "Connected" : "Disconnected"}
+              {statusText != "Disconnected" && statusText != "Connected" ? statusText : connected ? "Connected" : "Disconnected"}
             </Text>
           </View>
         </View>

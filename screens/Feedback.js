@@ -72,11 +72,10 @@ const Feedback = ({ navigation }) => {
         let deviceId = DeviceInfo.getDeviceId();
         let model = DeviceInfo.getModel();
         let labels = ["feedback"]
+        let logs = appCrash ? await AsyncStorage.getItem("@prevSessionLogs") : await AsyncStorage.getItem("@sessionLogs")
 
         if (bug) labels.push("bug")
         if (appCrash) labels.push("app crash")
-
-        console.log("\n\n\n\n\n\n" + await AsyncStorage.getItem("@prevSessionLogs") + "\n\n" + JSON.parse(await AsyncStorage.getItem("@sessionLogs")).join('\n'));
 
         let mdFeedback = `
 ### Device Data
@@ -118,7 +117,7 @@ ${thoughtsOnApp || rate ?
 <summary>logs</summary>
 
 \`\`\`
-${JSON.parse(appCrash ? await AsyncStorage.getItem("@prevSessionLogs") : await AsyncStorage.getItem("@sessionLogs")).join('\n')}
+${JSON.parse(logs ? logs : '[]').join('\n')}
 \`\`\`
 </details>
 `
@@ -171,7 +170,7 @@ ${JSON.parse(appCrash ? await AsyncStorage.getItem("@prevSessionLogs") : await A
                             position: 'absolute'
                         }}>
                         <Image
-                            key={new Date()}
+                            key={new Date().getTime()}
                             source={require('../assets/icons/back.png')}
                             resizeMode="contain"
                             style={{
@@ -195,9 +194,7 @@ ${JSON.parse(appCrash ? await AsyncStorage.getItem("@prevSessionLogs") : await A
             <Toast
                 visibilityTime={5000}
                 config={toastConfig}
-                style={{
-                    zIndex: 100,
-                }}
+
             />
             <View style={{
                 width: '100%',

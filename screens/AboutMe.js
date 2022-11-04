@@ -5,9 +5,9 @@ import {
   ScrollView,
   SafeAreaView,
   Dimensions,
+  Linking
 } from 'react-native';
 import { CircleButton } from '../components';
-import { Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { log } from '../services/logs'
 
@@ -54,7 +54,6 @@ const AboutMe = ({ navigation }) => {
           style={{
             width: '100%',
             height: '100%',
-            justifyContents: 'center',
             alignItems: 'center',
           }}>
           <View
@@ -126,17 +125,7 @@ const AboutMe = ({ navigation }) => {
                 imgUrl={require('../assets/icons/email.png')}
                 handlePressDown={() => { }}
                 handlePressUp={async () => {
-                  // let os = Platform.OS;
-                  // let osVersion = Platform.Version;
-                  // let brand = DeviceInfo.getBrand();
-                  // let deviceId = DeviceInfo.getDeviceId();
-                  // let model = DeviceInfo.getModel();
 
-                  // email('ilai.keinan@gmail.com', {
-                  //   subject: '--+=Feedback about OnAir App=+--',
-                  //   body: `\n─────────────────────────────\n\nMy experience with the app [0-10]:\n\n─────────────────────────────\n\n\n\n─────────────────────────────\n\nHow many bugs did you find [0 - ∞]:\n\n─────────────────────────────\n\n\n\n─────────────────────────────\n\nOther notes (the bugs/feedback):\n\n─────────────────────────────\n\n\n\n─────────────────────────────\n\nSystem info (for developer):\n\n    OS: ${os}\n    OS Version: ${osVersion}\n    Device Brand: ${brand}\n    Device ID: ${deviceId}\n    Device Model: ${model}\n\n─────────────────────────────\n\n\n\n\n\n\nLOGS:\n${await getLogs()}`,
-                  //   checkCanOpen: false,
-                  // }).catch(console.error);
                   navigation.navigate("Feedback")
                 }}
                 size={[2 * (winWidth / 10), 2 * (winWidth / 10)]}
