@@ -44,6 +44,7 @@ const AboutMe = ({ navigation }) => {
               log("ABOUT-ME", `Exited about me screen.`)
             }}
             size={[winWidth / 10, winWidth / 10]}
+            onLongPress={() => { }}
             {...{
               marginLeft: winWidth / 15,
               marginTop: winWidth / 15,
@@ -115,6 +116,7 @@ const AboutMe = ({ navigation }) => {
                   Linking.openURL('https://github.com/KingOfTNT10');
                 }}
                 size={[2 * (winWidth / 10), 2 * (winWidth / 10)]}
+                onLongPress={() => { }}
                 {...{
                   marginRight: '25%',
                   marginTop: 100,
@@ -129,6 +131,7 @@ const AboutMe = ({ navigation }) => {
                   navigation.navigate("Feedback")
                 }}
                 size={[2 * (winWidth / 10), 2 * (winWidth / 10)]}
+                onLongPress={() => { }}
                 {...{
                   marginLeft: '25%',
                   marginTop: 100,
