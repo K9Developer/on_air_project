@@ -1,4 +1,5 @@
 import { BleManager } from 'react-native-ble-plx';
+import { log } from './logs'
 
 export const recreateManager = (manager) => {
     if (manager === null) {

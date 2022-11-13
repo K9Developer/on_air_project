@@ -30,7 +30,7 @@ const theme = {
 
 const Stack = createStackNavigator();
 const storeData = async () => {
-  if (await AsyncStorage.getItem('@factor')) {
+  if (!await AsyncStorage.getItem('@factor')) {
     log("APP", `Factor is not set! setting to default: 3.5`);
     try {
       await AsyncStorage.setItem('@factor', JSON.stringify(3.5));
@@ -39,7 +39,7 @@ const storeData = async () => {
     }
   }
 
-  if (await AsyncStorage.getItem('@wantedPsi')) {
+  if (!await AsyncStorage.getItem('@wantedPsi')) {
     log("APP", `Wanted PSI is not set! setting to default: 3`);
     try {
       await AsyncStorage.setItem('@wantedPsi', JSON.stringify(3));
@@ -48,7 +48,7 @@ const storeData = async () => {
     }
   }
 
-  if (await AsyncStorage.getItem('@roadPreset')) {
+  if (!await AsyncStorage.getItem('@roadPreset')) {
     log("APP", `Road Preset is not set! setting to default: 32`);
     try {
       await AsyncStorage.setItem('@roadPreset', JSON.stringify(32));
@@ -57,7 +57,7 @@ const storeData = async () => {
     }
   }
 
-  if (await AsyncStorage.getItem('@trailPreset')) {
+  if (!await AsyncStorage.getItem('@trailPreset')) {
     log("APP", `Trail Preset is not set! setting to default: 16`);
     try {
       await AsyncStorage.setItem('@trailPreset', JSON.stringify(16));
@@ -66,7 +66,7 @@ const storeData = async () => {
     }
   }
 
-  if (await AsyncStorage.getItem('@btImage')) {
+  if (!await AsyncStorage.getItem('@btImage')) {
     log("APP", `BT Image is not set! setting to default: null`);
     try {
       await AsyncStorage.setItem('@BtImage', JSON.stringify(null));
@@ -124,6 +124,12 @@ const App = () => {
           } else {
             AsyncStorage.setItem("@appRunCount", "1").then(() => log("APP", `Updated app run count to: 1`)).catch((e) => log("APP", `ERROR when tried updating app run count. (${e})`))
           }
+        }
+      })
+
+      AsyncStorage.getItem("@personalDeviceId").then((value) => {
+        log("APP", "Personal device id: " + value)
+        if (mounted) {
         }
       })
 

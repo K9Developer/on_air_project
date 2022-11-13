@@ -6,7 +6,8 @@ import {
     TextInput,
     TouchableOpacity,
     Platform,
-    Image
+    Image,
+    ActivityIndicator
 } from 'react-native'
 import BouncyCheckbox from "react-native-bouncy-checkbox";
 import { Slider } from '@miblanchard/react-native-slider';
@@ -53,6 +54,8 @@ const Feedback = ({ navigation }) => {
     const [rate, setRate] = useState(3)
     const [bugReport, setBugReport] = useState("")
     const [thoughtsOnApp, setThoughtsOnApp] = useState("")
+    const [sending, setSending] = useState(false)
+
 
     useEffect(() => {
         log("HOME", `Loading feedback screen.`);
@@ -73,7 +76,7 @@ const Feedback = ({ navigation }) => {
         let model = DeviceInfo.getModel();
         let labels = ["feedback"]
         let logs = appCrash ? await AsyncStorage.getItem("@prevSessionLogs") : await AsyncStorage.getItem("@sessionLogs")
-
+        setSending(true)
         if (bug) labels.push("bug")
         if (appCrash) labels.push("app crash")
 
@@ -131,15 +134,19 @@ ${JSON.parse(logs ? logs : '[]').join('\n')}
             ],
             labels: labels
         }).then(() => {
+            log("FEEDBACK", "Sent feedback")
             Toast.show({
                 type: 'success',
                 text1: "Successfully Sent Feedback"
             })
-        }).catch(() => {
+            setSending(false)
+        }).catch((e) => {
+            log("FEEDBACK", `ERROR when tried sending feedback. (${e})`)
             Toast.show({
                 type: 'error',
                 text1: "Couldn't Send Feedback"
             })
+            setSending(false)
         })
 
     }
@@ -291,23 +298,36 @@ ${JSON.parse(logs ? logs : '[]').join('\n')}
                     alignItems: 'center',
                     alignContent: 'center'
                 }}>
-                    <TouchableOpacity
-                        onPress={submit}
-                        style={{
-                            backgroundColor: '#2d86cf',
-                            width: '50%',
-                            height: '100%',
-                            borderRadius: 20
-                        }}>
-                        <Text style={{
-                            color: 'white',
-                            width: '100%',
-                            height: '100%',
-                            textAlign: 'center',
-                            textAlignVertical: 'center',
-                            fontSize: 30
-                        }}>Submit</Text>
-                    </TouchableOpacity>
+                    {
+                        sending ?
+                            <ActivityIndicator
+                                size="large"
+                                color="#fff"
+                                style={{
+                                    width: 30,
+                                    height: 30,
+                                    marginRight: 20,
+                                }}
+                            />
+                            :
+                            <TouchableOpacity
+                                onPress={submit}
+                                style={{
+                                    backgroundColor: '#2d86cf',
+                                    width: '50%',
+                                    height: '100%',
+                                    borderRadius: 20
+                                }}>
+                                <Text style={{
+                                    color: 'white',
+                                    width: '100%',
+                                    height: '100%',
+                                    textAlign: 'center',
+                                    textAlignVertical: 'center',
+                                    fontSize: 30
+                                }}>Submit</Text>
+                            </TouchableOpacity>
+                    }
                 </View>
 
             </View>

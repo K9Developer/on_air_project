@@ -110,6 +110,7 @@ const downPressPlus = (currentCounter, setCounter) => {
       if (timer === null) {
         timer = setInterval(() => {
           setCounter(counter => counter + (counter < MAX_PSI ? 1 : 0));
+          Vibration.vibrate([0, 5]);
         }, 75);
       }
     }, 700);
@@ -123,6 +124,7 @@ const upPressPlus = (currentCounter, setCounter) => {
     }
     clearInterval(timer);
     clearTimeout(waitTimer);
+    Vibration.vibrate([0, 5]);
     timer = null;
     waitTimer = null;
     if (currentCounter < MAX_PSI) {
@@ -132,12 +134,14 @@ const upPressPlus = (currentCounter, setCounter) => {
 };
 
 const downPressMinus = (currentCounter, setCounter) => {
+
   if (currentCounter > MIN_PSI) {
     waitTimer = setTimeout(() => {
       log("HOME", 'Long press activated, starting minus loop');
       if (timer === null) {
         timer = setInterval(() => {
           setCounter(counter => counter - (counter > MIN_PSI ? 1 : 0));
+          Vibration.vibrate([0, 5]);
         }, 75);
       }
     }, 700);
@@ -145,12 +149,14 @@ const downPressMinus = (currentCounter, setCounter) => {
 };
 
 const upPressMinus = (currentCounter, setCounter) => {
+
   if (currentCounter >= MIN_PSI) {
     if (timer) {
       log("HOME", `Set PSI to ${currentCounter - 1}. operation: -`);
     }
     clearInterval(timer);
     clearTimeout(waitTimer);
+    Vibration.vibrate([0, 5]);
     timer = null;
     if (currentCounter > MIN_PSI) {
       setCounter(counter => counter - 1);
@@ -258,7 +264,7 @@ const isValidData = data => {
 };
 
 const storeData = async () => {
-  if (await AsyncStorage.getItem('@factor')) {
+  if (!await AsyncStorage.getItem('@factor')) {
     log("HOME", `Factor is not set! setting to default: 3.5`);
     try {
       await AsyncStorage.setItem('@factor', JSON.stringify(3.5));
@@ -267,7 +273,7 @@ const storeData = async () => {
     }
   }
 
-  if (await AsyncStorage.getItem('@wantedPsi')) {
+  if (!await AsyncStorage.getItem('@wantedPsi')) {
     log("HOME", `Wanted PSI is not set! setting to default: 3`);
     try {
       await AsyncStorage.setItem('@wantedPsi', JSON.stringify(3));
@@ -276,7 +282,7 @@ const storeData = async () => {
     }
   }
 
-  if (await AsyncStorage.getItem('@roadPreset')) {
+  if (!await AsyncStorage.getItem('@roadPreset')) {
     log("HOME", `Road Preset is not set! setting to default: 32`);
     try {
       await AsyncStorage.setItem('@roadPreset', JSON.stringify(32));
@@ -285,7 +291,7 @@ const storeData = async () => {
     }
   }
 
-  if (await AsyncStorage.getItem('@trailPreset')) {
+  if (!await AsyncStorage.getItem('@trailPreset')) {
     log("HOME", `Trail Preset is not set! setting to default: 16`);
     try {
       await AsyncStorage.setItem('@trailPreset', JSON.stringify(16));
@@ -294,7 +300,7 @@ const storeData = async () => {
     }
   }
 
-  if (await AsyncStorage.getItem('@btImage')) {
+  if (!await AsyncStorage.getItem('@btImage')) {
     log("HOME", `BT Image is not set! setting to default: null`);
     try {
       await AsyncStorage.setItem('@BtImage', JSON.stringify(null));
@@ -324,6 +330,7 @@ const Home = ({ navigation, route }) => {
   const [modalText, setModalText] = useState('N/A');
   const [connected, setConnected] = useState(false);
   const [statusText, setStatusText] = useState('Disconnected');
+  const [prevStatusText, setPrevStatusText] = useState('Disconnected');
   const [disconnectMonitor, setDisconnectMonitor] = useState(null);
   const [readMonitor, setReadMonitor] = useState(null);
   const [tirePressure, setTirePressure] = useState(0);
@@ -337,6 +344,13 @@ const Home = ({ navigation, route }) => {
   const [psiIndex, setPsiIndex] = useState(0);
   const [isPortraitOrientation, setIsPortraitOrientation] = useState(isPortrait());
 
+
+  useEffect(() => {
+    if (prevStatusText != statusText && statusText) {
+      Vibration.vibrate([0, 75, 75, 75,]);
+      setPrevStatusText(statusText)
+    }
+  }, [statusText])
 
   const dropAnim = useRef(new Animated.Value(0)).current;
 
@@ -785,18 +799,19 @@ const Home = ({ navigation, route }) => {
     }
 
     data = Buffer.from(data.value, 'base64').toString();
-    // log("HOME", `Got raw data from device - ${data}`)
+    log("HOME", `Got raw data from device - ${data}`)
 
     if (data != 'SUCCESS CONNECT') {
       data = data.substring(data.indexOf(startChar) + 1, data.indexOf("]") + 1);
-      // log("HOME", `Filtered data - ${data}`)
+      log("HOME", `Filtered data - ${data}`)
     }
 
-    // log("HOME", `Validating data sent:\n\t1. Duplicate message: ${allMessagesSentByDevice.includes(data)}\n\t2. Message empty: ${data != '~^' && data != '~DATA WAS READ^' && data[0] == '['}\n\t3. Valid Data: ${isValidData(data)}`)
+    log("HOME", `Validating data sent:\n\t1. Duplicate message: ${allMessagesSentByDevice.includes(data)}\n\t2. Message empty: ${data == '~^' && data == '' && data == '~DATA WAS READ^' && data[0] != '['}\n\t3. Valid Data: ${isValidData(data)}`)
 
     if (
       !allMessagesSentByDevice.includes(data) &&
       data != '~^' &&
+      data != '' &&
       data != '~DATA WAS READ^' &&
       data[0] == '[' &&
       isValidData(data)
@@ -1253,7 +1268,7 @@ const Home = ({ navigation, route }) => {
             }}
             onPressOut={() => {
               log("HOME", `Going to about me via the about me button`)
-              removeSubscriptions();
+              // removeSubscriptions();
               navigation.navigate('AboutMe');
             }}>
             <View style={{
@@ -1410,6 +1425,7 @@ const Home = ({ navigation, route }) => {
                 disabled={showStatusLoading}
                 onPressOut={
                   () => {
+                    Vibration.vibrate([0, 5]);
                     getData('@roadPreset')
                       .then(data => data)
                       .then(value => {
@@ -1444,6 +1460,7 @@ const Home = ({ navigation, route }) => {
                 disabled={showStatusLoading}
                 onPressOut={
                   () => {
+                    Vibration.vibrate([0, 5]);
                     getData('@trailPreset')
                       .then(data => data)
                       .then(value => {

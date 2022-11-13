@@ -22,6 +22,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BleManager } from 'react-native-ble-plx';
 import ValuePicker from 'react-native-picker-horizontal';
 import { log } from '../services/logs'
+import { connectToDevice } from '../services/bluetoothUtils'
 
 const Buffer = require('buffer').Buffer;
 
@@ -217,6 +218,7 @@ const Settings = ({ navigation, route }) => {
   const [isPortraitOrientation, setIsPortraitOrientation] = useState(isPortrait());
   const [voltage, setVoltage] = useState("0.0");
   const [bluetoothImageId, setBluetoothImageId] = useState(1);
+  const [longPress, setLongPress] = useState(false);
 
   Dimensions.addEventListener('change', () => {
     log("SETTINGS", `Changed rotation. Is portrait - ${isPortrait()}`);
@@ -235,7 +237,7 @@ const Settings = ({ navigation, route }) => {
       if (onDisconnectEvent) {
         log("HOME", `Removing disconnect listener.`);
         onDisconnectEvent.remove();
-        setDisconnectMonitor(null);
+        onDisconnectEvent = null
       }
 
       setStatusText('Disconnected');
@@ -253,8 +255,7 @@ const Settings = ({ navigation, route }) => {
       }
 
       removeSubscriptions();
-      setDropMessageText('You have disconnected from the device.');
-      setDropMessageButtonText('Reconnect');
+      setStatusText('You have disconnected from the device.');
       dropIn();
     }
   };
@@ -358,9 +359,12 @@ const Settings = ({ navigation, route }) => {
 
             if (isConnected) {
               setBluetoothImageId(2)
+              AsyncStorage.setItem("@personalDeviceId", BluetoothDevice.id)
+              log("SETTINGS", "Set personal device ID to: " + BluetoothDevice.id)
               log("SETTINGS", `Device - ${BluetoothDevice ? BluetoothDevice.id : null} connected. creating listeners`);
 
               if (!route.params.connectToDevice) {
+
                 onDisconnectEvent = BluetoothManager.onDeviceDisconnected(
                   BluetoothDevice.id,
                   onDeviceDisconnect,
@@ -557,25 +561,48 @@ const Settings = ({ navigation, route }) => {
         if (device && device != 'null') {
           if (device.name === 'BT05') {
 
-            let push = true;
+            AsyncStorage.getItem("@personalDeviceId").then(
+              d => {
+                log("SETTINGS", `Personal device ID found (${d})!`)
+                if (d) {
+                  if (d == device.id) {
+                    connectToDevice(device, BluetoothManager).then(
+                      bt => {
+                        if (bt) {
+                          BluetoothDevice = bt;
+                          setBluetoothImageId(2);
+                          clearTimeout(scanTimer)
+                          manager.stopDeviceScan()
+                          setStatusText("Connected to personal device")
+                        }
+                      }
+                    ).catch(e => {
+                      log("SETTINGS", `ERROR when tried connecting to the personal device. (${e})`)
+                    })
+                  }
+                } else {
+                  let push = true;
 
-            for (let bt of scannedDevices) {
-              if (
-                bt.id == device.id ||
-                (BluetoothDevice != null &&
-                  BluetoothDevice.hasOwnProperty('id') &&
-                  device.id == BluetoothDevice.id)
-              ) {
-                push = false;
+                  for (let bt of scannedDevices) {
+                    if (
+                      bt.id == device.id ||
+                      (BluetoothDevice != null &&
+                        BluetoothDevice.hasOwnProperty('id') &&
+                        device.id == BluetoothDevice.id)
+                    ) {
+                      push = false;
+                    }
+                  }
+                  if (push) {
+                    log("SETTINGS", `OnAir device discovered!`);
+                    scannedDevices.push(device);
+                    setStatusText(
+                      `Scanning for devices... (Found: ${scannedDevices.length})`,
+                    );
+                  }
+                }
               }
-            }
-            if (push) {
-              log("SETTINGS", `OnAir device discovered!`);
-              scannedDevices.push(device);
-              setStatusText(
-                `Scanning for devices... (Found: ${scannedDevices.length})`,
-              );
-            }
+            ).catch(e => log("SETTINGS", `ERROR when tried getting the personal device id. (${e})`))
           }
         }
       },
@@ -926,7 +953,7 @@ const Settings = ({ navigation, route }) => {
                         AsyncStorage.setItem(
                           '@roadPreset',
                           JSON.stringify(PRESET_OPTIONS[roadPresetIndex]),
-                        );
+                        ).then(() => log("SETTINGS", "Saved road preset successfully: " + PRESET_OPTIONS[roadPresetIndex])).catch(e => log("SETTINGS", `ERROR when tried setting road preset. (${e})`));
                         log("SETTINGS",
                           'roadPreset',
                           PRESET_OPTIONS[roadPresetIndex],
@@ -936,7 +963,7 @@ const Settings = ({ navigation, route }) => {
                         AsyncStorage.setItem(
                           '@trailPreset',
                           JSON.stringify(PRESET_OPTIONS[trailPresetIndex]),
-                        );
+                        ).then(() => log("SETTINGS", "Saved trail preset successfully: " + PRESET_OPTIONS[roadPresetIndex])).catch(e => log("SETTINGS", `ERROR when tried setting trail preset. (${e})`));;
                         log("SETTINGS",
                           'trailPreset',
                           PRESET_OPTIONS[trailPresetIndex],
@@ -946,7 +973,7 @@ const Settings = ({ navigation, route }) => {
                         AsyncStorage.setItem(
                           '@factor',
                           JSON.stringify(FACTOR_OPTIONS[factorIndex]),
-                        );
+                        ).then(() => log("SETTINGS", "Saved factor successfully: " + PRESET_OPTIONS[roadPresetIndex])).catch(e => log("SETTINGS", `ERROR when tried setting factor. (${e})`));;
                         log("SETTINGS", 'factor', FACTOR_OPTIONS[factorIndex]);
                       }
                     }}>
@@ -1001,6 +1028,7 @@ const Settings = ({ navigation, route }) => {
             handlePressDown={() => { }}
             handlePressUp={goHome}
             size={isPortraitOrientation ? [winWidth / 10, winWidth / 10] : [winWidth / 20, winWidth / 20]}
+            onLongPress={() => { }}
             {...{
               marginLeft: "2%",
               marginTop: "2%",
@@ -1027,10 +1055,23 @@ const Settings = ({ navigation, route }) => {
             }
             handlePressDown={() => { }}
             handlePressUp={() => {
-              if (bluetoothImageId != 4) {
+              if (bluetoothImageId != 4 && !longPress) {
                 startConnection();
               }
+              if (longPress) {
+                setLongPress(false)
+              }
             }}
+            onLongPress={() => {
+
+              AsyncStorage.removeItem("@personalDeviceId").then(
+                () => setStatusText("Cleared personal device")
+              ).catch(() => setStatusText("ERROR when tried clearing personal device"))
+              setLongPress(true)
+              dropIn()
+
+            }}
+            delayLongPress={700}
             size={isPortraitOrientation ? [winWidth / 7, winWidth / 7] : [winWidth / 20, winWidth / 20]}
             {...{
               marginRight: "2%",

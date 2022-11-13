@@ -11,7 +11,6 @@ const updateLogs = async (log) => {
 }
 
 export const log = (loc = "N/A", ...args) => {
-
     let text = ""
 
     for (const [index, elem] of args.entries()) {

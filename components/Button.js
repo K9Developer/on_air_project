@@ -9,6 +9,8 @@ export const CircleButton = ({
   handlePressDown,
   handlePressUp,
   size,
+  onLongPress,
+  delayLongPress,
   ...props
 }) => {
   return (
@@ -21,7 +23,9 @@ export const CircleButton = ({
         ...props,
       }}
       onPressIn={handlePressDown}
-      onPressOut={handlePressUp}>
+      onPressOut={handlePressUp}
+      onLongPress={onLongPress}
+      delayLongPress={delayLongPress}>
       <Image
         key={new Date()}
         source={imgUrl}
