@@ -13,8 +13,11 @@ import DeviceChooser from './screens/DeviceChooser';
 import { I18nManager, Platform } from 'react-native';
 import DeviceInfo from 'react-native-device-info';
 import RNRestart from 'react-native-restart';
-import { log } from './services/logs'
+import { log } from './services/logs';
 import RNOtpVerify from 'react-native-otp-verify';
+import { LogBox } from 'react-native';
+LogBox.ignoreLogs(['new NativeEventEmitter']); // Ignore log notification by message
+LogBox.ignoreAllLogs();
 
 
 
@@ -78,60 +81,60 @@ const storeData = async () => {
 
 
 const logDeviceInfo = async () => {
-  log("APP", `\n-----------------DEVICE INFO-----------------\n\t*Is Tablet: ${DeviceInfo.isTablet()}\n\t*OS name: ${DeviceInfo.getSystemName()}\n\t*${await DeviceInfo.getDeviceName()}\n\t*API level: ${await DeviceInfo.getApiLevel()}\n\t*Release version: ${Platform.constants['Release']}\n\n`)
-}
+  log("APP", `\n-----------------DEVICE INFO-----------------\n\t*Is Tablet: ${DeviceInfo.isTablet()}\n\t*OS name: ${DeviceInfo.getSystemName()}\n\t*${await DeviceInfo.getDeviceName()}\n\t*API level: ${await DeviceInfo.getApiLevel()}\n\t*Release version: ${Platform.constants['Release']}\n\n`);
+};
+
 
 
 const App = () => {
 
   useEffect(() => {
-    let mounted = true
+    let mounted = true;
 
     const startProcess = async () => {
-      let sessionLogs = await AsyncStorage.getItem("@sessionLogs")
+      let sessionLogs = await AsyncStorage.getItem("@sessionLogs");
       if (sessionLogs && mounted) {
         try {
-          await AsyncStorage.setItem("@prevSessionLogs", sessionLogs)
+          await AsyncStorage.setItem("@prevSessionLogs", sessionLogs);
 
         } catch (e) {
-          log("APP", `ERROR when tried saving last logs as prev logs. (${e})`)
+          log("APP", `ERROR when tried saving last logs as prev logs. (${e})`);
         }
         try {
-          await AsyncStorage.setItem("@sessionLogs", "[]")
-          log("APP", "Saved last logs as prev logs")
-          log("APP", "Cleaned last logs")
+          await AsyncStorage.setItem("@sessionLogs", "[]");
+          log("APP", "Saved last logs as prev logs");
+          log("APP", "Cleaned last logs");
         } catch (e) {
-          log("APP", `ERROR when tried cleaning last logs. (${e})`)
+          log("APP", `ERROR when tried cleaning last logs. (${e})`);
         }
       }
 
 
 
       AsyncStorage.getItem('@restarted').then(d => {
-        log("APP", `Is Right To Left layout: ${I18nManager.isRTL}. Restarted: ${d}`)
+        log("APP", `Is Right To Left layout: ${I18nManager.isRTL}. Restarted: ${d}`);
         if (d != "true") {
           I18nManager.allowRTL(false);
           I18nManager.forceRTL(false);
-          log("APP", `Restarting to force LTR`)
-          AsyncStorage.setItem('@restarted', "true").then(() => { RNRestart.Restart() });
+          log("APP", `Restarting to force LTR`);
+          AsyncStorage.setItem('@restarted', "true").then(() => { RNRestart.Restart(); });
         }
-      })
+      });
 
       AsyncStorage.getItem("@appRunCount").then((value) => {
         if (mounted) {
           if (value) {
-            AsyncStorage.setItem("@appRunCount", JSON.stringify(parseInt(value) + 1)).then(() => log("APP", `Updated app run count to: ${parseInt(value) + 1}`)).catch((e) => log("APP", `ERROR when tried updating app run count. (${e})`))
+            AsyncStorage.setItem("@appRunCount", JSON.stringify(parseInt(value) + 1)).then(() => log("APP", `Updated app run count to: ${parseInt(value) + 1}`)).catch((e) => log("APP", `ERROR when tried updating app run count. (${e})`));
           } else {
-            AsyncStorage.setItem("@appRunCount", "1").then(() => log("APP", `Updated app run count to: 1`)).catch((e) => log("APP", `ERROR when tried updating app run count. (${e})`))
+            AsyncStorage.setItem("@appRunCount", "1").then(() => log("APP", `Updated app run count to: 1`)).catch((e) => log("APP", `ERROR when tried updating app run count. (${e})`));
           }
         }
-      })
+      });
 
       AsyncStorage.getItem("@personalDeviceId").then((value) => {
-        log("APP", "Personal device id: " + value)
-        if (mounted) {
-        }
-      })
+        log("APP", "Personal device id: " + value);
+
+      });
 
       RNOtpVerify.getHash()
         .then((hash) => {
@@ -141,16 +144,19 @@ const App = () => {
           log("APP", `ERROR when tried getting hash for app. (${e})`);
         });
 
-      await logDeviceInfo()
+      await logDeviceInfo();
       await storeData();
-    }
+    };
 
-    startProcess()
+
+
+    startProcess();
 
     return () => {
-      mounted = false
-    }
-  }, [])
+      mounted = false;
+
+    };
+  }, []);
 
 
   return (

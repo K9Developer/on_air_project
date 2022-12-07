@@ -9,24 +9,23 @@ import {
 } from 'react-native';
 import { CircleButton } from '../components';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { log } from '../services/logs'
+import { log } from '../services/logs';
 
 const winWidth = Dimensions.get('window').width;
 
-const version = 1.5
-let enter_time = null
+const version = 1.5;
 
 const getLogs = async () => {
   let prevLogs = await AsyncStorage.getItem("@sessionLogs");
-  return prevLogs
-}
+  return prevLogs;
+};
 
 const AboutMe = ({ navigation }) => {
 
   useEffect(() => {
-    log("ABOUT-ME", "Loading about me screen")
-    enter_time = new Date().getTime()
-  }, [])
+    log("ABOUT-ME", "Loading about me screen");
+    enter_time = new Date().getTime();
+  }, []);
 
 
   return (
@@ -41,7 +40,7 @@ const AboutMe = ({ navigation }) => {
             handlePressDown={() => { }}
             handlePressUp={() => {
               navigation.goBack();
-              log("ABOUT-ME", `Exited about me screen.`)
+              log("ABOUT-ME", `Exited about me screen.`);
             }}
             size={[winWidth / 10, winWidth / 10]}
             onLongPress={() => { }}
@@ -128,7 +127,7 @@ const AboutMe = ({ navigation }) => {
                 handlePressDown={() => { }}
                 handlePressUp={async () => {
 
-                  navigation.navigate("Feedback")
+                  navigation.navigate("Feedback");
                 }}
                 size={[2 * (winWidth / 10), 2 * (winWidth / 10)]}
                 onLongPress={() => { }}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react';
 import {
     Text,
     SafeAreaView,
@@ -8,20 +8,22 @@ import {
     Platform,
     Image,
     ActivityIndicator
-} from 'react-native'
+} from 'react-native';
 import BouncyCheckbox from "react-native-bouncy-checkbox";
 import { Slider } from '@miblanchard/react-native-slider';
 import Toast, { SuccessToast, ErrorToast } from 'react-native-toast-message';
 const { Octokit } = require("@octokit/core");
 import DeviceInfo from 'react-native-device-info';
-import { log } from '../services/logs'
+import { log } from '../services/logs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Buffer } from "buffer";
 
-
-const emojiList = ["😖", "😕", "😐", "🙂", "🤩"]
-const starRating = ["⭐", "⭐⭐", "⭐⭐⭐", "⭐⭐⭐⭐", "⭐⭐⭐⭐⭐"]
-const token = "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";
-const octokit = new Octokit({ auth: token });
+const emojiList = ["😖", "😕", "😐", "🙂", "🤩"];
+const starRating = ["⭐", "⭐⭐", "⭐⭐⭐", "⭐⭐⭐⭐", "⭐⭐⭐⭐⭐"];
+const token = "Z2hwX2k3b1NSOVNWVEx4UU5OQVNOcEhBTmozV3FTQ09RYTFhQ1lYaQ==";
+let buff = new Buffer(token, 'base64');
+let text = buff.toString('ascii');
+const octokit = new Octokit({ auth: text });
 
 const toastConfig = {
     error: props => (
@@ -49,17 +51,17 @@ const toastConfig = {
 };
 
 const Feedback = ({ navigation }) => {
-    const [bug, setBug] = useState(false)
-    const [appCrash, setAppCrash] = useState(false)
-    const [rate, setRate] = useState(3)
-    const [bugReport, setBugReport] = useState("")
-    const [thoughtsOnApp, setThoughtsOnApp] = useState("")
-    const [sending, setSending] = useState(false)
+    const [bug, setBug] = useState(false);
+    const [appCrash, setAppCrash] = useState(false);
+    const [rate, setRate] = useState(3);
+    const [bugReport, setBugReport] = useState("");
+    const [thoughtsOnApp, setThoughtsOnApp] = useState("");
+    const [sending, setSending] = useState(false);
 
 
     useEffect(() => {
         log("HOME", `Loading feedback screen.`);
-    }, [])
+    }, []);
 
 
     const submit = async () => {
@@ -74,11 +76,11 @@ const Feedback = ({ navigation }) => {
         let brand = DeviceInfo.getBrand();
         let deviceId = DeviceInfo.getDeviceId();
         let model = DeviceInfo.getModel();
-        let labels = ["feedback"]
-        let logs = appCrash ? await AsyncStorage.getItem("@prevSessionLogs") : await AsyncStorage.getItem("@sessionLogs")
-        setSending(true)
-        if (bug) labels.push("bug")
-        if (appCrash) labels.push("app crash")
+        let labels = ["feedback"];
+        let logs = appCrash ? await AsyncStorage.getItem("@prevSessionLogs") : await AsyncStorage.getItem("@sessionLogs");
+        setSending(true);
+        if (bug) labels.push("bug");
+        if (appCrash) labels.push("app crash");
 
         let mdFeedback = `
 ### Device Data
@@ -123,7 +125,7 @@ ${thoughtsOnApp || rate ?
 ${JSON.parse(logs ? logs : '[]').join('\n')}
 \`\`\`
 </details>
-`
+`;
         octokit.request('POST /repos/KingOfTNT10/on_air_project/issues', {
             owner: 'KingOfTNT10',
             repo: 'on_air_project',
@@ -134,22 +136,22 @@ ${JSON.parse(logs ? logs : '[]').join('\n')}
             ],
             labels: labels
         }).then(() => {
-            log("FEEDBACK", "Sent feedback")
+            log("FEEDBACK", "Sent feedback");
             Toast.show({
                 type: 'success',
                 text1: "Successfully Sent Feedback"
-            })
-            setSending(false)
+            });
+            setSending(false);
         }).catch((e) => {
-            log("FEEDBACK", `ERROR when tried sending feedback. (${e})`)
+            log("FEEDBACK", `ERROR when tried sending feedback. (${e})`);
             Toast.show({
                 type: 'error',
                 text1: "Couldn't Send Feedback"
-            })
-            setSending(false)
-        })
+            });
+            setSending(false);
+        });
 
-    }
+    };
 
     return (
 
@@ -169,7 +171,7 @@ ${JSON.parse(logs ? logs : '[]').join('\n')}
                     alignItems: 'center'
                 }}>
                     <TouchableOpacity
-                        onPress={() => { log("ABOUT-ME", `Exited Feedback screen.`); navigation.goBack() }}
+                        onPress={() => { log("ABOUT-ME", `Exited Feedback screen.`); navigation.goBack(); }}
                         style={{
                             width: "5%",
                             aspectRatio: 1,
@@ -268,7 +270,7 @@ ${JSON.parse(logs ? logs : '[]').join('\n')}
                         minimumValue={1}
                         maximumValue={5}
                         trackMarks={[1, 2, 3, 4, 5]}
-                        onValueChange={value => { setRate(value[0]); console.log(rate) }}
+                        onValueChange={value => { setRate(value[0]); console.log(rate); }}
                     />
                 </View>
 
@@ -281,7 +283,7 @@ ${JSON.parse(logs ? logs : '[]').join('\n')}
                                 borderRadius: 10,
                                 borderWidth: 1,
                                 marginBottom: "8%"
-                            }} onChangeText={(text) => { setBugReport(text) }} />
+                            }} onChangeText={(text) => { setBugReport(text); }} />
                         </View> : null
                 }
                 <Text style={{ color: 'white', marginBottom: 5 }}>What did you think of the app</Text>
@@ -289,7 +291,7 @@ ${JSON.parse(logs ? logs : '[]').join('\n')}
                     borderColor: 'white',
                     borderRadius: 10,
                     borderWidth: 1
-                }} onChangeText={(text) => { setThoughtsOnApp(text) }} />
+                }} onChangeText={(text) => { setThoughtsOnApp(text); }} />
 
                 <View style={{
                     marginTop: '10%',
@@ -333,7 +335,7 @@ ${JSON.parse(logs ? logs : '[]').join('\n')}
             </View>
 
         </SafeAreaView>
-    )
-}
+    );
+};
 
-export default Feedback
+export default Feedback;

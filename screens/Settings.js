@@ -21,8 +21,8 @@ import { COLORS, SHADOWS } from '../constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BleManager } from 'react-native-ble-plx';
 import ValuePicker from 'react-native-picker-horizontal';
-import { log } from '../services/logs'
-import { connectToDevice } from '../services/bluetoothUtils'
+import { log } from '../services/logs';
+import { connectToDevice } from '../services/bluetoothUtils';
 
 const Buffer = require('buffer').Buffer;
 
@@ -50,13 +50,13 @@ let readMonitor = null;
 
 const getData = async key => {
   try {
-    log("SETTINGS", `Getting data for key: ${data}`)
+    log("SETTINGS", `Getting data for key: ${data}`);
     const data = await AsyncStorage.getItem(key);
     if (data !== null) {
       return data;
     }
   } catch (error) {
-    log("SETTINGS", `ERROR when tried getting data for key: ${data}`)
+    log("SETTINGS", `ERROR when tried getting data for key: ${data}`);
   }
 };
 
@@ -118,15 +118,15 @@ const getErrorText = error => {
 
   let err = errorMap[error.errorCode] ??
     'Unknown error occurred [custom]. (Please try again) info: ' +
-    JSON.stringify(error)
+    JSON.stringify(error);
 
-  log("SETTINGS", `Error code: ${error.errorCode}. Error text: ${err}`)
+  log("SETTINGS", `Error code: ${error.errorCode}. Error text: ${err}`);
   return err;
 };
 
 const sendDeviceSignal = async signal => {
   let base64Signal = Buffer.from('~' + signal + '^').toString('base64');
-  log("SETTINGS", `Sending signal for device - ${BluetoothDevice ? BluetoothDevice.id : null}. value: ${signal}-${base64Signal}`)
+  log("SETTINGS", `Sending signal for device - ${BluetoothDevice ? BluetoothDevice.id : null}. value: ${signal}-${base64Signal}`);
 
   return BluetoothManager.writeCharacteristicWithoutResponseForDevice(
     BluetoothDevice.id,
@@ -135,11 +135,11 @@ const sendDeviceSignal = async signal => {
     base64Signal,
   )
     .then(d => {
-      log("SETTINGS", `Successfully sent data`)
+      log("SETTINGS", `Successfully sent data`);
       return d;
     })
     .catch(error => {
-      log("SETTINGS", `ERROR when tried sending data (${signal}-${base64Signal}) to device - ${BluetoothDevice ? BluetoothDevice.id : null}. error: ${error}`)
+      log("SETTINGS", `ERROR when tried sending data (${signal}-${base64Signal}) to device - ${BluetoothDevice ? BluetoothDevice.id : null}. error: ${error}`);
       return error;
     });
 };
@@ -199,10 +199,11 @@ const handleAppInBackground = currentState => {
   if (currentState === 'background') {
     exitApp();
   }
-}
+};
 
 const Settings = ({ navigation, route }) => {
   const [factor, setFactor] = useState(MIN_FACTOR);
+  const [wheels, setWheels] = useState(1);
   const [roadPreset, setRoadPreset] = useState(MIN_PRESET);
   const [trailPreset, setTrailPreset] = useState(MIN_PRESET);
   const [modalVisible, setModalVisible] = useState(false);
@@ -213,6 +214,7 @@ const Settings = ({ navigation, route }) => {
   const [pickerModalVisible, setPickerModalVisible] = useState(false);
   const [pickerModalText, setPickerModalText] = useState('N/A');
   const [factorIndex, setFactorIndex] = useState(0);
+  const [wheelsIndex, setWheelsIndex] = useState(0);
   const [roadPresetIndex, setRoadPresetIndex] = useState(0);
   const [trailPresetIndex, setTrailPresetIndex] = useState(0);
   const [isPortraitOrientation, setIsPortraitOrientation] = useState(isPortrait());
@@ -222,7 +224,7 @@ const Settings = ({ navigation, route }) => {
 
   Dimensions.addEventListener('change', () => {
     log("SETTINGS", `Changed rotation. Is portrait - ${isPortrait()}`);
-    setIsPortraitOrientation(isPortrait())
+    setIsPortraitOrientation(isPortrait());
   });
 
   const onDeviceDisconnect = (error, device) => {
@@ -237,14 +239,14 @@ const Settings = ({ navigation, route }) => {
       if (onDisconnectEvent) {
         log("HOME", `Removing disconnect listener.`);
         onDisconnectEvent.remove();
-        onDisconnectEvent = null
+        onDisconnectEvent = null;
       }
 
       setStatusText('Disconnected');
       if (readMonitor) {
         log("HOME", `Removing received data listener.`);
         readMonitor.remove();
-        readMonitor = null
+        readMonitor = null;
 
       }
 
@@ -254,7 +256,7 @@ const Settings = ({ navigation, route }) => {
         Vibration.vibrate([200, 500]);
       }
 
-      removeSubscriptions();
+      // removeSubscriptions();
       setStatusText('You have disconnected from the device.');
       dropIn();
     }
@@ -274,57 +276,57 @@ const Settings = ({ navigation, route }) => {
     data = data.substring(data.indexOf(startChar) + 1, data.indexOf(endChar));
     log("SETTINGS", `Filtered data: ${data}.`);
     try {
-      data = JSON.parse(data)
-      log("DEBUG", `ARRAY PARSED WITH LENGTH ${data.length}`)
+      data = JSON.parse(data);
+      log("DEBUG", `ARRAY PARSED WITH LENGTH ${data.length}`);
       if (data.length == 1) {
-        setVoltage(data[0])
+        setVoltage(data[0]);
       }
     } catch (error) {
-      log("SETTINGS", "ERROR when tried parsing data sent from arduino.")
+      log("SETTINGS", "ERROR when tried parsing data sent from arduino.");
     }
 
   };
 
   const goHome = () => {
-    log("SETTINGS", `Going home via back button/device chooser`)
+    log("SETTINGS", `Going home via back button/device chooser`);
     try {
-      log("SETTINGS", `Removing subscriptions`)
-      removeSubscriptions();
+      log("SETTINGS", `Removing subscriptions`);
+      // removeSubscriptions();
     } catch (error) {
-      log("SETTINGS", `ERROR when tried removing subscriptions`)
+      log("SETTINGS", `ERROR when tried removing subscriptions`);
     }
     if (BluetoothManager) {
-      log("SETTINGS", `Stopped scan for devices`)
+      log("SETTINGS", `Stopped scan for devices`);
       BluetoothManager.stopDeviceScan();
     }
 
     if (readMonitor) {
-      log("SETTINGS", `Removed data received listener`)
+      log("SETTINGS", `Removed data received listener`);
       readMonitor.remove();
       readMonitor = null;
     }
 
     if (onDisconnectEvent) {
-      log("SETTINGS", `Removed device disconnect listener`)
+      log("SETTINGS", `Removed device disconnect listener`);
       onDisconnectEvent.remove();
       onDisconnectEvent = null;
     }
 
     if (scanTimer) {
-      clearTimeout(scanTimer)
+      clearTimeout(scanTimer);
     }
 
-    log("SETTINGS", `Navigating home`)
+    log("SETTINGS", `Navigating home`);
     navigation.navigate('Home', {
       manager: BluetoothManager,
       device: BluetoothDevice,
       serviceUUID: DEVICE_SERVICE_UUID,
       characteristicUUID: DEVICE_CHARACTERISTICS_UUID,
     });
-  }
+  };
 
   useEffect(() => {
-    let mounted = true
+    let mounted = true;
 
     let navListener = navigation.addListener('focus', () => {
       if (readMonitor) {
@@ -343,24 +345,24 @@ const Settings = ({ navigation, route }) => {
         route.params != null &&
         route.params != undefined
       ) {
-        log("SETTINGS", `Passed route checks`)
+        log("SETTINGS", `Passed route checks`);
         if (
           route.params.device != null &&
           route.params.device != undefined &&
           route.params.device.hasOwnProperty('id')
         ) {
-          log("SETTINGS", `Passed params checks. params: ${route.params}`)
+          log("SETTINGS", `Passed params checks. params: ${route.params}`);
           BluetoothDevice = { ...route.params.device };
           BluetoothManager = route.params.manager;
           BluetoothManager.isDeviceConnected(BluetoothDevice.id).then(isConnected => {
             if (!mounted) {
-              return
+              return;
             }
 
             if (isConnected) {
-              setBluetoothImageId(2)
-              AsyncStorage.setItem("@personalDeviceId", BluetoothDevice.id)
-              log("SETTINGS", "Set personal device ID to: " + BluetoothDevice.id)
+              setBluetoothImageId(2);
+              AsyncStorage.setItem("@personalDeviceId", BluetoothDevice.id);
+              log("SETTINGS", "Set personal device ID to: " + BluetoothDevice.id);
               log("SETTINGS", `Device - ${BluetoothDevice ? BluetoothDevice.id : null} connected. creating listeners`);
 
               if (!route.params.connectToDevice) {
@@ -368,14 +370,14 @@ const Settings = ({ navigation, route }) => {
                 onDisconnectEvent = BluetoothManager.onDeviceDisconnected(
                   BluetoothDevice.id,
                   onDeviceDisconnect,
-                )
+                );
 
                 readMonitor = BluetoothManager.monitorCharacteristicForDevice(
                   BluetoothDevice.id,
                   'FFE0',
                   'FFE1',
                   monitorDeviceData,
-                )
+                );
               }
             }
           });
@@ -383,7 +385,7 @@ const Settings = ({ navigation, route }) => {
           DEVICE_SERVICE_UUID = route.params.serviceUUID;
           DEVICE_CHARACTERISTICS_UUID = route.params.characteristicsUUID;
         } else {
-          setBluetoothImageId(1)
+          setBluetoothImageId(1);
         }
 
         if (mounted) { setStartScan(route.params.startConnect); }
@@ -400,6 +402,14 @@ const Settings = ({ navigation, route }) => {
           }
         })
         .catch(error => log("SETTINGS", `ERROR when tried getting factor. error: ${error}`));
+
+      getData('@wheels')
+        .then(value => {
+          if (value != null && value != undefined && mounted) {
+            setWheels(parseFloat(JSON.parse(value)));
+          }
+        })
+        .catch(error => log("SETTINGS", `ERROR when tried getting wheels. error: ${error}`));
 
       getData('@roadPreset')
         .then(value => {
@@ -423,12 +433,12 @@ const Settings = ({ navigation, route }) => {
         if (BluetoothDevice) {
           BluetoothManager.isDeviceConnected(BluetoothDevice.id).then(connected => {
             if (!mounted) {
-              return
+              return;
             }
 
             if (connected) {
               setBluetoothImageId(2);
-              log("SETTINGS", `Device - ${BluetoothDevice ? BluetoothDevice.id : null} is connected`)
+              log("SETTINGS", `Device - ${BluetoothDevice ? BluetoothDevice.id : null} is connected`);
 
               dropIn();
               setStatusText('Connected To Device');
@@ -463,7 +473,7 @@ const Settings = ({ navigation, route }) => {
           });
         } else {
           if (!mounted) {
-            return
+            return;
           }
 
           setBluetoothImageId(3);
@@ -479,9 +489,9 @@ const Settings = ({ navigation, route }) => {
       }
     });
     return () => {
-      mounted = false
-      navListener()
-    }
+      mounted = false;
+      navListener();
+    };
   }, [route]);
 
 
@@ -495,8 +505,8 @@ const Settings = ({ navigation, route }) => {
     let appStateListener = AppState.addEventListener('change', handleAppInBackground);
 
     return () => {
-      appStateListener.remove()
-    }
+      appStateListener.remove();
+    };
   }, []);
 
   const dropIn = () => {
@@ -557,13 +567,13 @@ const Settings = ({ navigation, route }) => {
           setStatusText('An Error occurred');
           log("SETTINGS", `ERROR when tried scanning for devices. error: ${error}`);
         }
-        setBluetoothImageId(4)
+        setBluetoothImageId(4);
         if (device && device != 'null') {
           if (device.name === 'BT05') {
 
             AsyncStorage.getItem("@personalDeviceId").then(
               d => {
-                log("SETTINGS", `Personal device ID found (${d})!`)
+                log("SETTINGS", `Personal device ID found (${d})!`);
                 if (d) {
                   if (d == device.id) {
                     connectToDevice(device, BluetoothManager).then(
@@ -571,14 +581,16 @@ const Settings = ({ navigation, route }) => {
                         if (bt) {
                           BluetoothDevice = bt;
                           setBluetoothImageId(2);
-                          clearTimeout(scanTimer)
-                          manager.stopDeviceScan()
-                          setStatusText("Connected to personal device")
+                          clearTimeout(scanTimer);
+                          manager.stopDeviceScan();
+                          setStatusText("Connected to personal device");
+                          goHome();
+
                         }
                       }
                     ).catch(e => {
-                      log("SETTINGS", `ERROR when tried connecting to the personal device. (${e})`)
-                    })
+                      log("SETTINGS", `ERROR when tried connecting to the personal device. (${e})`);
+                    });
                   }
                 } else {
                   let push = true;
@@ -602,7 +614,7 @@ const Settings = ({ navigation, route }) => {
                   }
                 }
               }
-            ).catch(e => log("SETTINGS", `ERROR when tried getting the personal device id. (${e})`))
+            ).catch(e => log("SETTINGS", `ERROR when tried getting the personal device id. (${e})`));
           }
         }
       },
@@ -610,26 +622,26 @@ const Settings = ({ navigation, route }) => {
     );
   };
 
-  const removeSubscriptions = () => {
-    log("SETTINGS", `Removing subscriptions.`);
-    for (const [_key, val] of Object.entries(BluetoothManager._activeSubscriptions)) {
-      try {
-        BluetoothManager._activeSubscriptions[val].remove();
-      } catch (error) {
-        log("SETTINGS", 'Error removing subscription (manager): ', error);
-      }
-    }
+  // const removeSubscriptions = () => {
+  //   log("SETTINGS", `Removing subscriptions.`);
+  //   for (const [_key, val] of Object.entries(BluetoothManager._activeSubscriptions)) {
+  //     try {
+  //       BluetoothManager._activeSubscriptions[val].remove();
+  //     } catch (error) {
+  //       log("SETTINGS", 'Error removing subscription (manager): ', error);
+  //     }
+  //   }
 
-    for (const [_key, val] of Object.entries(
-      BluetoothDevice._manager._activeSubscriptions,
-    )) {
-      try {
-        BluetoothDevice._manager._activeSubscriptions[val].remove();
-      } catch (error) {
-        log("SETTINGS", 'Error removing subscription (device): ', error);
-      }
-    }
-  };
+  //   for (const [_key, val] of Object.entries(
+  //     BluetoothDevice._manager._activeSubscriptions,
+  //   )) {
+  //     try {
+  //       BluetoothDevice._manager._activeSubscriptions[val].remove();
+  //     } catch (error) {
+  //       log("SETTINGS", 'Error removing subscription (device): ', error);
+  //     }
+  //   }
+  // };
 
   const createManager = () => {
     if (BluetoothManager === null) {
@@ -882,7 +894,7 @@ const Settings = ({ navigation, route }) => {
                     height: '100%',
                   }}
                   data={
-                    pickerModalText == 'Factor' ? FACTOR_OPTIONS : PRESET_OPTIONS
+                    pickerModalText == 'Factor' ? FACTOR_OPTIONS : pickerModalText == "Wheels" ? [1, 2, 3, 4] : PRESET_OPTIONS
                   }
                   renderItem={renderItem}
                   itemWidth={winWidth / 5.1}
@@ -901,6 +913,8 @@ const Settings = ({ navigation, route }) => {
                       setRoadPresetIndex(index);
                     } else if (pickerModalText == 'Trail Preset') {
                       setTrailPresetIndex(index);
+                    } else if (pickerModalText == 'Wheels') {
+                      setWheelsIndex(index);
                     } else {
                       setFactorIndex(index);
                     }
@@ -968,12 +982,24 @@ const Settings = ({ navigation, route }) => {
                           'trailPreset',
                           PRESET_OPTIONS[trailPresetIndex],
                         );
+                      } else if (pickerModalText == 'Wheels') {
+                        setWheels([1, 2, 3, 4][wheelsIndex]);
+                        AsyncStorage.setItem(
+                          '@wheels',
+                          JSON.stringify([1, 2, 3, 4][wheelsIndex]),
+                        ).then(() => log("SETTINGS", "Saved wheels successfully: " + [1, 2, 3, 4][wheelsIndex])).catch(e => log("SETTINGS", `ERROR when tried setting wheels. (${e})`));;
+                        log("SETTINGS",
+                          'wheels',
+                          [1, 2, 3, 4][wheelsIndex],
+                        );
+
+
                       } else {
                         setFactor(FACTOR_OPTIONS[factorIndex]);
                         AsyncStorage.setItem(
                           '@factor',
                           JSON.stringify(FACTOR_OPTIONS[factorIndex]),
-                        ).then(() => log("SETTINGS", "Saved factor successfully: " + PRESET_OPTIONS[roadPresetIndex])).catch(e => log("SETTINGS", `ERROR when tried setting factor. (${e})`));;
+                        ).then(() => log("SETTINGS", "Saved factor successfully: " + FACTOR_OPTIONS[factorIndex])).catch(e => log("SETTINGS", `ERROR when tried setting factor. (${e})`));;
                         log("SETTINGS", 'factor', FACTOR_OPTIONS[factorIndex]);
                       }
                     }}>
@@ -1059,16 +1085,16 @@ const Settings = ({ navigation, route }) => {
                 startConnection();
               }
               if (longPress) {
-                setLongPress(false)
+                setLongPress(false);
               }
             }}
             onLongPress={() => {
 
               AsyncStorage.removeItem("@personalDeviceId").then(
                 () => setStatusText("Cleared personal device")
-              ).catch(() => setStatusText("ERROR when tried clearing personal device"))
-              setLongPress(true)
-              dropIn()
+              ).catch(() => setStatusText("ERROR when tried clearing personal device"));
+              setLongPress(true);
+              dropIn();
 
             }}
             delayLongPress={700}
@@ -1085,7 +1111,7 @@ const Settings = ({ navigation, route }) => {
           style={{
             backgroundColor: '#242424',
             width: '100%',
-            height: '17%',
+            height: '12%', // was 17%
             borderTopLeftRadius: 20,
             borderTopRightRadius: 20,
             alignItems: 'center',
@@ -1108,7 +1134,7 @@ const Settings = ({ navigation, route }) => {
               Factor
             </Text>
             <TouchableOpacity
-              onPress={() => { navigation.navigate("FactorInfo") }}
+              onPress={() => { navigation.navigate("FactorInfo"); }}
               style={{
                 width: "20%", aspectRatio: 1,
                 maxWidth: '50%',
@@ -1158,7 +1184,54 @@ const Settings = ({ navigation, route }) => {
           style={{
             backgroundColor: '#242424',
             width: '100%',
-            height: '17%',
+            height: '12%', // 17%
+            marginTop: '1%',
+            alignItems: 'center',
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+          }}>
+          <Text
+            style={{
+              fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60),
+              marginLeft: isPortraitOrientation ? 50 : "25%",
+              color: 'white',
+            }}>
+            Wheels
+          </Text>
+          <TouchableOpacity
+            onPress={() => {
+              setPickerModalText('Wheels');
+              setPickerModalVisible(true);
+              setRoadPresetIndex(0);
+            }}
+            style={{
+              paddingVertical: isPortraitOrientation ? "2%" : 0,
+              width: '15%',
+              maxHeight: "70%",
+              backgroundColor: '#424242',
+              borderRadius: 2 * (winWidth / 10),
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: isPortraitOrientation ? 50 : "25%",
+            }}>
+            <Text
+              adjustsFontSizeToFit
+              style={{
+                textAlign: 'center',
+                textAlignVertical: 'center',
+                paddingHorizontal: '7%',
+                color: 'white',
+                fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60),
+              }}>
+              {JSON.stringify(wheels)}
+            </Text>
+          </TouchableOpacity>
+        </View>
+        <View
+          style={{
+            backgroundColor: '#242424',
+            width: '100%',
+            height: '12%', // was 17%
             marginTop: '1%',
             alignItems: 'center',
             flexDirection: 'row',
@@ -1205,7 +1278,7 @@ const Settings = ({ navigation, route }) => {
           style={{
             backgroundColor: '#242424',
             width: '100%',
-            height: '17%',
+            height: '12%', // was 17%
             marginTop: '1%',
             borderBottomLeftRadius: 20,
             borderBottomRightRadius: 20,
