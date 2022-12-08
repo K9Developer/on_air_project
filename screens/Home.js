@@ -41,6 +41,7 @@ let BluetoothManager = null;
 let DEVICE_SERVICE_UUID = null;
 let DEVICE_CHARACTERISTICS_UUID = null;
 let MIN_FACTOR = 3;
+let prevStatusId = null;
 const MAX_PSI = 50;
 const MIN_PSI = 3;
 const PSI_OPTIONS = Array(48)
@@ -314,6 +315,7 @@ const storeData = async () => {
 
 const exitApp = () => {
   log("HOME", `Exited home screen`);
+  AsyncStorage.setItem("@lastSave", JSON.stringify(Date.now()));
 };
 
 
@@ -362,7 +364,7 @@ const Home = ({ navigation, route }) => {
         characteristicsUUID: null,
         startConnect: true,
         connectToDevice: false,
-        manager: recreateManager(null),
+        manager: null,
       });
     }
   };
@@ -405,7 +407,7 @@ const Home = ({ navigation, route }) => {
       BackgroundTimer.setTimeout(() => {
         DisconnectedNotification();
       }, 10);
-      // removeSubscriptions();
+      removeSubscriptions();
       setDropMessageText('You have disconnected from the device.');
       setDropMessageButtonText('Reconnect');
       dropIn();
@@ -415,9 +417,9 @@ const Home = ({ navigation, route }) => {
   useEffect(() => {
     if (statusText == undefined) {
       if (connected) {
-        statusText = "Connected";
+        setStatusText("Connected");
       } else {
-        statusText = "Disconnected";
+        setStatusText("Disconnected");
       }
     }
   }, [statusText]);
@@ -425,7 +427,7 @@ const Home = ({ navigation, route }) => {
   useEffect(() => {
     let mounted = true;
 
-    log("HOME", `Loading home screen.`);
+    log("HOME", `Loading home screen. ${route}`);
 
     let navListener = navigation.addListener('focus', () => {
 
@@ -697,7 +699,7 @@ const Home = ({ navigation, route }) => {
 
 
     if (!permTimer) {
-      permTimer = setInterval(() => {
+      permTimer = BackgroundTimer.setInterval(() => {
         checkPermission();
       }, 500);
     }
@@ -706,7 +708,7 @@ const Home = ({ navigation, route }) => {
     let shortcutListener = ShortcutsEmitter.addListener("onShortcutItemPressed", handleShortcut);
 
     return () => {
-      clearInterval(permTimer);
+      BackgroundTimer.clearInterval(permTimer);
       appStateListener.remove();
       shortcutListener.remove();
     };
@@ -741,26 +743,26 @@ const Home = ({ navigation, route }) => {
     await sendDeviceSignal(`{${parseFloat(wantedPsi).toFixed(1)},${parseFloat(factor).toFixed(1)}}`);
   };
 
-  // const removeSubscriptions = () => {
-  //   log("HOME", `Removing all subscriptions.`);
+  const removeSubscriptions = () => {
+    log("HOME", `Removing all subscriptions.`);
 
-  //   if (BluetoothManager != null) {
-  //     for (const [_key, val] of Object.entries(BluetoothManager._activeSubscriptions)) {
-  //       try {
-  //         BluetoothManager._activeSubscriptions[val].remove();
-  //       } catch (error) { }
-  //     }
-  //     try {
-  //       for (const [_key, val] of Object.entries(
-  //         BluetoothDevice._manager._activeSubscriptions,
-  //       )) {
-  //         try {
-  //           BluetoothDevice._manager._activeSubscriptions[val].remove();
-  //         } catch (error) { }
-  //       }
-  //     } catch (error) { }
-  //   }
-  // };
+    if (BluetoothManager != null) {
+      for (const [_key, val] of Object.entries(BluetoothManager._activeSubscriptions)) {
+        try {
+          BluetoothManager._activeSubscriptions[val].remove();
+        } catch (error) { }
+      }
+      try {
+        for (const [_key, val] of Object.entries(
+          BluetoothDevice._manager._activeSubscriptions,
+        )) {
+          try {
+            BluetoothDevice._manager._activeSubscriptions[val].remove();
+          } catch (error) { }
+        }
+      } catch (error) { }
+    }
+  };
 
   const doneStatus = async () => {
     log("HOME", `Done with current operation!`);
@@ -781,6 +783,21 @@ const Home = ({ navigation, route }) => {
 
   const handleStatusId = async (startTime, statusId) => {
     log("HOME", `Started operation: ${StatusIdMap[statusId]} that will last: ${startTime}s`);
+
+    await AsyncStorage.setItem("@lastSave", "null");
+    if (statusId == prevStatusId) {
+      prevStatusId = statusId;
+      return;
+    }
+    prevStatusId = statusId;
+    if (statusId == -1) {
+      if (connected) {
+        setStatusText("Connected");
+      } else {
+        setStatusText("Disconnected");
+      }
+      return;
+    }
 
     startTime -= 2;
     for (timer of timerList) {
@@ -855,10 +872,12 @@ const Home = ({ navigation, route }) => {
         handleStatusId(dataArray[1], dataArray[0]);
         setTirePressure(dataArray[2]);
         setLowBattery(dataArray[4]);
-      } else if (dataArray.length == 2) {
+      } else if (dataArray.length == 2 && dataArray[1] != "-1") {
         log("HOME", "Got pressure from arduino: " + dataArray[1]);
-        setWantedPsi(dataArray[1]);
-
+        if (dataArray[1] <= MAX_PSI) {
+          setWantedPsi(dataArray[1]);
+          sendDeviceSignal("gp"); // Got Pressure
+        }
       }
     }
   };
@@ -1175,7 +1194,7 @@ const Home = ({ navigation, route }) => {
                   duration: 1,
                   useNativeDriver: false,
                 }).start();
-                // removeSubscriptions();
+                removeSubscriptions();
                 navigation.navigate('Settings', {
                   device: BluetoothDevice,
                   serviceUUID: DEVICE_SERVICE_UUID,
@@ -1212,7 +1231,7 @@ const Home = ({ navigation, route }) => {
               aspectRatio: 1,
             }}
             onPressOut={() => {
-              // removeSubscriptions();
+              removeSubscriptions();
               log("HOME", `Going to settings via cog icon`);
               navigation.navigate('Settings', {
                 device: BluetoothDevice,
@@ -1246,7 +1265,6 @@ const Home = ({ navigation, route }) => {
             }}
             onPress={async () => {
               log("HOME", `OnAir button pressed`);
-              LocalNotification();
               if (BluetoothDevice != null) {
                 try {
                   let isConnected = await BluetoothManager.isDeviceConnected(BluetoothDevice.id);
@@ -1527,7 +1545,7 @@ const Home = ({ navigation, route }) => {
               <TouchableOpacity
                 disabled={showStatusLoading}
 
-                onPressIn={() => { downPressPlus(wantedPsi, setWantedPsi); BackgroundTimer.setTimeout(() => { DisconnectedNotification(); }, 2000); }}
+                onPressIn={() => downPressPlus(wantedPsi, setWantedPsi)}
                 onPressOut={() => upPressPlus(wantedPsi, setWantedPsi)}
 
                 style={{

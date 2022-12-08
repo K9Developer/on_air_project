@@ -22,7 +22,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BleManager } from 'react-native-ble-plx';
 import ValuePicker from 'react-native-picker-horizontal';
 import { log } from '../services/logs';
-import { connectToDevice } from '../services/bluetoothUtils';
+import { connectToDevice, recreateManager } from '../services/bluetoothUtils';
 
 const Buffer = require('buffer').Buffer;
 
@@ -256,7 +256,7 @@ const Settings = ({ navigation, route }) => {
         Vibration.vibrate([200, 500]);
       }
 
-      // removeSubscriptions();
+      removeSubscriptions();
       setStatusText('You have disconnected from the device.');
       dropIn();
     }
@@ -291,7 +291,7 @@ const Settings = ({ navigation, route }) => {
     log("SETTINGS", `Going home via back button/device chooser`);
     try {
       log("SETTINGS", `Removing subscriptions`);
-      // removeSubscriptions();
+      removeSubscriptions();
     } catch (error) {
       log("SETTINGS", `ERROR when tried removing subscriptions`);
     }
@@ -353,7 +353,11 @@ const Settings = ({ navigation, route }) => {
         ) {
           log("SETTINGS", `Passed params checks. params: ${route.params}`);
           BluetoothDevice = { ...route.params.device };
-          BluetoothManager = route.params.manager;
+          if (!route.params.manager) {
+            BluetoothManager = recreateManager(null);
+          } else {
+            BluetoothManager = route.params.manager;
+          }
           BluetoothManager.isDeviceConnected(BluetoothDevice.id).then(isConnected => {
             if (!mounted) {
               return;
@@ -622,26 +626,24 @@ const Settings = ({ navigation, route }) => {
     );
   };
 
-  // const removeSubscriptions = () => {
-  //   log("SETTINGS", `Removing subscriptions.`);
-  //   for (const [_key, val] of Object.entries(BluetoothManager._activeSubscriptions)) {
-  //     try {
-  //       BluetoothManager._activeSubscriptions[val].remove();
-  //     } catch (error) {
-  //       log("SETTINGS", 'Error removing subscription (manager): ', error);
-  //     }
-  //   }
+  const removeSubscriptions = () => {
+    log("SETTINGS", `Removing subscriptions.`);
+    for (const [_key, val] of Object.entries(BluetoothManager._activeSubscriptions)) {
+      try {
+        BluetoothManager._activeSubscriptions[val].remove();
+      } catch (error) {
+      }
+    }
 
-  //   for (const [_key, val] of Object.entries(
-  //     BluetoothDevice._manager._activeSubscriptions,
-  //   )) {
-  //     try {
-  //       BluetoothDevice._manager._activeSubscriptions[val].remove();
-  //     } catch (error) {
-  //       log("SETTINGS", 'Error removing subscription (device): ', error);
-  //     }
-  //   }
-  // };
+    for (const [_key, val] of Object.entries(
+      BluetoothDevice._manager._activeSubscriptions,
+    )) {
+      try {
+        BluetoothDevice._manager._activeSubscriptions[val].remove();
+      } catch (error) {
+      }
+    }
+  };
 
   const createManager = () => {
     if (BluetoothManager === null) {
