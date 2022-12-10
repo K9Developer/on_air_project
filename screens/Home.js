@@ -404,9 +404,7 @@ const Home = ({ navigation, route }) => {
         Vibration.vibrate([200, 500]);
       }
 
-      BackgroundTimer.setTimeout(() => {
-        DisconnectedNotification();
-      }, 10);
+      DisconnectedNotification();
       removeSubscriptions();
       setDropMessageText('You have disconnected from the device.');
       setDropMessageButtonText('Reconnect');
@@ -423,6 +421,19 @@ const Home = ({ navigation, route }) => {
       }
     }
   }, [statusText]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    if (mounted) {
+      setStatusText(connected ? "Connected" : "Disconnected");
+    }
+
+    return () => {
+      mounted = false;
+    };
+  }, [connected]);
+
 
   useEffect(() => {
     let mounted = true;
@@ -556,12 +567,14 @@ const Home = ({ navigation, route }) => {
               });
           } else {
             BluetoothDevice = null;
+            log("HOME", "Set device to null because the BluetoothDevice param is null or it's ID is.");
           }
 
           DEVICE_SERVICE_UUID = route.params.serviceUUID;
           DEVICE_CHARACTERISTICS_UUID = route.params.characteristicsUUID;
         } else {
           BluetoothDevice = null;
+          log("HOME", "Set device to null because the BluetoothDevice param is null or the manager is.");
         }
       }
     });
@@ -746,6 +759,21 @@ const Home = ({ navigation, route }) => {
   const removeSubscriptions = () => {
     log("HOME", `Removing all subscriptions.`);
 
+    if (readMonitor) {
+      log("HOME", `Removing received data listener.`);
+      readMonitor.remove();
+      setReadMonitor(null);
+
+    }
+
+    if (disconnectMonitor) {
+      log("HOME", `Removing device disconnect listener.`);
+      disconnectMonitor.remove();
+      setDisconnectMonitor(null);
+
+    }
+
+
     if (BluetoothManager != null) {
       for (const [_key, val] of Object.entries(BluetoothManager._activeSubscriptions)) {
         try {
@@ -790,6 +818,7 @@ const Home = ({ navigation, route }) => {
       return;
     }
     prevStatusId = statusId;
+
     if (statusId == -1) {
       if (connected) {
         setStatusText("Connected");
@@ -1271,6 +1300,7 @@ const Home = ({ navigation, route }) => {
                   if (!isConnected) {
                     log("HOME", `Bluetooth device - ${BluetoothDevice ? BluetoothDevice.id : null} not connected`);
                     setConnected(false);
+
                   }
                 } catch (error) {
                   log("HOME", `ERROR when tried checking connection status for bluetooth device - ${BluetoothDevice ? BluetoothDevice.id : null}. error: ${error}`);

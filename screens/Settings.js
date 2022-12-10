@@ -201,6 +201,7 @@ const handleAppInBackground = currentState => {
   }
 };
 
+
 const Settings = ({ navigation, route }) => {
   const [factor, setFactor] = useState(MIN_FACTOR);
   const [wheels, setWheels] = useState(1);
@@ -226,6 +227,7 @@ const Settings = ({ navigation, route }) => {
     log("SETTINGS", `Changed rotation. Is portrait - ${isPortrait()}`);
     setIsPortraitOrientation(isPortrait());
   });
+
 
   const onDeviceDisconnect = (error, device) => {
     if (error) {
@@ -326,7 +328,43 @@ const Settings = ({ navigation, route }) => {
   };
 
   useEffect(() => {
+
+
     let mounted = true;
+
+    getData('@factor')
+      .then(value => {
+        if (value != null && value != undefined && mounted) {
+          setFactor(parseFloat(JSON.parse(value)));
+        }
+      })
+      .catch(error => log("SETTINGS", `ERROR when tried getting factor. error: ${error}`));
+
+    getData('@wheels')
+      .then(value => {
+        if (value != null && value != undefined && mounted) {
+          setWheels(parseFloat(JSON.parse(value)));
+        }
+      })
+      .catch(error => log("SETTINGS", `ERROR when tried getting wheels. error: ${error}`));
+
+    getData('@roadPreset')
+      .then(value => {
+        log("SETTINGS", 'getData roadPreset value: ' + value);
+        if (value != null && value != undefined && mounted) {
+          setRoadPreset(parseFloat(JSON.parse(value)));
+        }
+      })
+      .catch(error => log("SETTINGS", `ERROR when tried getting road preset. error: ${error}`));
+
+    getData('@trailPreset')
+      .then(value => {
+        log("SETTINGS", 'getData trailPreset value: ' + value);
+        if (value != null && value != undefined && mounted) {
+          setTrailPreset(parseFloat(JSON.parse(value)));
+        }
+      })
+      .catch(error => log("SETTINGS", `ERROR when tried getting trail preset. error: ${error}`));
 
     let navListener = navigation.addListener('focus', () => {
       if (readMonitor) {
@@ -399,39 +437,7 @@ const Settings = ({ navigation, route }) => {
         storeData();
       }
 
-      getData('@factor')
-        .then(value => {
-          if (value != null && value != undefined && mounted) {
-            setFactor(parseFloat(JSON.parse(value)));
-          }
-        })
-        .catch(error => log("SETTINGS", `ERROR when tried getting factor. error: ${error}`));
 
-      getData('@wheels')
-        .then(value => {
-          if (value != null && value != undefined && mounted) {
-            setWheels(parseFloat(JSON.parse(value)));
-          }
-        })
-        .catch(error => log("SETTINGS", `ERROR when tried getting wheels. error: ${error}`));
-
-      getData('@roadPreset')
-        .then(value => {
-          log("SETTINGS", 'getData roadPreset value: ' + value);
-          if (value != null && value != undefined && mounted) {
-            setRoadPreset(parseFloat(JSON.parse(value)));
-          }
-        })
-        .catch(error => log("SETTINGS", `ERROR when tried getting road preset. error: ${error}`));
-
-      getData('@trailPreset')
-        .then(value => {
-          log("SETTINGS", 'getData trailPreset value: ' + value);
-          if (value != null && value != undefined && mounted) {
-            setTrailPreset(parseFloat(JSON.parse(value)));
-          }
-        })
-        .catch(error => log("SETTINGS", `ERROR when tried getting trail preset. error: ${error}`));
 
       if (route.params.connectToDevice) {
         if (BluetoothDevice) {
@@ -444,8 +450,8 @@ const Settings = ({ navigation, route }) => {
               setBluetoothImageId(2);
               log("SETTINGS", `Device - ${BluetoothDevice ? BluetoothDevice.id : null} is connected`);
 
-              dropIn();
               setStatusText('Connected To Device');
+              dropIn();
               if (!onDisconnectEvent) {
                 log("SETTINGS", `Set disconnect event listener`);
                 onDisconnectEvent = BluetoothManager.onDeviceDisconnected(
@@ -471,8 +477,8 @@ const Settings = ({ navigation, route }) => {
               setBluetoothImageId(3);
               log("SETTINGS", `Device - ${BluetoothDevice ? BluetoothDevice.id : null} is not connected`);
               BluetoothDevice = null;
-              dropIn();
               setStatusText('Failed To Connect');
+              dropIn();
             }
           });
         } else {
@@ -482,8 +488,8 @@ const Settings = ({ navigation, route }) => {
 
           setBluetoothImageId(3);
           log("SETTINGS", `Failed to connect. device: ${typeof BluetoothDevice}`);
-          dropIn();
           setStatusText('Failed To Connect');
+          dropIn();
         }
 
         scannedDevices = [];
@@ -560,6 +566,14 @@ const Settings = ({ navigation, route }) => {
       }
     }, 5000);
 
+    let personalDeviceId = null;
+    try {
+      personalDeviceId = await AsyncStorage.getItem("@personalDeviceId");
+      log("SETTINGS", "Personal device exists: " + personalDeviceId);
+    } catch (error) {
+      log("SETTINGS", `ERROR when tried getting the personal device id. (${error})`);
+    }
+
     await manager.startDeviceScan(
       null,
       null,
@@ -574,73 +588,80 @@ const Settings = ({ navigation, route }) => {
         setBluetoothImageId(4);
         if (device && device != 'null') {
           if (device.name === 'BT05') {
+            log("Device scanned: " + personalDeviceId);
+            if (personalDeviceId) {
+              if (personalDeviceId) {
+                if (personalDeviceId == device.id) {
+                  removeSubscriptions();
+                  if (BluetoothDevice) {
+                    BluetoothDevice.cancelConnection();
+                  }
+                  connectToDevice(device, BluetoothManager).then(
+                    bt => {
+                      if (bt) {
+                        BluetoothDevice = bt;
+                        setBluetoothImageId(2);
+                        clearTimeout(scanTimer);
+                        manager.stopDeviceScan();
+                        setStatusText("Connected to personal device");
+                        goHome();
 
-            AsyncStorage.getItem("@personalDeviceId").then(
-              d => {
-                log("SETTINGS", `Personal device ID found (${d})!`);
-                if (d) {
-                  if (d == device.id) {
-                    connectToDevice(device, BluetoothManager).then(
-                      bt => {
-                        if (bt) {
-                          BluetoothDevice = bt;
-                          setBluetoothImageId(2);
-                          clearTimeout(scanTimer);
-                          manager.stopDeviceScan();
-                          setStatusText("Connected to personal device");
-                          goHome();
-
-                        }
                       }
-                    ).catch(e => {
-                      log("SETTINGS", `ERROR when tried connecting to the personal device. (${e})`);
-                    });
-                  }
-                } else {
-                  let push = true;
-
-                  for (let bt of scannedDevices) {
-                    if (
-                      bt.id == device.id ||
-                      (BluetoothDevice != null &&
-                        BluetoothDevice.hasOwnProperty('id') &&
-                        device.id == BluetoothDevice.id)
-                    ) {
-                      push = false;
                     }
-                  }
-                  if (push) {
-                    log("SETTINGS", `OnAir device discovered!`);
-                    scannedDevices.push(device);
-                    setStatusText(
-                      `Scanning for devices... (Found: ${scannedDevices.length})`,
-                    );
-                  }
+                  ).catch(e => {
+                    log("SETTINGS", `ERROR when tried connecting to the personal device. (${e})`);
+                  });
                 }
               }
-            ).catch(e => log("SETTINGS", `ERROR when tried getting the personal device id. (${e})`));
-          }
-        }
-      },
+            }
+            let push = true;
 
-    );
+            for (let bt of scannedDevices) {
+              if (
+                bt.id == device.id ||
+                (BluetoothDevice != null &&
+                  BluetoothDevice.hasOwnProperty('id') &&
+                  device.id == BluetoothDevice.id)
+              ) {
+                push = false;
+              }
+            }
+            if (push) {
+              log("SETTINGS", `OnAir device discovered!`);
+              scannedDevices.push(device);
+              setStatusText(
+                `Scanning for devices... (Found: ${scannedDevices.length})`,
+              );
+            }
+
+          }
+
+        };
+      });
   };
+
+
 
   const removeSubscriptions = () => {
     log("SETTINGS", `Removing subscriptions.`);
-    for (const [_key, val] of Object.entries(BluetoothManager._activeSubscriptions)) {
-      try {
-        BluetoothManager._activeSubscriptions[val].remove();
-      } catch (error) {
+
+    if (BluetoothManager) {
+      for (const [_key, val] of Object.entries(BluetoothManager._activeSubscriptions)) {
+        try {
+          BluetoothManager._activeSubscriptions[val].remove();
+        } catch (error) {
+        }
       }
     }
 
-    for (const [_key, val] of Object.entries(
-      BluetoothDevice._manager._activeSubscriptions,
-    )) {
-      try {
-        BluetoothDevice._manager._activeSubscriptions[val].remove();
-      } catch (error) {
+    if (BluetoothDevice) {
+      for (const [_key, val] of Object.entries(
+        BluetoothDevice._manager._activeSubscriptions,
+      )) {
+        try {
+          BluetoothDevice._manager._activeSubscriptions[val].remove();
+        } catch (error) {
+        }
       }
     }
   };
@@ -654,15 +675,21 @@ const Settings = ({ navigation, route }) => {
 
   const resetBluetoothData = async () => {
 
+    try {
+      if (BluetoothDevice != null && BluetoothDevice != undefined) {
+        await BluetoothDevice.cancelConnection();
+      }
+    } catch (e) { }
+
     if (readMonitor) {
       log("SETTINGS", `Removed data received listener`);
-      readMonitor.remove();
+      await readMonitor.remove();
       readMonitor = null;
     }
 
     if (onDisconnectEvent) {
       log("SETTINGS", `Removed device disconnect listener`);
-      onDisconnectEvent.remove();
+      await onDisconnectEvent.remove();
       onDisconnectEvent = null;
     }
 
@@ -670,7 +697,7 @@ const Settings = ({ navigation, route }) => {
       BluetoothManager = new BleManager();
       log("SETTINGS", 'Bluetooth manager created');
     } else {
-      BluetoothManager.destroy();
+      await BluetoothManager.destroy();
       BluetoothManager = new BleManager();
       log("SETTINGS", 'Bluetooth manager reloaded');
     }
@@ -681,18 +708,22 @@ const Settings = ({ navigation, route }) => {
   };
 
   const startConnection = async () => {
+    setStatusText("Disconnecting bluetooth...");
     dropIn();
 
     scannedDevices = [];
-    createManager();
-    resetBluetoothData();
+    // createManager();
+    await resetBluetoothData();
     if (BluetoothManager !== null) {
 
       try {
         const subscription = BluetoothManager.onStateChange(state => {
           if (state === 'PoweredOn') {
-            scanForDevice(BluetoothManager);
             subscription.remove();
+            setTimeout(() => {
+              scanForDevice(BluetoothManager);
+            }, 1000);
+
           }
         }, true);
       } catch (error) {
@@ -1090,13 +1121,13 @@ const Settings = ({ navigation, route }) => {
                 setLongPress(false);
               }
             }}
-            onLongPress={() => {
+            onLongPress={async () => {
 
-              AsyncStorage.removeItem("@personalDeviceId").then(
+              await AsyncStorage.removeItem("@personalDeviceId").then(
                 () => setStatusText("Cleared personal device")
               ).catch(() => setStatusText("ERROR when tried clearing personal device"));
-              setLongPress(true);
               dropIn();
+              setLongPress(true);
 
             }}
             delayLongPress={700}
