@@ -35,9 +35,8 @@ PushNotification.createChannel({
   vibration: 20000,
 });
 
-const shortcutItem = null;
+let shortcutItem = null;
 Shortcuts.getInitialShortcut().then(d => shortcutItem = d).catch(e => console.log("ERROR when tried getting initial shortcut"));
-console.log(shortcutItem);
 const shortcut = {
   type: "onair.bluetooth.connect",
   title: "Connect to OnAir",

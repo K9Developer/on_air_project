@@ -38,7 +38,7 @@ const isPortrait = () => {
   return dim.height >= dim.width;
 };
 
-const Permissions = ({ navigation, route }) => {
+const Permissions = ({ navigation }) => {
   const [locationPermission, setLocationPermission] = useState(null);
   const [bluetoothConnectPermission, setBluetoothConnectPermission] =
     useState(null);
@@ -115,7 +115,7 @@ const Permissions = ({ navigation, route }) => {
   };
 
   useEffect(() => {
-    mounted = true
+    mounted = true;
     permissionTimer = setInterval(async () => {
       if (Platform.OS === 'android' && Platform.Version <= 19 && mounted) {
         log('PERMISSIONS', `Android version too low (${Platform.Version})`);
@@ -158,8 +158,8 @@ const Permissions = ({ navigation, route }) => {
 
     return () => {
       mounted = false;
-      clearInterval(permissionTimer)
-    }
+      clearInterval(permissionTimer);
+    };
   });
 
   return (
@@ -373,8 +373,6 @@ const Permissions = ({ navigation, route }) => {
             <TouchableOpacity
               onPress={() => {
                 log("PERMISSIONS", `Pressed grant location permission button`);
-                setTimeout(() => {
-                }, 3000)
                 if (locationPermission != 'granted') {
                   if (locationPermission != 'blocked') {
                     if (Platform.OS == 'android') {

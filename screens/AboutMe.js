@@ -8,23 +8,16 @@ import {
   Linking
 } from 'react-native';
 import { CircleButton } from '../components';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { log } from '../services/logs';
 
 const winWidth = Dimensions.get('window').width;
 
 const version = 1.5;
 
-const getLogs = async () => {
-  let prevLogs = await AsyncStorage.getItem("@sessionLogs");
-  return prevLogs;
-};
-
 const AboutMe = ({ navigation }) => {
 
   useEffect(() => {
     log("ABOUT-ME", "Loading about me screen");
-    enter_time = new Date().getTime();
   }, []);
 
 

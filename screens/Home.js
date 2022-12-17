@@ -30,9 +30,10 @@ import Sound from 'react-native-sound';
 import BackgroundTimer from 'react-native-background-timer';
 import { log } from '../services/logs';
 import { StackActions } from '@react-navigation/native';
-import { recreateManager } from '../services/bluetoothUtils';
 import Shortcuts from "react-native-actions-shortcuts";
+import { connectToDevice } from '../services/bluetoothUtils';
 
+let imHereTimer = null;
 let permTimer = null;
 let timer = null;
 let waitTimer = null;
@@ -112,9 +113,10 @@ const downPressPlus = (currentCounter, setCounter) => {
       log("HOME", 'Long press activated, starting plus loop');
       if (timer === null) {
         timer = setInterval(() => {
+          log("DEBUG", "SETTING PSI LOLOLOLOLOLOLOLOLOLOLOLOLOOL");
           setCounter(counter => counter + (counter < MAX_PSI ? 1 : 0));
           Vibration.vibrate([0, 5]);
-        }, 75);
+        }, 10);
       }
     }, 700);
   }
@@ -169,6 +171,8 @@ const upPressMinus = (currentCounter, setCounter) => {
 };
 
 const getData = async key => {
+  if (!key) return null;
+
   try {
     log("HOME", `Getting data for key: ${key}`);
     const data = await AsyncStorage.getItem(key);
@@ -303,19 +307,19 @@ const storeData = async () => {
     }
   }
 
-  if (!await AsyncStorage.getItem('@btImage')) {
-    log("HOME", `BT Image is not set! setting to default: null`);
-    try {
-      await AsyncStorage.setItem('@BtImage', JSON.stringify(null));
-    } catch (error) {
-      log("HOME", `ERROR when tried to save default data for BT Image. error: ${error}`);
-    }
-  }
+  // if (!await AsyncStorage.getItem('@btImage')) {
+  //   log("HOME", `BT Image is not set! setting to default: null`);
+  //   try {
+  //     await AsyncStorage.setItem('@BtImage', JSON.stringify(null));
+  //   } catch (error) {
+  //     log("HOME", `ERROR when tried to save default data for BT Image. error: ${error}`);
+  //   }
+  // }
 };
 
 const exitApp = () => {
-  log("HOME", `Exited home screen`);
-  AsyncStorage.setItem("@lastSave", JSON.stringify(Date.now()));
+  // log("HOME", `Exited home screen`);
+  // AsyncStorage.setItem("@lastSave", JSON.stringify(Date.now()));
 };
 
 
@@ -388,6 +392,9 @@ const Home = ({ navigation, route }) => {
       for (timer of timerList) {
         BackgroundTimer.clearInterval(timer);
       }
+      if (imHereTimer) {
+        BackgroundTimer.clearInterval(imHereTimer);
+      }
 
       setStatusText('Disconnected');
       if (readMonitor) {
@@ -438,150 +445,152 @@ const Home = ({ navigation, route }) => {
   useEffect(() => {
     let mounted = true;
 
-    log("HOME", `Loading home screen. ${route}`);
+    log("HOME", `Loading home screen.`);
 
-    let navListener = navigation.addListener('focus', () => {
 
-      if (BluetoothDevice && BluetoothManager) {
-        log("HOME", `Sending arduino screen status`);
-        sendDeviceSignal('home');
-      }
 
-      if (Platform.OS === 'android' && Platform.Version <= 19) {
-        log("HOME", `Android version too low (${Platform.Version})`);
-        setModalError(true);
-        setModalText(
-          "You have to update your Android version to use this app. It's not supported on Android API versions below 19. You have API version " + Platform.Version,
-        );
-        setModalVisible(true);
-      } else if (Platform.OS === 'ios' && Platform.Version <= 9) {
-        log("HOME", `IOS version too low (${Platform.Version})`);
-        setModalError(true);
-        setModalText(
-          "You have to update your iOS version to use this app. It's not supported on iOS versions below 9.",
-        );
-      }
+    if (Platform.OS === 'android' && Platform.Version <= 19) {
+      log("HOME", `Android version too low (${Platform.Version})`);
+      setModalError(true);
+      setModalText(
+        "You have to update your Android version to use this app. It's not supported on Android API versions below 19. You have API version " + Platform.Version,
+      );
+      setModalVisible(true);
+    } else if (Platform.OS === 'ios' && Platform.Version <= 9) {
+      log("HOME", `IOS version too low (${Platform.Version})`);
+      setModalError(true);
+      setModalText(
+        "You have to update your iOS version to use this app. It's not supported on iOS versions below 9.",
+      );
+    }
 
-      storeData();
+    storeData();
 
-      getData('@factor')
-        .then(value => {
-          if (value != null && value != undefined && mounted) {
-            setFactor(parseFloat(JSON.parse(value)));
+    getData('@factor')
+      .then(value => {
+        if (value != null && value != undefined && mounted) {
+          setFactor(parseFloat(JSON.parse(value)));
+        }
+      })
+      .catch(error => log("HOME", `ERROR when tried getting factor data. error: ${error}`));
+
+    getData('@wheels')
+      .then(value => {
+        if (mounted) {
+          if (value != null && value != undefined) {
+            setWheels(parseFloat(JSON.parse(value)));
+          } else {
+            setWheels(1);
           }
-        })
-        .catch(error => log("HOME", `ERROR when tried getting factor data. error: ${error}`));
+        }
+      })
+      .catch(error => log("HOME", `ERROR when tried getting factor data. error: ${error}`));
 
-      getData('@wheels')
-        .then(value => {
-          if (mounted) {
-            if (value != null && value != undefined) {
-              setWheels(parseFloat(JSON.parse(value)));
-            } else {
-              setWheels(1);
-            }
-          }
-        })
-        .catch(error => log("HOME", `ERROR when tried getting factor data. error: ${error}`));
+    getData('@wantedPsi')
+      .then(value => {
+        if (value != null && value != undefined && mounted) {
+          setWantedPsi(parseInt(JSON.parse(value)));
+        }
+      })
+      .catch(error => log("HOME", `ERROR when tried getting wanted psi data. error: ${error}`));
 
-      getData('@wantedPsi')
-        .then(value => {
-          if (value != null && value != undefined && mounted) {
-            setWantedPsi(parseInt(JSON.parse(value)));
-          }
-        })
-        .catch(error => log("HOME", `ERROR when tried getting wanted psi data. error: ${error}`));
+    if (disconnectMonitor) {
+      log("HOME", `Removing disconnect listener.`);
+      disconnectMonitor.remove();
+      setDisconnectMonitor(null);
+    }
 
-      if (disconnectMonitor) {
-        log("HOME", `Removing disconnect listener.`);
-        disconnectMonitor.remove();
-        setDisconnectMonitor(null);
-      }
+    if (readMonitor) {
+      log("HOME", `Removing received data listener.`);
+      readMonitor.remove();
+      setReadMonitor(null);
+    }
 
-      if (readMonitor) {
-        log("HOME", `Removing received data listener.`);
-        readMonitor.remove();
-        setReadMonitor(null);
-      }
+    if (
+      route != null &&
+      route != undefined &&
+      route.params != null &&
+      route.params != undefined
+    ) {
+      log("HOME", `Passed route checks.`);
 
       if (
-        route != null &&
-        route != undefined &&
-        route.params != null &&
-        route.params != undefined
+        route.params.device != null &&
+        route.params.device != undefined &&
+        route.params.manager != null &&
+        route.params.manager != undefined
       ) {
-        log("HOME", `Passed route checks.`);
 
-        if (
-          route.params.device != null &&
-          route.params.device != undefined &&
-          route.params.manager != null &&
-          route.params.manager != undefined
-        ) {
+        log("HOME", `Passed params checks. params: ${route.params}`);
+        BluetoothManager = route.params.manager;
+        BluetoothDevice = route.params.device;
 
-          log("HOME", `Passed params checks. params: ${route.params}`);
-          BluetoothManager = route.params.manager;
-          BluetoothDevice = route.params.device;
+        if (BluetoothDevice && BluetoothDevice.id) {
+          BluetoothManager.isDeviceConnected(BluetoothDevice.id)
+            .then(isConnected => {
+              if (!mounted) {
+                return;
+              }
 
-          if (BluetoothDevice && BluetoothDevice.id) {
-            BluetoothManager.isDeviceConnected(BluetoothDevice.id)
-              .then(isConnected => {
-                if (!mounted) {
-                  return;
+              if (isConnected) {
+                setConnected(true);
+                setStatusText('Connected');
+                log("HOME", `Device ${BluetoothDevice ? BluetoothDevice.id : null} is connected.`);
+                log("HOME", `Creating disconnect and received data listeners.`);
+
+                if (BluetoothDevice && BluetoothManager) {
+                  log("HOME", `Sending arduino screen status`);
+                  sendDeviceSignal('home');
                 }
 
-                if (isConnected) {
-                  setConnected(true);
-                  setStatusText('Connected');
-                  log("HOME", `Device ${BluetoothDevice ? BluetoothDevice.id : null} is connected.`);
-                  log("HOME", `Creating disconnect and received data listeners.`);
-
-                  try {
-                    setDisconnectMonitor(
-                      BluetoothManager.onDeviceDisconnected(
-                        BluetoothDevice.id,
-                        onDeviceDisconnect,
-                      ),
-                    );
-                  } catch (error) {
-                    log("HOME", `ERROR when tried creating a disconnect listener. error: ${error}`);
-                  }
-
-                  try {
-                    setReadMonitor(
-                      BluetoothManager.monitorCharacteristicForDevice(
-                        BluetoothDevice.id,
-                        'FFE0',
-                        'FFE1',
-                        monitorDeviceData,
-                      ),
-                    );
-                  } catch (error) {
-                    log("HOME", `ERROR when tried creating a received data listener. error: ${error}`);
-                  }
-
+                try {
+                  setDisconnectMonitor(
+                    BluetoothManager.onDeviceDisconnected(
+                      BluetoothDevice.id,
+                      onDeviceDisconnect,
+                    ),
+                  );
+                } catch (error) {
+                  log("HOME", `ERROR when tried creating a disconnect listener. error: ${error}`);
                 }
-              })
-              .catch(error => {
-                log("HOME", `ERROR when tried to check connection status. error: ${error}`);
-              });
-          } else {
-            BluetoothDevice = null;
-            log("HOME", "Set device to null because the BluetoothDevice param is null or it's ID is.");
-          }
 
-          DEVICE_SERVICE_UUID = route.params.serviceUUID;
-          DEVICE_CHARACTERISTICS_UUID = route.params.characteristicsUUID;
+                try {
+                  setReadMonitor(
+                    BluetoothManager.monitorCharacteristicForDevice(
+                      BluetoothDevice.id,
+                      'FFE0',
+                      'FFE1',
+                      monitorDeviceData,
+                    ),
+                  );
+                } catch (error) {
+                  log("HOME", `ERROR when tried creating a received data listener. error: ${error}`);
+                }
+
+              }
+            })
+            .catch(error => {
+              log("HOME", `ERROR when tried to check connection status. error: ${error}`);
+            });
         } else {
           BluetoothDevice = null;
-          log("HOME", "Set device to null because the BluetoothDevice param is null or the manager is.");
+          log("HOME", "Set device to null because the BluetoothDevice param is null or it's ID is.");
         }
+
+        DEVICE_SERVICE_UUID = route.params.serviceUUID;
+        DEVICE_CHARACTERISTICS_UUID = route.params.characteristicsUUID;
+      } else {
+        BluetoothDevice = null;
+        log("HOME", "Set device to null because the BluetoothDevice param is null or the manager is.");
       }
-    });
+    }
+    ;
+
+
 
     return () => {
       mounted = false;
-      navListener();
+      // navListener();
     };
   }, [route]);
 
@@ -727,6 +736,25 @@ const Home = ({ navigation, route }) => {
     };
   }, []);
 
+  useEffect(() => {
+    if (!imHereTimer && connected) {
+      imHereTimer = BackgroundTimer.setInterval(async () => {
+        if (BluetoothManager && BluetoothDevice) {
+          BluetoothManager.isDeviceConnected(BluetoothDevice.id).then(
+            isConnected => {
+              if (!isConnected) {
+                BackgroundTimer.clearInterval(imHereTimer);
+                imHereTimer = null;
+              }
+            }
+          ).catch();
+        }
+        sendDeviceSignal("here");
+      }, 3000);
+    }
+  }, [connected]);
+
+
   const sendDeviceSignal = async signal => {
     let base64Signal = Buffer.from(startChar + signal + endChar).toString(
       'base64',
@@ -775,13 +803,13 @@ const Home = ({ navigation, route }) => {
 
 
     if (BluetoothManager != null) {
-      for (const [_key, val] of Object.entries(BluetoothManager._activeSubscriptions)) {
+      for (const [, val] of Object.entries(BluetoothManager._activeSubscriptions)) {
         try {
           BluetoothManager._activeSubscriptions[val].remove();
         } catch (error) { }
       }
       try {
-        for (const [_key, val] of Object.entries(
+        for (const [, val] of Object.entries(
           BluetoothDevice._manager._activeSubscriptions,
         )) {
           try {
@@ -812,12 +840,16 @@ const Home = ({ navigation, route }) => {
   const handleStatusId = async (startTime, statusId) => {
     log("HOME", `Started operation: ${StatusIdMap[statusId]} that will last: ${startTime}s`);
 
-    await AsyncStorage.setItem("@lastSave", "null");
+    // await AsyncStorage.setItem("@lastSave", "null");
     if (statusId == prevStatusId) {
       prevStatusId = statusId;
       return;
     }
     prevStatusId = statusId;
+
+    for (timer of timerList) {
+      BackgroundTimer.clearInterval(timer);
+    }
 
     if (statusId == -1) {
       if (connected) {
@@ -829,9 +861,7 @@ const Home = ({ navigation, route }) => {
     }
 
     startTime -= 2;
-    for (timer of timerList) {
-      BackgroundTimer.clearInterval(timer);
-    }
+
     if (startTime == -3) {
       setStatusText(StatusIdMap[statusId]);
       setShowStatusLoading(false);
@@ -943,7 +973,7 @@ const Home = ({ navigation, route }) => {
         <Modal
           animationType="slide"
           transparent={true}
-          visible={modalText == null ? false : pickerModalVisible}
+          visible={pickerModalVisible}
           onRequestClose={() => {
             setPickerModalVisible(!pickerModalVisible);
           }}>
@@ -1294,12 +1324,22 @@ const Home = ({ navigation, route }) => {
             }}
             onPress={async () => {
               log("HOME", `OnAir button pressed`);
+
               if (BluetoothDevice != null) {
                 try {
                   let isConnected = await BluetoothManager.isDeviceConnected(BluetoothDevice.id);
                   if (!isConnected) {
                     log("HOME", `Bluetooth device - ${BluetoothDevice ? BluetoothDevice.id : null} not connected`);
-                    setConnected(false);
+                    log("HOME", `Attempting to connect...`);
+                    let device = false;//connectToDevice(BluetoothDevice, BluetoothManager);
+                    if (!device) {
+                      log("HOME", `Connection attempt failed!`);
+                      setConnected(false);
+                    } else {
+                      BluetoothDevice = device;
+                      log("HOME", `Connection attempt succeeded!`);
+                      setConnected(true);
+                    }
 
                   }
                 } catch (error) {
@@ -1315,10 +1355,21 @@ const Home = ({ navigation, route }) => {
                   }
                 } else {
                   if (JSON.stringify(dropAnim)) {
-                    dropIn();
-                    setDropMessageText('You are not connected to the device.');
-                    setDropMessageButtonText('Connect');
+
                     log("HOME", `Device - ${BluetoothDevice ? BluetoothDevice.id : null} is not connected`);
+                    log("HOME", `Attempting to connect...`);
+                    let device = false; //connectToDevice(BluetoothDevice, BluetoothManager);
+                    if (!device) {
+                      log("HOME", `Connection attempt failed!`);
+                      setConnected(false);
+                      dropIn();
+                      setDropMessageText('You are not connected to the device.');
+                      setDropMessageButtonText('Connect');
+                    } else {
+                      BluetoothDevice = device;
+                      log("HOME", `Connection attempt succeeded!`);
+                      setConnected(true);
+                    }
                   }
                 }
               } else {
@@ -1350,7 +1401,6 @@ const Home = ({ navigation, route }) => {
             }}
             onPressOut={() => {
               log("HOME", `Going to about me via the about me button`);
-              // removeSubscriptions();
               navigation.navigate('AboutMe');
             }}>
             <View style={{
@@ -1429,7 +1479,7 @@ const Home = ({ navigation, route }) => {
                 fontSize: isPortraitOrientation ? 2 * (winWidth / 18) : 2 * (winWidth / 60),
 
               }}>
-              {Math.round(tirePressure * 2) / 2}
+              {Math.round(tirePressure * 2) / 2 >= 0 ? Math.round(tirePressure * 2) / 2 : 0}
             </Text></View>
         </View>
 
@@ -1637,19 +1687,25 @@ const Home = ({ navigation, route }) => {
             justifyContent: 'space-around',
             marginTop: isPortraitOrientation ? '2%' : '1%',
             ...SHADOWS.extraDark,
+            paddingHorizontal: isPortraitOrientation ? "2%" : "32%",
           }}>
-          <Text
-            adjustsFontSizeToFit
-            numberOfLines={1}
-            style={{ fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60), color: 'white', marginLeft: isPortraitOrientation ? 0 : "32%" }}>
-            STATUS
-          </Text>
+          <View style={{
+            width: "25%",
+          }}>
+            <Text
+              adjustsFontSizeToFit
+              numberOfLines={1}
+              style={{ fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60), color: 'white', }}>
+              STATUS
+            </Text>
+          </View>
           <View
             style={{
               alignItems: 'center',
               flexDirection: 'row',
               justifyContent: 'flex-end',
-              width: '60%',
+              width: '70%',
+              paddingLeft: '5%',
               height: '100%',
             }}>
             {showStatusLoading && isPortraitOrientation ? (
@@ -1670,13 +1726,13 @@ const Home = ({ navigation, route }) => {
               style={{
                 backgroundColor: '#1B1B1B',
                 textAlign: 'center',
+                maxWidth: winWidth - (winWidth * 0.30) - 50,
                 textAlignVertical: 'center',
                 paddingHorizontal: '7%',
                 paddingVertical: '2%',
                 borderRadius: 2 * (winWidth / 25),
                 color: 'white',
                 fontSize: isPortraitOrientation ? 2 * (winWidth / 30) : 2 * (winWidth / 60),
-                marginRight: isPortraitOrientation ? 0 : "32%"
               }}>
               {statusText != "Disconnected" && statusText != "Connected" ? statusText : connected ? "Connected" : "Disconnected"}
             </Text>

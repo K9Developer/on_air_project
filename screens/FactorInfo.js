@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect } from 'react';
 import {
     Text,
     SafeAreaView,
@@ -7,15 +7,16 @@ import {
     View,
     Dimensions,
     ScrollView
-} from 'react-native'
+} from 'react-native';
+import { log } from '../services/logs';
 
 const winWidth = Dimensions.get('window').width;
 
 const FactorInfo = ({ navigation, route }) => {
 
     useEffect(() => {
-        log("FACTOR-INFO", `Loading factor info screen`)
-    }, [])
+        log("FACTOR-INFO", `Loading factor info screen`);
+    }, []);
 
 
     return (
@@ -30,7 +31,7 @@ const FactorInfo = ({ navigation, route }) => {
                     paddingHorizontal: '5%'
                 }}>
                     <TouchableOpacity
-                        onPress={() => { log("ABOUT-ME", `Exited factor info screen.`); navigation.goBack() }}
+                        onPress={() => { log("ABOUT-ME", `Exited factor info screen.`); navigation.goBack(); }}
                         style={{
                             width: "10%",
                             aspectRatio: 1,
@@ -84,7 +85,7 @@ const FactorInfo = ({ navigation, route }) => {
                 </View>
             </ScrollView>
         </SafeAreaView>
-    )
-}
+    );
+};
 
-export default FactorInfo
+export default FactorInfo;

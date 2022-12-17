@@ -8,22 +8,28 @@ import {
   Dimensions,
   BackHandler,
   SafeAreaView,
+  TextInput,
+  Modal,
+  Keyboard,
+  TouchableWithoutFeedback
 } from 'react-native';
 import React, { useEffect, useState } from 'react';
 import { CircleButton } from '../components';
-import { BleManager } from 'react-native-ble-plx';
 import Toast, { SuccessToast, ErrorToast } from 'react-native-toast-message';
 import { log } from '../services/logs';
-
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { recreateManager } from '../services/bluetoothUtils';
 
 const Buffer = require('buffer').Buffer;
 
+const nameMap = {};
 let mounted = true;
 let BluetoothManager = null;
 let timeoutTimer = null;
 let connectedDevice = null;
 let pingCounter = 0;
 const winWidth = Dimensions.get('window').width;
+const winHeight = Dimensions.get('window').height;
 let readMonitor = null;
 let meantToDisconnect = false;
 
@@ -64,9 +70,40 @@ const hardwareBackBtn = async () => {
 
 const DeviceChooser = ({ navigation, route }) => {
 
+  const [isKeyboardShowing, setIsKeyboardShowing] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [reload, setReload] = useState("");
+  const [deviceNameMap, setDeviceNameMap] = useState({});
+  const [listData, setListData] = useState([]);
+  const [renameModalVisible, setRenameModalVisible] = useState(false);
+  const [renameText, setRenameText] = useState("");
+  const [openedId, setOpenedId] = useState("");
+  const [renameModalName, setRenameModalName] = useState("");
   const [loadingPing, setLoadingPing] = useState([false, null]);
-  const [loadingConnection, setLoadingConnection] = useState(false);
+  const [loadingConnection, setLoadingConnection] = useState([false, null]);
   const [isPortraitOrientation, setIsPortraitOrientation] = useState(isPortrait());
+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      'keyboardDidShow',
+      e => {
+        setIsKeyboardShowing(true);
+        setKeyboardHeight(e.endCoordinates.height);
+        // or some other action
+      }
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      'keyboardDidHide',
+      () => {
+        setIsKeyboardShowing(false); // or some other action
+      }
+    );
+
+    return () => {
+      keyboardDidHideListener.remove();
+      keyboardDidShowListener.remove();
+    };
+  }, []);
 
   Dimensions.addEventListener('change', () => {
     log("DEVICE-CHOOSER", `Changed rotation. Is portrait - ${isPortrait()}`);
@@ -83,7 +120,7 @@ const DeviceChooser = ({ navigation, route }) => {
 
 
   const exitApp = () => {
-    log("DEVICE-CHOOSER", "Exited device chooser. cancelling connection.");
+    // log("DEVICE-CHOOSER", "Exited device chooser. cancelling connection.");
     clearTimeout(timeoutTimer);
     try {
       let tmp = { ...connectedDevice };
@@ -120,11 +157,6 @@ const DeviceChooser = ({ navigation, route }) => {
   const transferToSettings = async device => {
     log("DEVICE-CHOOSER", `Transferring data to settings`);
 
-    // if (!mounted) {
-    //   log("DEVICE-CHOOSER", "Not mounted, returning... 1");
-    //   return;
-    // }
-
     if (connectedDevice) {
       try {
         for (let i = 0; i < 10; i++) {
@@ -136,11 +168,6 @@ const DeviceChooser = ({ navigation, route }) => {
       }
     }
 
-    // if (!mounted) {
-    //   log("DEVICE-CHOOSER", "Not mounted, returning... 2");
-    //   return;
-    // }
-
     try {
       if (
         !connectedDevice ||
@@ -149,16 +176,12 @@ const DeviceChooser = ({ navigation, route }) => {
       ) {
         log("DEVICE-CHOOSER", `First time connecting/Selected device not connected. Connecting to ${device ? device.id : null}`);
         connectedDevice = await connectToDevice(device);
-        setLoadingConnection(false);
+        setLoadingPing([false, null]);
       }
     } catch (error) {
       log("DEVICE-CHOOSER", `ERROR when tried to connect to device: ${error}`);
     }
 
-    // if (!mounted) {
-    //   log("DEVICE-CHOOSER", "Not mounted, returning... 3");
-    //   return;
-    // }
 
     log("DEVICE-CHOOSER", `Navigating to settings`);
     navigation.navigate('Settings', {
@@ -169,16 +192,8 @@ const DeviceChooser = ({ navigation, route }) => {
     });
   };
 
-
-  const createManager = () => {
-    if (!BluetoothManager) {
-      BluetoothManager = new BleManager();
-      log("DEVICE-CHOOSER", `Reloaded bluetooth manager`);
-    }
-  };
-
   const connectToDevice = async device => {
-    createManager();
+    BluetoothManager = recreateManager(null);
     let connectedDevice = null;
     try {
       log("DEVICE-CHOOSER", `Connecting to bluetooth device - ${device ? device.id : null}`);
@@ -199,6 +214,55 @@ const DeviceChooser = ({ navigation, route }) => {
     }
     return connectedDevice;
 
+  };
+
+  const getDeviceNames = async (defaults) => {
+    const nameMap = JSON.parse(await AsyncStorage.getItem("@deviceNameMap"));
+    const nameList = defaults;
+    if (!nameMap) {
+      let list = [];
+      for (let device of nameList) {
+        list.push({
+          id: device.id,
+          name: `OnAir-${device.id.replace(/:/g, "").slice(-4)}`
+        });
+      }
+      return list;
+    }
+
+    let index = 0;
+    for (let device of defaults) {
+      let deviceId = device.id;
+
+      if (deviceId && nameMap[`${deviceId}`]) {
+        nameList[index] = { "id": deviceId, "name": nameMap[deviceId] };
+
+      } else {
+
+        nameList[index] = { "id": deviceId, "name": `OnAir-${device.id.replace(/:/g, "").slice(-4)}` };
+      };
+      index++;
+    }
+
+    return nameList;
+  };
+
+  const renameDevice = async (id, name) => {
+    let nameMap = await AsyncStorage.getItem("@deviceNameMap");
+    if (!nameMap) {
+      nameMap = { [id]: name };
+    } else {
+      nameMap = JSON.parse(nameMap);
+      nameMap[id] = name;
+    }
+    await AsyncStorage.setItem("@deviceNameMap", JSON.stringify(nameMap));
+
+    setDeviceNameMap(prevDeviceNameMap => {
+      prevDeviceNameMap[id] = name;
+      return prevDeviceNameMap;
+    });
+    setReload(!reload ? " " : "");
+    setRenameModalVisible(false);
   };
 
   const failed = () => {
@@ -223,6 +287,10 @@ const DeviceChooser = ({ navigation, route }) => {
   };
 
   const sendDeviceSignal = async (device, signal) => {
+
+    if (!device?.id) {
+      return;
+    }
 
     try {
       let base64Signal = Buffer.from('~' + signal + '^').toString('base64');
@@ -254,7 +322,7 @@ const DeviceChooser = ({ navigation, route }) => {
     }
 
     setLoadingPing([true, device.id]);
-    createManager();
+    BluetoothManager = recreateManager(null);
 
     try {
       if (connectedDevice.id != device.id && connectedDevice) {
@@ -349,6 +417,15 @@ const DeviceChooser = ({ navigation, route }) => {
                 });
                 log("DEVICE-CHOOSER", `Removing received data listener and disconnecting device - ${connectedDevice ? connectedDevice.id : null}`);
 
+                try {
+                  log("DEVICE-CHOOSER", `Sending OK signal to device - ${connectedDevice ? connectedDevice.id : null}`);
+                  for (let i = 0; i < 10; i++) {
+                    sendDeviceSignal(connectedDevice, 'Ok');
+                  }
+                } catch (error) {
+                  log("DEVICE-CHOOSER", `ERROR when sending OK message to arduino. error: ${error}`);
+                }
+
                 if (readMonitor) {
                   readMonitor.remove();
                   readMonitor = null;
@@ -362,14 +439,7 @@ const DeviceChooser = ({ navigation, route }) => {
                 meantToDisconnect = true;
                 clearTimeout(timeoutTimer);
 
-                try {
-                  log("DEVICE-CHOOSER", `Sending OK signal to device - ${connectedDevice ? connectedDevice.id : null}`);
-                  for (let i = 0; i < 10; i++) {
-                    sendDeviceSignal(connectedDevice, 'Ok');
-                  }
-                } catch (error) {
-                  log("DEVICE-CHOOSER", `ERROR when sending OK message to arduino. error: ${error}`);
-                }
+
                 return true;
               } else {
                 log("DEVICE-CHOOSER", `No response for ping! trying again...`);
@@ -429,29 +499,58 @@ const DeviceChooser = ({ navigation, route }) => {
             width: '55%',
             marginRight: 2 * (winWidth / 35),
           }}>
-          <TouchableOpacity
-            onPress={() => {
-              setLoadingConnection(true);
-              transferToSettings(data);
-            }}>
-            <Text
-              style={{
-                fontSize: 2 * (winWidth / 60),
-                fontWeight: 'bold',
-                color: 'white',
-                marginTop: 2 * (winWidth / 50),
+          <View style={{
+            flexDirection: "row",
+            alignItems: 'center',
+          }}>
+            <TouchableOpacity
+              onPress={() => {
+                setLoadingConnection([true, id]);
+                transferToSettings(data);
               }}>
-              OnAir-{id.replace(/:/g, "").slice(-4)}
-            </Text>
-            <Text
-              style={{
-                fontSize: 2 * (winWidth / 70),
-                color: 'gray',
-                marginBottom: 2 * (winWidth / 70),
-              }}>
-              {id}
-            </Text>
-          </TouchableOpacity>
+              <Text
+                style={{
+                  fontSize: 2 * (winWidth / 60),
+                  fontWeight: 'bold',
+                  color: 'white',
+                  marginTop: 2 * (winWidth / 50),
+                }}>
+                {deviceNameMap[id]}{reload}
+              </Text>
+              <Text
+                style={{
+                  fontSize: 2 * (winWidth / 70),
+                  color: 'gray',
+                  marginBottom: 2 * (winWidth / 70),
+                }}>
+                {id}
+              </Text>
+            </TouchableOpacity>
+            <CircleButton
+              imgUrl={require('../assets/icons/edit.png')}
+              handlePressDown={() => { }}
+              handlePressUp={async () => {
+                let name = "";
+                for (let device of listData) {
+                  if (device.id == id) {
+                    name = device.name;
+                  }
+                }
+                setRenameModalName(name);
+                setRenameText(name);
+                setOpenedId(id);
+                setRenameModalVisible(true);
+              }}
+              size={[winWidth / 15, winWidth / 15]}
+              {...{
+                backgroundColor: 'transparent',
+                zIndex: 1,
+                // backgroundColor: 'red',
+                // height: '100%',
+                marginLeft: 2 * (winWidth / 35),
+              }}
+            />
+          </View>
         </View>
         <View
           style={{
@@ -487,7 +586,7 @@ const DeviceChooser = ({ navigation, route }) => {
             </TouchableOpacity>
           )}
 
-          {loadingConnection ? (
+          {loadingConnection[0] && loadingConnection[1] == id ? (
             <ActivityIndicator
               size="large"
               color="#fff"
@@ -500,7 +599,7 @@ const DeviceChooser = ({ navigation, route }) => {
           ) : (
             <TouchableOpacity
               onPress={() => {
-                setLoadingConnection(true);
+                setLoadingConnection([true, id]);
                 transferToSettings(data);
               }}>
               <Image
@@ -517,15 +616,34 @@ const DeviceChooser = ({ navigation, route }) => {
     </SafeAreaView>
   );
 
-  let DATA = route.params.scannedDevices;
+  useEffect(() => {
+
+    let defaults = route.params.scannedDevices;
+    getDeviceNames(defaults).then(tmpData => {
+
+      setListData(tmpData);
+
+      let nm = {};
+      for (let device of tmpData) {
+        nm[device.id] = device.name;
+      }
+      setDeviceNameMap(nm);
+    }).catch(e => {
+      log("DEVICE_CHOOSER", "ERROR when tried getting names for devices, using defaults. error: " + e);
+      setListData(defaults);
+    });
+
+  }, []);
+
+
 
   const renderItem = ({ item, index }) => (
     <Item
-      title={item.name}
+      title={`OnAir-${item.id.replace(/:/g, "").slice(-4)}`}
       id={item.id}
       data={item}
       index={index}
-      length={DATA.length}
+      length={listData.length}
     />
   );
 
@@ -535,6 +653,118 @@ const DeviceChooser = ({ navigation, route }) => {
         width: '100%',
         height: '100%',
       }}>
+      <Modal
+
+        animationType="slide"
+        transparent={true}
+        visible={renameModalVisible}
+        onRequestClose={() => {
+          setRenameModalVisible(!renameModalVisible);
+        }}>
+        <TouchableWithoutFeedback
+          onPress={() => setRenameModalVisible(!renameModalVisible)}>
+          <View
+            style={{
+              width: '100%',
+              height: '100%',
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              flex: 1,
+              position: 'absolute',
+            }}></View>
+        </TouchableWithoutFeedback>
+
+        <View style={{
+          // '100%'
+          width: '100%',
+          height: winHeight,
+          alignItems: 'center',
+          justifyContent: 'center',
+
+
+        }}>
+          <View style={{
+            minHeight: "30%",
+            maxHeight: "30%",
+            minWidth: "80%",
+            maxWidth: "80%",
+            backgroundColor: 'white',
+            borderRadius: 10,
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            marginBottom: isKeyboardShowing ? keyboardHeight : 0
+          }}>
+            <View style={{
+              width: '100%',
+              flexDirection: 'column',
+              justifyContent: 'space-around',
+              height: '70%',
+            }}>
+              <View style={{
+                height: '50%'
+              }}>
+                <Text style={{
+                  fontSize: 2 * (winWidth / 35),
+                  textAlign: 'center',
+                  color: 'black',
+                  marginTop: 5
+                }}>Rename This Device</Text>
+                <Text style={{
+                  fontSize: 2 * (winWidth / 50),
+                  textAlign: 'center',
+                  color: 'gray',
+                  marginTop: 5
+                }}>Only on your phone</Text></View>
+              <TextInput
+                onChangeText={d => setRenameText(d)}
+                defaultValue={renameModalName}
+
+                // onFocus={() => setIsKeyboardShowing(true)}
+                // onBlur={() => setIsKeyboardShowing(false)}
+                style={{
+                  borderColor: 'lightblue',
+                  borderWidth: 2,
+                  borderRadius: 10,
+                  marginHorizontal: "5%",
+                  color: 'black',
+                  paddingHorizontal: "5%"
+                }} />
+            </View>
+            <View style={{
+              width: '100%',
+              flexDirection: 'row',
+              height: '25%',
+            }}>
+              <TouchableOpacity
+                onPress={async () => { await renameDevice(openedId, renameText); }}
+                style={{
+                  width: '50%',
+                  height: '100%',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  backgroundColor: '#1b68f7',
+                  borderBottomLeftRadius: 10
+                }}>
+                <Text style={{ color: 'white', fontSize: 2 * (winWidth / 30) }}>Rename</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setRenameModalVisible(false)}
+                style={{
+                  width: '50%',
+                  height: '100%',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  backgroundColor: '#fa484f',
+                  borderBottomRightRadius: 10
+                }}>
+                <Text style={{ color: 'white', fontSize: 2 * (winWidth / 30) }}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+      </Modal>
+
+
       <View
         style={{
           width: '100%',
@@ -597,13 +827,14 @@ const DeviceChooser = ({ navigation, route }) => {
             </View>
           </View>
           <FlatList
-            data={DATA}
+            data={listData}
+            extraData={openedId}
             renderItem={renderItem}
             keyExtractor={item => item.id}
           />
         </View>
       </View>
-    </SafeAreaView>
+    </SafeAreaView >
   );
 };
 export default DeviceChooser;

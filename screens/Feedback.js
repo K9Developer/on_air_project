@@ -50,6 +50,35 @@ const toastConfig = {
     ),
 };
 
+const filterLogs = logs => {
+    let total_char_count = 0;
+    for (let log_msg of logs) {
+        total_char_count += log_msg.length;
+    }
+
+
+    if (total_char_count < 65000) {
+        log("FEEDBACK", "No need for log filtering! length: " + total_char_count);
+        return [0, logs];
+    }
+
+    let chars_to_remove = total_char_count - 60000;
+    let logs_removed = 0;
+    for (let i = 0; chars_to_remove > 0; i++) {
+        chars_to_remove -= logs[0].length;
+        logs_removed += 1;
+        logs.splice(0, 1);
+    }
+
+    let total_char_count_curr = 0;
+    for (let log_msg of logs) {
+        total_char_count_curr += log_msg.length;
+    }
+
+    log("FEEDBACK", `Filtered logs! prev length: ${total_char_count}, log messages removed: ${logs_removed}, current length: ${total_char_count_curr}`);
+    return [logs_removed, logs];
+};
+
 const Feedback = ({ navigation }) => {
     const [bug, setBug] = useState(false);
     const [appCrash, setAppCrash] = useState(false);
@@ -60,7 +89,10 @@ const Feedback = ({ navigation }) => {
 
 
     useEffect(() => {
-        log("HOME", `Loading feedback screen.`);
+        // for (let i = 0; i <= 6999; i++) {
+        //     log("DEBUG", `aaaaaaaaaa`);
+        // }
+        log("FEEDBACK", `Loading feedback screen.`);
     }, []);
 
 
@@ -81,6 +113,9 @@ const Feedback = ({ navigation }) => {
         setSending(true);
         if (bug) labels.push("bug");
         if (appCrash) labels.push("app crash");
+        let thoughts = thoughtsOnApp ? thoughtsOnApp : 'N/A';
+        logs = JSON.parse(logs);
+        const [logsRemoved, filteredLogs] = filterLogs(logs);
 
         let mdFeedback = `
 ### Device Data
@@ -112,17 +147,17 @@ ${thoughtsOnApp || rate ?
 ### App Review
 ------
     * Rating: ${starRating[rate - 1]}
-    * Thoughts On App: ${thoughtsOnApp ? thoughtsOnApp : 'N/A'}            
+    * Thoughts On App: ${thoughts}            
     ` : ''
             }
 
 ### Logs
 ------
 <details>
-<summary>logs</summary>
+<summary>logs ${logsRemoved ? `(Trimmed ${logsRemoved} logs)` : ''}</summary>
 
 \`\`\`
-${JSON.parse(logs ? logs : '[]').join('\n')}
+${(filteredLogs ? filteredLogs : []).join('\n')}
 \`\`\`
 </details>
 `;
@@ -270,7 +305,7 @@ ${JSON.parse(logs ? logs : '[]').join('\n')}
                         minimumValue={1}
                         maximumValue={5}
                         trackMarks={[1, 2, 3, 4, 5]}
-                        onValueChange={value => { setRate(value[0]); console.log(rate); }}
+                        onValueChange={value => setRate(value[0])}
                     />
                 </View>
 
