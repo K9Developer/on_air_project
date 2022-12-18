@@ -113,10 +113,9 @@ const downPressPlus = (currentCounter, setCounter) => {
       log("HOME", 'Long press activated, starting plus loop');
       if (timer === null) {
         timer = setInterval(() => {
-          log("DEBUG", "SETTING PSI LOLOLOLOLOLOLOLOLOLOLOLOLOOL");
           setCounter(counter => counter + (counter < MAX_PSI ? 1 : 0));
           Vibration.vibrate([0, 5]);
-        }, 10);
+        }, 75);
       }
     }, 700);
   }
