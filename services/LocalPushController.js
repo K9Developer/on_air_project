@@ -35,11 +35,16 @@ export const DisconnectedNotification = async () => {
         bigLargeIcon: "ic_launcher",
         color: "#eb4034",
         group: "disconnect-channel",
-        visibility: "private",
         ignoreInForeground: false,
         title: "Disconnected OnAir",
         message: "To reconnect go into your app and connect again via the settings page",
-        id: 2
+        id: 2,
+        vibrate: true,
+        vibration: 20000,
+        playSound: true,
+        soundName: "android.resource://com.on_air_project/raw/disconnect_sound",
+        visibility: 'public',
+        importance: 'max',
     });
 
 };

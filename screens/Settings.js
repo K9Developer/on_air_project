@@ -21,6 +21,8 @@ import { COLORS, SHADOWS } from '../constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BleManager } from 'react-native-ble-plx';
 import ValuePicker from 'react-native-picker-horizontal';
+import HorizontalPicker from '@vseslav/react-native-horizontal-picker';
+
 import { log } from '../services/logs';
 import { connectToDevice, recreateManager } from '../services/bluetoothUtils';
 import { LocalNotification, DisconnectedNotification } from '../services/LocalPushController';
@@ -197,6 +199,7 @@ const storeData = async () => {
 
 
 const Settings = ({ navigation, route }) => {
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const [factor, setFactor] = useState(MIN_FACTOR);
   const [wheels, setWheels] = useState(1);
   const [roadPreset, setRoadPreset] = useState(MIN_PRESET);
@@ -289,6 +292,7 @@ const Settings = ({ navigation, route }) => {
       data = JSON.parse(data);
       log("DEBUG", `ARRAY PARSED WITH LENGTH ${data.length}`);
       if (data.length == 2) {
+        sendDeviceSignal("gp");
         setVoltage(data[0]);
       } else {
         if (data[0] == 3) {
@@ -775,7 +779,6 @@ const Settings = ({ navigation, route }) => {
           justifyContent: 'center',
           alignItems: 'center',
           color: 'black',
-
         }}>
         {item}
       </Text>
@@ -944,7 +947,7 @@ const Settings = ({ navigation, route }) => {
                 </Text>
               </View>
 
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                 <ValuePicker
                   style={{
                     textAlign: 'center',
@@ -980,6 +983,9 @@ const Settings = ({ navigation, route }) => {
                   }}
                 />
               </View>
+              <View style={{
+                // ADD OIPACITY AT SIDES AND SIZE SMALLER
+              }}></View>
               <View
                 style={{
                   marginTop: 10
@@ -1405,7 +1411,7 @@ const Settings = ({ navigation, route }) => {
 
           </Text>
           <Text adjustsFontSizeToFit style={{ fontSize: isPortraitOrientation ? 2 * (winWidth / 40) : 2 * (winWidth / 70), color: 'white' }}>
-            On Air Version 4.4
+            On Air Version 5.0
           </Text>
           <Text adjustsFontSizeToFit
             onPress={async () => {

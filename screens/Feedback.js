@@ -17,7 +17,6 @@ import DeviceInfo from 'react-native-device-info';
 import { log } from '../services/logs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Buffer } from "buffer";
-
 const emojiList = ["😖", "😕", "😐", "🙂", "🤩"];
 const starRating = ["⭐", "⭐⭐", "⭐⭐⭐", "⭐⭐⭐⭐", "⭐⭐⭐⭐⭐"];
 const token = "Z2hwX2k3b1NSOVNWVEx4UU5OQVNOcEhBTmozV3FTQ09RYTFhQ1lYaQ==";
@@ -78,6 +77,7 @@ const filterLogs = logs => {
     log("FEEDBACK", `Filtered logs! prev length: ${total_char_count}, log messages removed: ${logs_removed}, current length: ${total_char_count_curr}`);
     return [logs_removed, logs];
 };
+
 
 const Feedback = ({ navigation }) => {
     const [bug, setBug] = useState(false);
@@ -284,6 +284,7 @@ ${(filteredLogs ? filteredLogs : []).join('\n')}
 
                     justifyContent: 'center',
                 }}>
+
                     <Text style={{ color: 'white' }}>Rate The App: {emojiList[rate - 1]}</Text>
                     <Slider
                         containerStyle={{
@@ -364,7 +365,9 @@ ${(filteredLogs ? filteredLogs : []).join('\n')}
                                     fontSize: 30
                                 }}>Submit</Text>
                             </TouchableOpacity>
+
                     }
+
                 </View>
 
             </View>

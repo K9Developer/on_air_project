@@ -44,13 +44,16 @@ export const sendDataToDevice = async (device, manager, data) => {
     }
 };
 
-export const scanForDevices = async (manager, timeout, found_callback, error_callback) => {
+export const scanForDevices = async (manager, timeout, found_callback, error_callback, done_callback) => {
     log("BLUETOOTH-UTILS", "Starting scan");
 
     const scannedDevices = [];
 
-    setTimeout(() => {
+    let doneTimer = setTimeout(() => {
         manager.stopDeviceScan();
+        if (done_callback) {
+            done_callback({ "scannedDevices": scannedDevices });
+        }
         return { "scannedDevices": scannedDevices };
     }, timeout);
 
@@ -66,7 +69,8 @@ export const scanForDevices = async (manager, timeout, found_callback, error_cal
                 scannedDevices.push(device);
                 found_callback(
                     {
-                        "scannedDevices": scannedDevices
+                        "scannedDevices": scannedDevices,
+                        "stopTimer": doneTimer
                     });
             }
         }
