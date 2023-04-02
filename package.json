@@ -34,6 +34,7 @@
     "react-native-error-boundary": "^1.1.16",
     "react-native-exception-handler": "^2.10.10",
     "react-native-gesture-handler": "^2.4.2",
+    "react-native-keep-awake": "^4.0.0",
     "react-native-layout-tester": "^1.0.6",
     "react-native-otp-verify": "^1.1.4",
     "react-native-permissions": "^3.3.1",

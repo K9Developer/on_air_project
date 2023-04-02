@@ -514,7 +514,9 @@ const Settings = ({ navigation, route }) => {
   useEffect(() => {
     let appStateListener = AppState.addEventListener('change', handleAppInBackground);
     BackHandler.addEventListener('hardwareBackPress', hardwareBackBtn);
-
+    if (BluetoothDevice && BluetoothManager) {
+      sendDeviceSignal("settings");
+    }
     let mounted = true;
 
     getData('@factor')

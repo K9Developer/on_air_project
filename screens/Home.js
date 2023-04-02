@@ -32,6 +32,7 @@ import { log } from '../services/logs';
 import { StackActions } from '@react-navigation/native';
 import Shortcuts from "react-native-actions-shortcuts";
 import { connectToDevice, scanForDevices, recreateManager } from '../services/bluetoothUtils';
+import KeepAwake from 'react-native-keep-awake';
 
 let dropInTimer = null;
 let permTimer = null;
@@ -342,11 +343,7 @@ const exitApp = () => {
 };
 
 
-const handleAppInBackground = (currentState) => {
-  if (currentState === 'background') {
-    exitApp();
-  }
-};
+
 
 const Home = ({ navigation, route }) => {
 
@@ -371,6 +368,7 @@ const Home = ({ navigation, route }) => {
   const [pickerModalVisible, setPickerModalVisible] = useState(false);
   const [psiIndex, setPsiIndex] = useState(0);
   const [isPortraitOrientation, setIsPortraitOrientation] = useState(isPortrait());
+  const [disconnected, setDisconnected] = useState(false);
 
   const dropAnim = useRef(new Animated.Value(0)).current;
 
@@ -449,8 +447,12 @@ const Home = ({ navigation, route }) => {
       }
       DisconnectedNotification();
       playDisconnectSound();
-      BackgroundTimer.
-      scanForDevices(BluetoothManager, 7000, async (devices) => {
+      setDisconnected(true)
+    // await BackgroundService.updateNotification({taskDesc: 'New ExampleTask description'}); // Only Android, iOS will ignore this call
+    // iOS will also run everything here in the background until .stop() is called
+    // await BackgroundService.stop();
+  
+    scanForDevices(BluetoothManager, 7000, async (devices) => {
         let scannedDevices = devices.scannedDevices;
         let targetDeviceId = device.id;
         console.log(targetDeviceId);
@@ -460,7 +462,6 @@ const Home = ({ navigation, route }) => {
             BluetoothManager.stopDeviceScan();
             clearTimeout(devices.stopTimer);
             setDropMessageText('Found device. connecting...');
-            setDropMessageButtonText("");
             dropIn();
             let result = await connectToDevice(device, BluetoothManager);
             console.log(result);
@@ -515,6 +516,83 @@ const Home = ({ navigation, route }) => {
 
     }
   };
+
+  const handleAppInBackground = (currentState) => {
+    if (currentState === 'background') {
+      exitApp();
+    }
+    if (currentState == "active") {
+      if (!connected && disconnected) {
+        setDisconnected(false);
+        handleDisconnect(BluetoothDevice);
+        scanForDevices(BluetoothManager, 7000, async (devices) => {
+          let scannedDevices = devices.scannedDevices;
+          let targetDeviceId = device.id;
+          console.log(targetDeviceId);
+          for (d of scannedDevices) {
+            console.log(device.id, device.name, device.id == targetDeviceId);
+            if (d.id == targetDeviceId) {
+              BluetoothManager.stopDeviceScan();
+              clearTimeout(devices.stopTimer);
+              setDropMessageText('Found device. connecting...');
+              geButtonText("");
+              dropIn();
+              let result = await connectToDevice(device, BluetoothManager);
+              console.log(result);
+              if (result) {
+                setDropMessageText('Reconnected successfully!');
+                setDropMessageButtonText("");
+                dropIn();
+                setConnected(true);
+                setReconnected(true);
+                BluetoothDevice = result;
+                sendDeviceSignal('home');
+                try {
+                  setDisconnectMonitor(
+                    BluetoothManager.onDeviceDisconnected(
+                      BluetoothDevice.id,
+                      onDeviceDisconnect,
+                    ),
+                  );
+                } catch (error) {
+                  log("HOME", `ERROR when tried creating a disconnect listener. error: ${error}`);
+                }
+  
+                try {
+                  setReadMonitor(
+                    BluetoothManager.monitorCharacteristicForDevice(
+                      BluetoothDevice.id,
+                      'FFE0',
+                      'FFE1',
+                      monitorDeviceData,
+                    ),
+                  );
+                } catch (error) {
+                  log("HOME", `ERROR when tried creating a received data listener. error: ${error}`);
+                }
+              } else if (!connected && !reconnected) {
+                setDropMessageText('Couldn\'t reconnect.');
+                setDropMessageButtonText('Connect');
+                dropIn();
+                handleDisconnect(device);
+              }
+            }
+          }
+        }, e => { log("HOME", `ERROR when tried to reconnect to device. (e: ${e})`); handleDisconnect(device); }, async () => {
+          console.log("DONE", connected, reconnected);
+          if (!reconnected && !connected && !await BluetoothManager.isDeviceConnected(BluetoothDevice.id)) {
+            setDropMessageText('Couldn\'t find device.');
+            setDropMessageButtonText('Connect');
+            dropIn();
+            handleDisconnect(device);
+          }
+        });
+  
+      }
+    };
+  }
+        
+
 
   useEffect(() => {
     if (statusText == undefined) {
@@ -836,7 +914,7 @@ const Home = ({ navigation, route }) => {
           setDropMessageText('connecting to previously connected device...');
           setDropMessageButtonText("");
           dropIn();
-          scanForDevices(BluetoothManager, 5000, async (devices) => {
+          scanForDevices(BluetoothManager, 7000, async (devices) => {
             let scannedDevices = devices.scannedDevices;
             let targetDeviceId = data;
             for (d of scannedDevices) {
@@ -892,7 +970,7 @@ const Home = ({ navigation, route }) => {
         }
       });
     }
-
+    KeepAwake.activate();
     return () => {
       BackgroundTimer.clearInterval(permTimer);
       appStateListener.remove();
@@ -1463,6 +1541,11 @@ const Home = ({ navigation, route }) => {
               if (!showStatusLoading) {
                 removeSubscriptions();
                 log("HOME", `Going to settings via cog icon`);
+                Animated.timing(dropAnim, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: false,
+      }).start();
                 navigation.navigate('Settings', {
                   device: BluetoothDevice,
                   serviceUUID: DEVICE_SERVICE_UUID,
