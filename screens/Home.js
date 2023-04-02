@@ -31,9 +31,9 @@ import BackgroundTimer from 'react-native-background-timer';
 import { log } from '../services/logs';
 import { StackActions } from '@react-navigation/native';
 import Shortcuts from "react-native-actions-shortcuts";
-import { connectToDevice } from '../services/bluetoothUtils';
+import { connectToDevice, scanForDevices, recreateManager } from '../services/bluetoothUtils';
 
-let imHereTimer = null;
+let dropInTimer = null;
 let permTimer = null;
 let timer = null;
 let waitTimer = null;
@@ -42,10 +42,12 @@ let BluetoothManager = null;
 let DEVICE_SERVICE_UUID = null;
 let DEVICE_CHARACTERISTICS_UUID = null;
 let MIN_FACTOR = 3;
-let prevStatusId = null;
 const MAX_PSI = 50;
+
+// Changed max PSI to 110 so I can scroll with petentiometer to 112 (bc its max) and check done
+
 const MIN_PSI = 3;
-const PSI_OPTIONS = Array(48)
+const PSI_OPTIONS = Array(MAX_PSI - 2)
   .fill(3)
   .map((x, y) => x + y);
 const startChar = '~';
@@ -92,6 +94,24 @@ const playDoneSound = () => {
   let beep = new Sound('done_beep.mp3', Sound.MAIN_BUNDLE, error => {
     if (error) {
       log("HOME", `Failed to load done_beep.mp3 sound. error: ${error}`);
+      return;
+    }
+    beep.setVolume(1);
+    beep.play(success => {
+      if (success) {
+        log("HOME", 'successfully finished playing');
+      } else {
+        log("HOME", 'playback failed due to audio decoding errors');
+      }
+    });
+  });
+  return beep;
+};
+
+const playDisconnectSound = () => {
+  let beep = new Sound('disconnect_sound.mp3', Sound.MAIN_BUNDLE, error => {
+    if (error) {
+      log("HOME", `Failed to load disconnect_sound.mp3 sound. error: ${error}`);
       return;
     }
     beep.setVolume(1);
@@ -330,6 +350,7 @@ const handleAppInBackground = (currentState) => {
 
 const Home = ({ navigation, route }) => {
 
+  const [reconnected, setReconnected] = useState(false);
   const [wantedPsi, setWantedPsi] = useState(MIN_PSI);
   const [factor, setFactor] = useState(MIN_FACTOR);
   const [wheels, setWheels] = useState(1);
@@ -372,49 +393,126 @@ const Home = ({ navigation, route }) => {
     }
   };
 
-  const onDeviceDisconnect = (error, device) => {
+  const handleDisconnect = device => {
+    setShowStatusLoading(false);
+    log("HOME", `Device ${device ? device.id : null} disconnected successfully`);
+    if (disconnectMonitor) {
+      log("HOME", `Removing disconnect listener.`);
+      disconnectMonitor.remove();
+      setDisconnectMonitor(null);
+    }
+
+    log("HOME", `Removing all timers.`);
+    for (timer of timerList) {
+      BackgroundTimer.clearInterval(timer);
+    }
+   
+
+    setStatusText('Disconnected');
+    if (readMonitor) {
+      log("HOME", `Removing received data listener.`);
+      readMonitor.remove();
+      setReadMonitor(null);
+    }
+
+    setConnected(false);
+
+    if (Platform.OS === 'android') {
+      Vibration.vibrate([200, 200, 200, 500]);
+    } else {
+      Vibration.vibrate([200, 500]);
+    }
+
+    DisconnectedNotification();
+    removeSubscriptions();
+    setShowStatusLoading(false);
+    setStatusText("Disconnected");
+    // setDropMessageText('You have disconnected from the device.');
+    // dropIn();
+  };
+
+  const onDeviceDisconnect = async (error, device) => {
+    setReconnected(false);
+    setConnected(false);
     if (error) {
       log("HOME", `ERROR when device disconnected, device - ${device ? device.id : null}. error: ${error}`);
       setModalError(true);
       setModalText(getErrorText(error));
       setModalVisible(true);
     } else {
-      setShowStatusLoading(false);
-      log("HOME", `Device ${device ? device.id : null} disconnected successfully`);
-      if (disconnectMonitor) {
-        log("HOME", `Removing disconnect listener.`);
-        disconnectMonitor.remove();
-        setDisconnectMonitor(null);
-      }
-
-      log("HOME", `Removing all timers.`);
+      BluetoothManager = recreateManager(BluetoothManager);
+      setDropMessageText('Disconnected. Attempting to reconnect...');
+      setDropMessageButtonText("");
+      dropIn();
       for (timer of timerList) {
         BackgroundTimer.clearInterval(timer);
       }
-      if (imHereTimer) {
-        BackgroundTimer.clearInterval(imHereTimer);
-      }
-
-      setStatusText('Disconnected');
-      if (readMonitor) {
-        log("HOME", `Removing received data listener.`);
-        readMonitor.remove();
-        setReadMonitor(null);
-      }
-
-      setConnected(false);
-
-      if (Platform.OS === 'android') {
-        Vibration.vibrate([200, 200, 200, 500]);
-      } else {
-        Vibration.vibrate([200, 500]);
-      }
-
       DisconnectedNotification();
-      removeSubscriptions();
-      setDropMessageText('You have disconnected from the device.');
-      setDropMessageButtonText('Reconnect');
-      dropIn();
+      playDisconnectSound();
+      BackgroundTimer.
+      scanForDevices(BluetoothManager, 7000, async (devices) => {
+        let scannedDevices = devices.scannedDevices;
+        let targetDeviceId = device.id;
+        console.log(targetDeviceId);
+        for (d of scannedDevices) {
+          console.log(device.id, device.name, device.id == targetDeviceId);
+          if (d.id == targetDeviceId) {
+            BluetoothManager.stopDeviceScan();
+            clearTimeout(devices.stopTimer);
+            setDropMessageText('Found device. connecting...');
+            setDropMessageButtonText("");
+            dropIn();
+            let result = await connectToDevice(device, BluetoothManager);
+            console.log(result);
+            if (result) {
+              setDropMessageText('Reconnected successfully!');
+              setDropMessageButtonText("");
+              dropIn();
+              setConnected(true);
+              setReconnected(true);
+              BluetoothDevice = result;
+              sendDeviceSignal('home');
+              try {
+                setDisconnectMonitor(
+                  BluetoothManager.onDeviceDisconnected(
+                    BluetoothDevice.id,
+                    onDeviceDisconnect,
+                  ),
+                );
+              } catch (error) {
+                log("HOME", `ERROR when tried creating a disconnect listener. error: ${error}`);
+              }
+
+              try {
+                setReadMonitor(
+                  BluetoothManager.monitorCharacteristicForDevice(
+                    BluetoothDevice.id,
+                    'FFE0',
+                    'FFE1',
+                    monitorDeviceData,
+                  ),
+                );
+              } catch (error) {
+                log("HOME", `ERROR when tried creating a received data listener. error: ${error}`);
+              }
+            } else if (!connected && !reconnected) {
+              setDropMessageText('Couldn\'t reconnect.');
+              setDropMessageButtonText('Connect');
+              dropIn();
+              handleDisconnect(device);
+            }
+          }
+        }
+      }, e => { log("HOME", `ERROR when tried to reconnect to device. (e: ${e})`); handleDisconnect(device); }, async () => {
+        console.log("DONE", connected, reconnected);
+        if (!reconnected && !connected && !await BluetoothManager.isDeviceConnected(BluetoothDevice.id)) {
+          setDropMessageText('Couldn\'t find device.');
+          setDropMessageButtonText('Connect');
+          dropIn();
+          handleDisconnect(device);
+        }
+      });
+
     }
   };
 
@@ -728,6 +826,73 @@ const Home = ({ navigation, route }) => {
     const ShortcutsEmitter = new NativeEventEmitter(Shortcuts);
     let shortcutListener = ShortcutsEmitter.addListener("onShortcutItemPressed", handleShortcut);
 
+    if (!connected) {
+
+      BluetoothManager = recreateManager(BluetoothManager);
+
+
+      AsyncStorage.getItem("@personalDeviceId").then((data) => {
+        if (data) {
+          setDropMessageText('connecting to previously connected device...');
+          setDropMessageButtonText("");
+          dropIn();
+          scanForDevices(BluetoothManager, 5000, async (devices) => {
+            let scannedDevices = devices.scannedDevices;
+            let targetDeviceId = data;
+            for (d of scannedDevices) {
+              if (d.id == targetDeviceId) {
+                BluetoothManager.stopDeviceScan();
+                clearTimeout(devices.stopTimer);
+                setDropMessageText('Found device. connecting...');
+                setDropMessageButtonText("");
+                dropIn();
+                let result = await connectToDevice(d, BluetoothManager);
+                if (result) {
+                  setDropMessageText('Reconnected successfully!');
+                  setDropMessageButtonText("");
+                  dropIn();
+                  setConnected(true);
+                  setReconnected(true);
+                  BluetoothDevice = result;
+                  sendDeviceSignal('home');
+                  try {
+                    setDisconnectMonitor(
+                      BluetoothManager.onDeviceDisconnected(
+                        BluetoothDevice.id,
+                        onDeviceDisconnect,
+                      ),
+                    );
+                  } catch (error) {
+                    log("HOME", `ERROR when tried creating a disconnect listener. error: ${error}`);
+                  }
+                  try {
+                    setReadMonitor(
+                      BluetoothManager.monitorCharacteristicForDevice(
+                        BluetoothDevice.id,
+                        'FFE0',
+                        'FFE1',
+                        monitorDeviceData,
+                      ),
+                    );
+                  } catch (error) {
+                    log("HOME", `ERROR when tried creating a received data listener. error: ${error}`);
+                  }
+                } else if (!connected && !reconnected) {
+                  setDropMessageText('Couldn\'t reconnect.');
+                  setDropMessageButtonText('Connect');
+                  dropIn();
+                }
+              }
+            }
+          }, () => { }, () => {
+            setDropMessageText('Couldn\'t find device!');
+            setDropMessageButtonText('Connect');
+            dropIn();
+          });
+        }
+      });
+    }
+
     return () => {
       BackgroundTimer.clearInterval(permTimer);
       appStateListener.remove();
@@ -735,23 +900,23 @@ const Home = ({ navigation, route }) => {
     };
   }, []);
 
-  useEffect(() => {
-    if (!imHereTimer && connected) {
-      imHereTimer = BackgroundTimer.setInterval(async () => {
-        if (BluetoothManager && BluetoothDevice) {
-          BluetoothManager.isDeviceConnected(BluetoothDevice.id).then(
-            isConnected => {
-              if (!isConnected) {
-                BackgroundTimer.clearInterval(imHereTimer);
-                imHereTimer = null;
-              }
-            }
-          ).catch();
-        }
-        sendDeviceSignal("here");
-      }, 3000);
-    }
-  }, [connected]);
+  // useEffect(() => {
+  //   if (!imHereTimer && connected) {
+  //     imHereTimer = BackgroundTimer.setInterval(async () => {
+  //       if (BluetoothManager && BluetoothDevice) {
+  //         BluetoothManager.isDeviceConnected(BluetoothDevice.id).then(
+  //           isConnected => {
+  //             if (!isConnected) {
+  //               BackgroundTimer.clearInterval(imHereTimer);
+  //               imHereTimer = null;
+  //             }
+  //           }
+  //         ).catch();
+  //       }
+  //       sendDeviceSignal("here");
+  //     }, 3000);
+  //   }
+  // }, [connected]);
 
 
   const sendDeviceSignal = async signal => {
@@ -778,9 +943,9 @@ const Home = ({ navigation, route }) => {
       });
   };
 
-  const sendAllData = async (wantedPsi, factor) => {
+  const sendAllData = async (wantedPsi, factor, wheels=1) => {
     log("HOME", `Sending all data to device - ${BluetoothDevice ? BluetoothDevice.id : null}. data: {${parseFloat(wantedPsi).toFixed(1)},${parseFloat(factor).toFixed(1)}}`);
-    await sendDeviceSignal(`{${parseFloat(wantedPsi).toFixed(1)},${parseFloat(factor).toFixed(1)}}`);
+    await sendDeviceSignal(`{${wantedPsi},${parseFloat(factor).toFixed(1)},${wheels}}`);
   };
 
   const removeSubscriptions = () => {
@@ -838,12 +1003,11 @@ const Home = ({ navigation, route }) => {
 
   const handleStatusId = async (startTime, statusId) => {
     log("HOME", `Started operation: ${StatusIdMap[statusId]} that will last: ${startTime}s`);
-
     // await AsyncStorage.setItem("@lastSave", "null");
-    if (statusId == prevStatusId) {
-      prevStatusId = statusId;
-      return;
-    }
+    // if (statusId == prevStatusId) {
+    //   prevStatusId = statusId;
+    //   return;
+    // }
     prevStatusId = statusId;
 
     for (timer of timerList) {
@@ -874,6 +1038,8 @@ const Home = ({ navigation, route }) => {
         setStatusText('Connected');
       }
       return;
+    } else {
+      startTime = startTime + 2;
     }
     let x = 0;
     setStatusText(
@@ -924,29 +1090,33 @@ const Home = ({ navigation, route }) => {
       isValidData(data)
     ) {
 
-      let dataArray = eval(data);
+      let dataArray = JSON.parse(data);
       log("HOME", "Length of data: " + dataArray.length);
       if (dataArray.length == 5) {
         handleStatusId(dataArray[1], dataArray[0]);
         setTirePressure(dataArray[2]);
         setLowBattery(dataArray[4]);
-      } else if (dataArray.length == 2 && dataArray[1] != "-1") {
+      } else if (dataArray.length == 2) {
         log("HOME", "Got pressure from arduino: " + dataArray[1]);
-        if (dataArray[1] <= MAX_PSI) {
+        sendDeviceSignal("gp");
+        if (dataArray[1] != "-1" && dataArray[1] <= MAX_PSI) {
           setWantedPsi(dataArray[1]);
-          sendDeviceSignal("gp"); // Got Pressure
+          // Got Pressure
         }
       }
     }
   };
 
   const dropIn = () => {
+    if (dropInTimer) {
+      clearTimeout(dropInTimer);
+    }
     Animated.timing(dropAnim, {
       toValue: 50,
       duration: 500,
       useNativeDriver: false,
     }).start();
-    setTimeout(() => {
+    dropInTimer = setTimeout(() => {
       Animated.timing(dropAnim, {
         toValue: 0,
         duration: 500,
@@ -1281,6 +1451,7 @@ const Home = ({ navigation, route }) => {
 
 
           <TouchableOpacity
+            disabled={showStatusLoading}
             style={{
               borderRadius: 50,
               alignItems: 'center',
@@ -1289,20 +1460,22 @@ const Home = ({ navigation, route }) => {
               aspectRatio: 1,
             }}
             onPressOut={() => {
-              removeSubscriptions();
-              log("HOME", `Going to settings via cog icon`);
-              navigation.navigate('Settings', {
-                device: BluetoothDevice,
-                serviceUUID: DEVICE_SERVICE_UUID,
-                characteristicsUUID: DEVICE_CHARACTERISTICS_UUID,
-                startConnect: false,
-                connectToDevice: false,
-                manager: BluetoothManager,
-              });
+              if (!showStatusLoading) {
+                removeSubscriptions();
+                log("HOME", `Going to settings via cog icon`);
+                navigation.navigate('Settings', {
+                  device: BluetoothDevice,
+                  serviceUUID: DEVICE_SERVICE_UUID,
+                  characteristicsUUID: DEVICE_CHARACTERISTICS_UUID,
+                  startConnect: false,
+                  connectToDevice: false,
+                  manager: BluetoothManager,
+                });
+              }
             }}>
             <Image
               key={new Date().getTime()}
-              source={require('../assets/icons/cog.png')}
+              source={showStatusLoading ? require('../assets/icons/cog_disabled.png') : require('../assets/icons/cog.png')}
               resizeMode="contain"
               style={{
                 width: '100%',
@@ -1311,7 +1484,6 @@ const Home = ({ navigation, route }) => {
               }}
             />
           </TouchableOpacity>
-
 
           <TouchableOpacity
             style={{
@@ -1347,7 +1519,7 @@ const Home = ({ navigation, route }) => {
 
                 if (connected) {
                   log("HOME", `Bluetooth device - ${BluetoothDevice ? BluetoothDevice.id : null} is connected`);
-                  sendAllData(wantedPsi, factor * wheels);
+                  sendAllData(wantedPsi, factor, wheels);
                   if (isDone) {
                     log("HOME", `Turned off done status`);
                     setIsDone(false);
@@ -1478,7 +1650,7 @@ const Home = ({ navigation, route }) => {
                 fontSize: isPortraitOrientation ? 2 * (winWidth / 18) : 2 * (winWidth / 60),
 
               }}>
-              {Math.round(tirePressure * 2) / 2 >= 0 ? Math.round(tirePressure * 2) / 2 : 0}
+              {connected ? Math.round(tirePressure * 2) / 2 >= 0 ? Math.round(tirePressure * 2) / 2 : 0 : "N/A"}
             </Text></View>
         </View>
 
